@@ -1,0 +1,87 @@
+# ------------------------------------------------------------------ #
+# Render blueprint — a preview link in one commit
+#
+# Render reads this file when you point it at the repository ("New →
+# Blueprint"), creates both the web service and the database, and wires
+# DATABASE_URL between them. Nothing here needs editing before it works;
+# the four values marked sync:false are the ones Render will ask you for.
+#
+# The same shape works on Railway, Fly, Koyeb or any host that can run a
+# Node process — see DEPLOY.md. The Dockerfile beside this file is there
+# for the ones that prefer a container.
+# ------------------------------------------------------------------ #
+
+databases:
+  - name: tls-db
+    databaseName: tls
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: tls-preview
+    runtime: node
+    plan: free
+    region: frankfurt # closest to a UK audience on the free tier
+    branch: main
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tls-db
+          property: connectionString
+
+      # Signs every session token. Render generates it once and keeps it
+      # — regenerating would sign everybody out on each deploy.
+      - key: AUTH_SECRET
+        generateValue: true
+
+      # A preview is not a search result. STAGING adds noindex headers
+      # and a robots.txt that disallows everything.
+      - key: STAGING
+        value: "1"
+
+      # The shared password for the link you send the client. Set this in
+      # the Render dashboard — anyone with the URL and this password can
+      # see the preview, and nobody else can.
+      - key: SITE_PASSWORD
+        sync: false
+      - key: SITE_USER
+        value: client
+
+      # Seed the demo directory on a genuinely empty database, so the
+      # first load shows a working site. Never overwrites existing rows.
+      - key: SEED_ON_BOOT
+        value: "1"
+
+      # The admin login for the preview. Set both before the first
+      # deploy, or the seed falls back to admin@tls.test / demo1234.
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+
+      # Where the site is reachable. Render fills this with the service's
+      # own URL, which is what email links and uploaded-photo URLs use.
+      - key: SITE_URL
+        fromService:
+          name: tls-preview
+          type: web
+          property: host
+      - key: PUBLIC_API_URL
+        fromService:
+          name: tls-preview
+          type: web
+          property: host
+
+      # Email stays in log-only mode on a preview: nothing is sent to a
+      # real clinician by accident. Add a provider key and MAIL_ALLOWLIST
+      # when you want to test delivery for real.
+      - key: MAIL_PROVIDER
+        value: console

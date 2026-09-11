@@ -1,0 +1,294 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500&display=swap");
+
+/* Top Local Specialists brand tokens — teal/emerald family (matching the
+   TLS mark) over white paper, with deep navy reserved for the hero, the
+   dark banner panels and the footer.
+
+   This design is deliberately LIGHT ONLY. There is no dark-mode override:
+   an earlier prefers-color-scheme block repainted every surface navy on
+   machines set to Dark Mode, which is not what the design calls for.
+   `color-scheme: light` below also keeps native controls (select menus,
+   scrollbars) light regardless of the OS setting. */
+:root {
+  color-scheme: light;
+
+  /* Neutral surface */
+  --paper: #ffffff;
+  --paper-muted: #f7fafb;
+  --paper-raised: #ffffff;
+  --paper-tint: #eef4fb;
+  --ink: #0b1220;
+  --ink-muted: #55677a;
+  --ink-faint: #8998a8;
+  --line: #e4eaee;
+  --line-soft: #eef3f5;
+
+  /* Deep clinical-navy ground — used for the hero and dark surfaces */
+  --navy-950: #061626;
+  --navy-900: #0a2035;
+  --navy-800: #0f2c44;
+  --navy-700: #163b57;
+
+  /* Brand teal — primary accent, verification, CTAs */
+  --teal-700: #0a6f66;
+  --teal-600: #0d9488;
+  --teal-500: #14b8a6;
+  --teal-400: #2dd4bf;
+  --teal-300: #7ee8da;
+  --teal-100: #d3f6ef;
+  --teal-50: #eefbf8;
+
+  /* Secondary accent green — the logo's swoosh, used sparingly */
+  --leaf-500: #65b32e;
+  --leaf-400: #8bcb52;
+
+  /* Status */
+  --amber: #e69a1f;
+  --danger: #d6455a;
+  --success: var(--teal-600);
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+
+  /* Shape + depth scale */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --shadow-color: 200 40% 20%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 1px 1px hsl(var(--shadow-color) / 0.03);
+  --shadow-md: 0 8px 24px -8px hsl(var(--shadow-color) / 0.14), 0 2px 8px -2px hsl(var(--shadow-color) / 0.06);
+  --shadow-lg: 0 24px 48px -16px hsl(var(--shadow-color) / 0.22), 0 8px 24px -8px hsl(var(--shadow-color) / 0.1);
+  --shadow-float: 0 30px 60px -20px hsl(var(--shadow-color) / 0.3), 0 12px 28px -12px hsl(var(--shadow-color) / 0.16);
+
+  /* Playfair Display for headings (matching the reference design's
+     editorial serif), Plus Jakarta Sans for body/UI text. */
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-body: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-muted: var(--paper-muted);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-tint: var(--paper-tint);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+
+  --color-teal-700: var(--teal-700);
+  --color-teal-600: var(--teal-600);
+  --color-teal-500: var(--teal-500);
+  --color-teal-400: var(--teal-400);
+  --color-teal-300: var(--teal-300);
+  --color-teal-100: var(--teal-100);
+  --color-teal-50: var(--teal-50);
+
+  --color-leaf-500: var(--leaf-500);
+  --color-leaf-400: var(--leaf-400);
+
+  --color-amber: var(--amber);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+
+/* Editorial serif headings across the site. Tracking is left near-normal
+   because Playfair is already tightly set — the -0.02em used with the
+   previous sans display face made it look cramped. */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Reusable "mesh" hero background: deep navy ground with two soft teal
+   / leaf-green glows, evoking depth without a literal photo. Kept as the
+   fallback for any panel without a photo. */
+.hero-mesh {
+  background-color: var(--navy-950);
+  background-image:
+    radial-gradient(60% 55% at 85% 8%, hsl(168 70% 40% / 0.35), transparent 60%),
+    radial-gradient(45% 50% at 6% 92%, hsl(96 45% 45% / 0.18), transparent 60%),
+    linear-gradient(160deg, var(--navy-900) 0%, var(--navy-950) 60%, #04101c 100%);
+}
+
+.verified-ring {
+  background: conic-gradient(from 180deg, var(--teal-400), var(--leaf-400), var(--teal-400));
+}
+
+/* Dark banner/hero panels backed by a real photo: a navy gradient overlay
+   sits between the photo and the content so white text stays legible
+   regardless of what's in the shot. Each instance sets its own
+   background-image inline (see Home.tsx); this class supplies the
+   overlay, sizing and the navy fallback color. */
+.photo-panel {
+  position: relative;
+  background-color: var(--navy-950);
+  background-size: cover;
+  background-position: center;
+  isolation: isolate;
+}
+.photo-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(100deg, rgba(4, 16, 28, 0.93) 0%, rgba(4, 16, 28, 0.78) 42%, rgba(4, 16, 28, 0.38) 78%, rgba(4, 16, 28, 0.22) 100%);
+}
+/* Children are lifted above the ::before overlay. `.panel-pin` opts out so
+   an element can position itself (the profile hero's CTA, which nests into
+   the panel's curved bottom edge) — an exclusion rather than a specificity
+   fight, since Tailwind's utilities live in a cascade layer and would
+   otherwise lose to this unlayered rule. */
+:where(.photo-panel) > *:not(.panel-pin) {
+  position: relative;
+  z-index: 1;
+}
+.panel-pin {
+  z-index: 2;
+}
+
+/* Light variant of the same idea: a bright photo washed with a soft white
+   veil so DARK text reads on top of it (the closing "The right specialist
+   can change everything." banner in the reference design). */
+.photo-panel-light {
+  position: relative;
+  background-color: var(--paper-tint);
+  background-size: cover;
+  background-position: center;
+  isolation: isolate;
+}
+.photo-panel-light::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.42) 55%, rgba(255, 255, 255, 0.55) 100%);
+}
+:where(.photo-panel-light) > *:not(.panel-pin) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dual-handle price range. Two native range inputs are stacked over one
+   shared track: the inputs themselves ignore pointer events so the track
+   shows through, and only the thumbs are grabbable — which is what lets
+   both handles live on the same line without one blocking the other. */
+.range-stack input[type="range"] {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  height: 1.5rem;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  pointer-events: none;
+}
+.range-stack input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  pointer-events: auto;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background: var(--teal-600);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(6, 22, 38, 0.35);
+  cursor: pointer;
+}
+.range-stack input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  height: 1rem;
+  width: 1rem;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: var(--teal-600);
+  box-shadow: 0 1px 4px rgba(6, 22, 38, 0.35);
+  cursor: pointer;
+}
+.range-stack input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+/* Deeper overlay for the specialist profile hero: the specialty photo
+   sits further back than on the search hero so the portrait and
+   credentials stay the focus. */
+.photo-panel-deep::before {
+  background: linear-gradient(105deg, rgba(4, 16, 28, 0.97) 0%, rgba(4, 16, 28, 0.92) 45%, rgba(4, 16, 28, 0.74) 100%);
+}
+
+/* Frosted-glass frame around the profile portrait. */
+.glass-frame {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Chips in the hero: subtle glass so they read on any photo. */
+.glass-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* The mobile menu slides in from the right rather than appearing, so it
+   reads as a panel arriving over the page instead of the page changing.
+   `motion-safe:` on the element keeps it still for anyone who has asked
+   the system to reduce motion. */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* The save confirmation lifts into place rather than blinking on, so it
+   reads as an answer to the button that was just pressed. Short enough
+   that nobody waits on it. */
+@keyframes toast {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[toast_240ms_ease-out\] {
+    animation: none;
+  }
+}

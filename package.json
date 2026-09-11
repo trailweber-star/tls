@@ -1,0 +1,19 @@
+{
+  "name": "tls-mern",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Top Local Specialists — UK healthcare specialist and facility directory",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "//": "One command per thing a host needs. `build` produces the site the API will serve; `start` applies migrations and boots. Nothing here is specific to any one provider.",
+    "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build && npm --prefix backend install --omit=dev",
+    "start": "npm --prefix backend run start:prod",
+    "migrate": "npm --prefix backend run db:migrate",
+    "seed": "npm --prefix backend run seed",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "check": "npm --prefix backend run smoke && npm --prefix frontend run build"
+  }
+}

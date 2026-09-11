@@ -1,0 +1,760 @@
+[
+  {
+    "name": "Hospital Care",
+    "slug": "hospital-care",
+    "children": [
+      {
+        "name": "Inpatient Care",
+        "slug": "hospital-care-inpatient-care",
+        "children": [
+          {
+            "name": "Medical Inpatient Care",
+            "slug": "medical-inpatient-care"
+          },
+          {
+            "name": "Surgical Inpatient Care",
+            "slug": "surgical-inpatient-care"
+          },
+          {
+            "name": "Post-operative Care",
+            "slug": "post-operative-care"
+          },
+          {
+            "name": "Complex Medical Care",
+            "slug": "complex-medical-care"
+          },
+          {
+            "name": "Discharge Planning",
+            "slug": "discharge-planning"
+          }
+        ]
+      },
+      {
+        "name": "Day Case Care",
+        "slug": "hospital-care-day-case-care",
+        "children": [
+          {
+            "name": "Day Surgery",
+            "slug": "day-surgery"
+          },
+          {
+            "name": "Day Case Procedures",
+            "slug": "day-case-procedures"
+          },
+          {
+            "name": "Ambulatory Care",
+            "slug": "ambulatory-care"
+          },
+          {
+            "name": "Same-day Discharge",
+            "slug": "same-day-discharge"
+          }
+        ]
+      },
+      {
+        "name": "Emergency & Urgent Care",
+        "slug": "hospital-care-emergency-and-urgent-care",
+        "children": [
+          {
+            "name": "Emergency Department",
+            "slug": "emergency-department"
+          },
+          {
+            "name": "Urgent Treatment",
+            "slug": "urgent-treatment"
+          },
+          {
+            "name": "Minor Injuries",
+            "slug": "minor-injuries"
+          },
+          {
+            "name": "Acute Medical Assessment",
+            "slug": "acute-medical-assessment"
+          }
+        ]
+      },
+      {
+        "name": "Critical Care",
+        "slug": "hospital-care-critical-care",
+        "children": [
+          {
+            "name": "Intensive Care",
+            "slug": "intensive-care"
+          },
+          {
+            "name": "High Dependency Care",
+            "slug": "high-dependency-care"
+          },
+          {
+            "name": "Post-operative Critical Care",
+            "slug": "post-operative-critical-care"
+          }
+        ]
+      },
+      {
+        "name": "Diagnostic Care",
+        "slug": "hospital-care-diagnostic-care",
+        "children": [
+          {
+            "name": "MRI",
+            "slug": "mri"
+          },
+          {
+            "name": "CT Scan",
+            "slug": "ct-scan"
+          },
+          {
+            "name": "X-ray",
+            "slug": "x-ray"
+          },
+          {
+            "name": "Ultrasound",
+            "slug": "ultrasound"
+          },
+          {
+            "name": "Endoscopy",
+            "slug": "endoscopy"
+          },
+          {
+            "name": "Blood Tests",
+            "slug": "blood-tests"
+          },
+          {
+            "name": "Cardiac Diagnostics",
+            "slug": "cardiac-diagnostics"
+          }
+        ]
+      },
+      {
+        "name": "Rehabilitation Care",
+        "slug": "hospital-care-rehabilitation-care",
+        "children": [
+          {
+            "name": "Inpatient Rehabilitation",
+            "slug": "inpatient-rehabilitation"
+          },
+          {
+            "name": "Post-surgical Rehabilitation",
+            "slug": "post-surgical-rehabilitation"
+          },
+          {
+            "name": "Neurological Rehabilitation",
+            "slug": "neurological-rehabilitation"
+          },
+          {
+            "name": "Older Person Rehabilitation",
+            "slug": "older-person-rehabilitation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Care Homes",
+    "slug": "care-homes",
+    "children": [
+      {
+        "name": "Residential Care",
+        "slug": "care-homes-residential-care",
+        "children": [
+          {
+            "name": "Long-term Residential Care",
+            "slug": "long-term-residential-care"
+          },
+          {
+            "name": "Short-term Residential Care",
+            "slug": "short-term-residential-care"
+          },
+          {
+            "name": "Respite Care",
+            "slug": "residential-care-respite-care"
+          },
+          {
+            "name": "Older Person Residential Care",
+            "slug": "older-person-residential-care"
+          }
+        ]
+      },
+      {
+        "name": "Nursing Care",
+        "slug": "care-homes-nursing-care",
+        "children": [
+          {
+            "name": "Nursing Home Care",
+            "slug": "nursing-home-care"
+          },
+          {
+            "name": "Complex Nursing Care",
+            "slug": "complex-nursing-care"
+          },
+          {
+            "name": "Post-hospital Nursing Care",
+            "slug": "post-hospital-nursing-care"
+          },
+          {
+            "name": "24-hour Nursing Care",
+            "slug": "24-hour-nursing-care"
+          }
+        ]
+      },
+      {
+        "name": "Dementia Care",
+        "slug": "care-homes-dementia-care",
+        "children": [
+          {
+            "name": "Residential Dementia Care",
+            "slug": "residential-dementia-care"
+          },
+          {
+            "name": "Nursing Dementia Care",
+            "slug": "nursing-dementia-care"
+          },
+          {
+            "name": "Memory Care",
+            "slug": "memory-care"
+          },
+          {
+            "name": "Advanced Dementia Care",
+            "slug": "advanced-dementia-care"
+          }
+        ]
+      },
+      {
+        "name": "Respite & Short Stay",
+        "slug": "care-homes-respite-and-short-stay",
+        "children": [
+          {
+            "name": "Respite Care",
+            "slug": "respite-and-short-stay-respite-care"
+          },
+          {
+            "name": "Carer Breaks",
+            "slug": "carer-breaks"
+          },
+          {
+            "name": "Short-term Recovery Stay",
+            "slug": "short-term-recovery-stay"
+          },
+          {
+            "name": "Trial Stay",
+            "slug": "trial-stay"
+          }
+        ]
+      },
+      {
+        "name": "Palliative & End-of-Life Care",
+        "slug": "care-homes-palliative-and-end-of-life-care",
+        "children": [
+          {
+            "name": "Palliative Care",
+            "slug": "palliative-care"
+          },
+          {
+            "name": "End-of-Life Care",
+            "slug": "end-of-life-care"
+          },
+          {
+            "name": "Comfort Care",
+            "slug": "comfort-care"
+          },
+          {
+            "name": "Hospice-style Care",
+            "slug": "hospice-style-care"
+          }
+        ]
+      },
+      {
+        "name": "Specialist Care",
+        "slug": "care-homes-specialist-care",
+        "children": [
+          {
+            "name": "Parkinson's Care",
+            "slug": "parkinsons-care"
+          },
+          {
+            "name": "Stroke Care",
+            "slug": "stroke-care"
+          },
+          {
+            "name": "Neurological Care",
+            "slug": "neurological-care"
+          },
+          {
+            "name": "Physical Disability Care",
+            "slug": "physical-disability-care"
+          },
+          {
+            "name": "Young Adult Care",
+            "slug": "young-adult-care"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Pharmacy",
+    "slug": "pharmacy",
+    "children": [
+      {
+        "name": "Community Pharmacy",
+        "slug": "pharmacy-community-pharmacy",
+        "children": [
+          {
+            "name": "Prescription Dispensing",
+            "slug": "prescription-dispensing"
+          },
+          {
+            "name": "Repeat Prescriptions",
+            "slug": "repeat-prescriptions"
+          },
+          {
+            "name": "Medication Advice",
+            "slug": "medication-advice"
+          },
+          {
+            "name": "Over-the-counter Medicines",
+            "slug": "over-the-counter-medicines"
+          },
+          {
+            "name": "Medicine Review",
+            "slug": "medicine-review"
+          }
+        ]
+      },
+      {
+        "name": "Vaccination Services",
+        "slug": "pharmacy-vaccination-services",
+        "children": [
+          {
+            "name": "Flu Vaccination",
+            "slug": "flu-vaccination"
+          },
+          {
+            "name": "COVID Vaccination",
+            "slug": "covid-vaccination"
+          },
+          {
+            "name": "Travel Vaccination",
+            "slug": "travel-vaccination"
+          },
+          {
+            "name": "Occupational Vaccination",
+            "slug": "occupational-vaccination"
+          }
+        ]
+      },
+      {
+        "name": "Minor Illness Services",
+        "slug": "pharmacy-minor-illness-services",
+        "children": [
+          {
+            "name": "Sore Throat",
+            "slug": "minor-illness-services-sore-throat"
+          },
+          {
+            "name": "Earache",
+            "slug": "earache"
+          },
+          {
+            "name": "Sinus Symptoms",
+            "slug": "sinus-symptoms"
+          },
+          {
+            "name": "Urinary Symptoms",
+            "slug": "urinary-symptoms"
+          },
+          {
+            "name": "Skin Conditions",
+            "slug": "skin-conditions"
+          },
+          {
+            "name": "Minor Eye Conditions",
+            "slug": "minor-eye-conditions"
+          }
+        ]
+      },
+      {
+        "name": "Travel Health",
+        "slug": "pharmacy-travel-health",
+        "children": [
+          {
+            "name": "Travel Health Consultation",
+            "slug": "travel-health-consultation"
+          },
+          {
+            "name": "Travel Vaccines",
+            "slug": "travel-vaccines"
+          },
+          {
+            "name": "Malaria Prevention Advice",
+            "slug": "malaria-prevention-advice"
+          },
+          {
+            "name": "Travel Medication",
+            "slug": "travel-medication"
+          }
+        ]
+      },
+      {
+        "name": "Health Checks",
+        "slug": "pharmacy-health-checks",
+        "children": [
+          {
+            "name": "Blood Pressure Check",
+            "slug": "blood-pressure-check"
+          },
+          {
+            "name": "Cholesterol Check",
+            "slug": "cholesterol-check"
+          },
+          {
+            "name": "Diabetes Screening",
+            "slug": "diabetes-screening"
+          },
+          {
+            "name": "Weight Management",
+            "slug": "weight-management"
+          },
+          {
+            "name": "Smoking Cessation",
+            "slug": "smoking-cessation"
+          }
+        ]
+      },
+      {
+        "name": "Sexual Health",
+        "slug": "pharmacy-sexual-health",
+        "children": [
+          {
+            "name": "Emergency Contraception",
+            "slug": "emergency-contraception"
+          },
+          {
+            "name": "Contraception Advice",
+            "slug": "contraception-advice"
+          },
+          {
+            "name": "Sexual Health Advice",
+            "slug": "sexual-health-advice"
+          },
+          {
+            "name": "Selected STI Services",
+            "slug": "selected-sti-services"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Clinics",
+    "slug": "clinics",
+    "children": [
+      {
+        "name": "Specialist Medical Clinic",
+        "slug": "clinics-specialist-medical-clinic",
+        "children": [
+          {
+            "name": "Orthopaedic Clinic",
+            "slug": "orthopaedic-clinic"
+          },
+          {
+            "name": "ENT Clinic",
+            "slug": "ent-clinic"
+          },
+          {
+            "name": "Gynaecology Clinic",
+            "slug": "gynaecology-clinic"
+          },
+          {
+            "name": "Dermatology Clinic",
+            "slug": "dermatology-clinic"
+          },
+          {
+            "name": "Cardiology Clinic",
+            "slug": "cardiology-clinic"
+          },
+          {
+            "name": "Gastroenterology Clinic",
+            "slug": "gastroenterology-clinic"
+          },
+          {
+            "name": "Neurology Clinic",
+            "slug": "neurology-clinic"
+          },
+          {
+            "name": "Pain Clinic",
+            "slug": "pain-clinic"
+          }
+        ]
+      },
+      {
+        "name": "Diagnostic Clinic",
+        "slug": "clinics-diagnostic-clinic",
+        "children": [
+          {
+            "name": "MRI Clinic",
+            "slug": "mri-clinic"
+          },
+          {
+            "name": "X-ray Clinic",
+            "slug": "x-ray-clinic"
+          },
+          {
+            "name": "Ultrasound Clinic",
+            "slug": "ultrasound-clinic"
+          },
+          {
+            "name": "Imaging Centre",
+            "slug": "imaging-centre"
+          },
+          {
+            "name": "Endoscopy Clinic",
+            "slug": "endoscopy-clinic"
+          },
+          {
+            "name": "Blood Testing Clinic",
+            "slug": "blood-testing-clinic"
+          }
+        ]
+      },
+      {
+        "name": "Physiotherapy & Rehabilitation Clinic",
+        "slug": "clinics-physiotherapy-and-rehabilitation-clinic",
+        "children": [
+          {
+            "name": "Physiotherapy Clinic",
+            "slug": "physiotherapy-clinic"
+          },
+          {
+            "name": "Sports Injury Clinic",
+            "slug": "sports-injury-clinic"
+          },
+          {
+            "name": "Rehabilitation Clinic",
+            "slug": "rehabilitation-clinic"
+          },
+          {
+            "name": "Pelvic Health Clinic",
+            "slug": "pelvic-health-clinic"
+          },
+          {
+            "name": "Neurological Rehabilitation Clinic",
+            "slug": "neurological-rehabilitation-clinic"
+          }
+        ]
+      },
+      {
+        "name": "Dental Clinic",
+        "slug": "clinics-dental-clinic",
+        "children": [
+          {
+            "name": "General Dental Clinic",
+            "slug": "general-dental-clinic"
+          },
+          {
+            "name": "Implant Clinic",
+            "slug": "implant-clinic"
+          },
+          {
+            "name": "Cosmetic Dental Clinic",
+            "slug": "cosmetic-dental-clinic"
+          },
+          {
+            "name": "Orthodontic Clinic",
+            "slug": "orthodontic-clinic"
+          },
+          {
+            "name": "Specialist Dental Clinic",
+            "slug": "specialist-dental-clinic"
+          }
+        ]
+      },
+      {
+        "name": "Aesthetic Clinic",
+        "slug": "clinics-aesthetic-clinic",
+        "children": [
+          {
+            "name": "Medical Aesthetics Clinic",
+            "slug": "medical-aesthetics-clinic"
+          },
+          {
+            "name": "Laser Clinic",
+            "slug": "laser-clinic"
+          },
+          {
+            "name": "Skin Clinic",
+            "slug": "skin-clinic"
+          },
+          {
+            "name": "Cosmetic Surgery Clinic",
+            "slug": "cosmetic-surgery-clinic"
+          }
+        ]
+      },
+      {
+        "name": "One-stop Clinic",
+        "slug": "clinics-one-stop-clinic",
+        "children": [
+          {
+            "name": "One-stop Orthopaedic Clinic",
+            "slug": "one-stop-orthopaedic-clinic"
+          },
+          {
+            "name": "One-stop Knee Clinic",
+            "slug": "one-stop-knee-clinic"
+          },
+          {
+            "name": "One-stop Shoulder Clinic",
+            "slug": "one-stop-shoulder-clinic"
+          },
+          {
+            "name": "One-stop Diagnostic Clinic",
+            "slug": "one-stop-diagnostic-clinic"
+          }
+        ]
+      },
+      {
+        "name": "Urgent & Walk-in Clinic",
+        "slug": "clinics-urgent-and-walk-in-clinic",
+        "children": [
+          {
+            "name": "Urgent Care Clinic",
+            "slug": "urgent-care-clinic"
+          },
+          {
+            "name": "Walk-in Clinic",
+            "slug": "walk-in-clinic"
+          },
+          {
+            "name": "Minor Injury Clinic",
+            "slug": "minor-injury-clinic"
+          },
+          {
+            "name": "Same-day Medical Clinic",
+            "slug": "same-day-medical-clinic"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Hospitals",
+    "slug": "hospitals",
+    "children": [
+      {
+        "name": "Private Hospital",
+        "slug": "hospitals-private-hospital",
+        "children": [
+          {
+            "name": "Private General Hospital",
+            "slug": "private-general-hospital"
+          },
+          {
+            "name": "Private Surgical Hospital",
+            "slug": "private-surgical-hospital"
+          },
+          {
+            "name": "Private Day Hospital",
+            "slug": "private-day-hospital"
+          },
+          {
+            "name": "Private Specialist Hospital",
+            "slug": "private-specialist-hospital"
+          }
+        ]
+      },
+      {
+        "name": "NHS Hospital",
+        "slug": "hospitals-nhs-hospital",
+        "children": [
+          {
+            "name": "NHS Acute Hospital",
+            "slug": "nhs-acute-hospital"
+          },
+          {
+            "name": "NHS Teaching Hospital",
+            "slug": "nhs-teaching-hospital"
+          },
+          {
+            "name": "NHS District General Hospital",
+            "slug": "nhs-district-general-hospital"
+          },
+          {
+            "name": "NHS Specialist Hospital",
+            "slug": "nhs-specialist-hospital"
+          }
+        ]
+      },
+      {
+        "name": "Specialist Hospital",
+        "slug": "hospitals-specialist-hospital",
+        "children": [
+          {
+            "name": "Orthopaedic Hospital",
+            "slug": "orthopaedic-hospital"
+          },
+          {
+            "name": "Women's Hospital",
+            "slug": "womens-hospital"
+          },
+          {
+            "name": "Children's Hospital",
+            "slug": "childrens-hospital"
+          },
+          {
+            "name": "Cancer Hospital",
+            "slug": "cancer-hospital"
+          },
+          {
+            "name": "Cardiac Hospital",
+            "slug": "cardiac-hospital"
+          },
+          {
+            "name": "Neurological Hospital",
+            "slug": "neurological-hospital"
+          },
+          {
+            "name": "Eye Hospital",
+            "slug": "eye-hospital"
+          }
+        ]
+      },
+      {
+        "name": "Day Surgery Hospital",
+        "slug": "hospitals-day-surgery-hospital",
+        "children": [
+          {
+            "name": "Day Surgery Centre",
+            "slug": "day-surgery-centre"
+          },
+          {
+            "name": "Ambulatory Surgery Centre",
+            "slug": "ambulatory-surgery-centre"
+          },
+          {
+            "name": "Short-stay Surgical Centre",
+            "slug": "short-stay-surgical-centre"
+          }
+        ]
+      },
+      {
+        "name": "Rehabilitation Hospital",
+        "slug": "hospitals-rehabilitation-hospital",
+        "children": [
+          {
+            "name": "Physical Rehabilitation Hospital",
+            "slug": "physical-rehabilitation-hospital"
+          },
+          {
+            "name": "Neurological Rehabilitation Hospital",
+            "slug": "neurological-rehabilitation-hospital"
+          },
+          {
+            "name": "Post-acute Rehabilitation Hospital",
+            "slug": "post-acute-rehabilitation-hospital"
+          }
+        ]
+      }
+    ]
+  }
+]

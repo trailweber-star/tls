@@ -1,0 +1,16 @@
+# Build inputs only — everything else makes the image bigger and the
+# build slower, and .env in an image is a leaked secret.
+node_modules
+**/node_modules
+**/dist
+**/.vite
+.git
+.env
+**/.env
+!**/.env.example
+backend/uploads
+_to_delete
+imports
+docs
+**/*.log
+**/scripts/_*.mjs
