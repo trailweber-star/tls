@@ -16,6 +16,13 @@ databases:
     databaseName: tls
     plan: free
     postgresMajorVersion: "16"
+    # Must match the web service's region. DATABASE_URL uses the
+    # database's internal hostname, and internal hostnames only resolve
+    # within one region — a database left on the default region while
+    # the service sits in Frankfurt fails at boot with
+    # "getaddrinfo ENOTFOUND dpg-…", which reads like a broken
+    # connection string and is actually a geography problem.
+    region: frankfurt
 
 services:
   - type: web
@@ -31,6 +38,14 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+
+      # Baked into the frontend bundle at build time. Without it the
+      # built site calls http://localhost:4000/api and every panel on
+      # the deployed page comes back empty — the site renders, and
+      # nothing in it works. A relative path keeps it on whatever
+      # origin the page was served from, which is this same service.
+      - key: VITE_API_URL
+        value: /api
 
       - key: DATABASE_URL
         fromDatabase:
