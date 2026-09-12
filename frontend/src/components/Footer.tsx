@@ -52,6 +52,7 @@ export function Footer() {
               <FooterLink to="/search?type=clinic">Clinics</FooterLink>
               <FooterLink to="/search?type=care_home">Care homes</FooterLink>
               <FooterLink to="/search?type=pharmacy">Pharmacies</FooterLink>
+              <FooterLink to="/blog">Health guides</FooterLink>
             </ul>
           </div>
 
@@ -79,7 +80,6 @@ export function Footer() {
               <FooterLink to="/search?specialty=orthopaedics">Orthopaedics</FooterLink>
               <FooterLink to="/search?specialty=dentistry">Dentistry</FooterLink>
               <FooterLink to="/about">About us</FooterLink>
-              <FooterLink to="/blog">Health guides</FooterLink>
               <FooterLink to="/contact">Contact us</FooterLink>
             </ul>
           </div>
