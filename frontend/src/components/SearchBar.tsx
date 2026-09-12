@@ -4,15 +4,18 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { placeHeroFor } from "../lib/specialtyHeroes";
 import {
+  Activity,
   AlertCircle,
   Building2,
-  HeartPulse,
+  HeartHandshake,
   Hospital,
   Crosshair,
   Loader2,
   MapPin,
   Pill,
   Search,
+  Smile,
+  Sparkles,
   Stethoscope,
 } from "lucide-react";
 import type { City } from "../lib/types";
@@ -37,23 +40,39 @@ import type { City } from "../lib/types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
-type TabKey = "doctor" | "dentist" | "practice" | "hospital" | "care-home" | "pharmacy";
+/* The eight directories, in the order a patient thinks about them:
+   people first, then the places they work in. The keys are the same
+   strings the API uses — backend/src/lib/searchTabs.js is the one
+   definition of what each one covers, and this list only adds the icon
+   and the order. Keeping the keys identical is what stops the panel and
+   the results page disagreeing about which directory is on screen. */
+type TabKey =
+  | "specialist-doctors"
+  | "physiotherapists"
+  | "dentists"
+  | "aesthetics"
+  | "clinics"
+  | "hospitals"
+  | "care-homes"
+  | "pharmacies";
 
 /** Which tabs are places, and the facility type each one means. */
 const PLACE_TYPE: Partial<Record<TabKey, string>> = {
-  practice: "clinic",
-  hospital: "hospital",
-  "care-home": "care_home",
-  pharmacy: "pharmacy",
+  clinics: "clinic",
+  hospitals: "hospital",
+  "care-homes": "care_home",
+  pharmacies: "pharmacy",
 };
 
 const TABS: { key: TabKey; label: string; Icon: typeof Stethoscope }[] = [
-  { key: "doctor", label: "Doctor", Icon: Stethoscope },
-  { key: "dentist", label: "Dentist", Icon: HeartPulse },
-  { key: "practice", label: "Practice", Icon: Building2 },
-  { key: "hospital", label: "Hospital", Icon: Hospital },
-  { key: "care-home", label: "Care Home", Icon: HeartPulse },
-  { key: "pharmacy", label: "Pharmacy", Icon: Pill },
+  { key: "specialist-doctors", label: "Specialist Doctors", Icon: Stethoscope },
+  { key: "physiotherapists", label: "Physiotherapists", Icon: Activity },
+  { key: "dentists", label: "Dentists", Icon: Smile },
+  { key: "aesthetics", label: "Aesthetics", Icon: Sparkles },
+  { key: "clinics", label: "Clinics", Icon: Building2 },
+  { key: "hospitals", label: "Hospitals", Icon: Hospital },
+  { key: "care-homes", label: "Care Homes", Icon: HeartHandshake },
+  { key: "pharmacies", label: "Pharmacies", Icon: Pill },
 ];
 
 interface PanelItem {
@@ -101,7 +120,7 @@ export function SearchBar({
   cities = [],
   defaultTerm = "",
   defaultLocation = "",
-  defaultType = "doctor",
+  defaultType = "specialist-doctors",
   variant = "hero",
   searching = false,
 }: SearchBarProps) {
@@ -248,8 +267,16 @@ export function SearchBar({
     if (location.trim()) params.set("location", location.trim());
 
     const placeType = PLACE_TYPE[forTab];
-    if (placeType) params.set("type", placeType);
-    else if (forTab === "dentist") params.set("specialty", "dentistry");
+    if (placeType) {
+      params.set("type", placeType);
+    } else {
+      // A people tab carries its group, so the results page shows the
+      // same directory the tab did. This used to send
+      // `specialty=dentistry` for the one scoped tab and nothing at all
+      // for the other, which is why a search from the Doctor tab
+      // returned dentists and physiotherapists too.
+      params.set("group", forTab);
+    }
 
     setBusy(true);
     setOpen(false);

@@ -6,6 +6,11 @@ import type { City, SearchFacets, SortOption, Specialty } from "../lib/types";
 export interface SearchFilterState {
   /** Free text from the search bar, carried through every filter change. */
   q: string;
+  /** Which people directory the search came from — a specialist tab key.
+   *  Not a filter the sidebar owns: it says WHICH directory is on screen,
+   *  and every filter change has to carry it or the patient is silently
+   *  moved from "physiotherapists in Leeds" to everyone in Leeds. */
+  group: string;
   specialty: string;
   subspecialties: string[];
   location: string;

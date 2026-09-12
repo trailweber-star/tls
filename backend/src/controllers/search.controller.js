@@ -1,5 +1,6 @@
 import { isDbConfigured } from "../config/db.js";
 import { facilities as facilityRepo, specialists as specialistRepo, taxonomy } from "../db/repos.js";
+import { tabFor, branchIdsFor, rootSlugsFor } from "../lib/searchTabs.js";
 import {
   mockSpecialistsWithRelations,
   mockFacilitiesWithRelations,
@@ -28,51 +29,6 @@ import {
  * ------------------------------------------------------------------ */
 
 const norm = (v) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-/** What each tab above the box actually searches. */
-export const SEARCH_TYPES = {
-  doctor: {
-    label: "Doctor",
-    plural: "Specialists",
-    kind: "specialist",
-    placeholder: "Search a name, specialty, treatment or condition",
-  },
-  dentist: {
-    label: "Dentist",
-    plural: "Dentists",
-    kind: "specialist",
-    specialtySlug: "dentistry",
-    placeholder: "Search a dentist, treatment or condition",
-  },
-  practice: {
-    label: "Practice",
-    plural: "Practices",
-    kind: "facility",
-    facilityType: "clinic",
-    placeholder: "Search for a practice by name",
-  },
-  hospital: {
-    label: "Hospital",
-    plural: "Hospitals",
-    kind: "facility",
-    facilityType: "hospital",
-    placeholder: "Search for a hospital by name",
-  },
-  "care-home": {
-    label: "Care Home",
-    plural: "Care homes",
-    kind: "facility",
-    facilityType: "care_home",
-    placeholder: "Search for a care home by name",
-  },
-  pharmacy: {
-    label: "Pharmacy",
-    plural: "Pharmacies",
-    kind: "facility",
-    facilityType: "pharmacy",
-    placeholder: "Search for a pharmacy by name",
-  },
-};
 
 /**
  * Where the needle sits in the text, so the UI can highlight exactly the
@@ -194,16 +150,35 @@ const FACILITY_LABEL = {
 
 const count = (c) => c.primary.length + c.more.length;
 
-// GET /api/search/panel?q=cardio&type=doctor
+// GET /api/search/panel?q=cardio&type=specialist-doctors
 export async function searchPanel(req, res) {
-  const typeKey = SEARCH_TYPES[req.query.type] ? req.query.type : "doctor";
-  const type = SEARCH_TYPES[typeKey];
+  const type = tabFor(req.query.type);
+  const typeKey = type.key;
   const raw = String(req.query.q ?? "");
   const needle = norm(raw);
   const popular = needle.length < 2;
 
   const data = await loadAll();
   const specialtyById = new Map(data.specialties.map((s) => [s.id, s]));
+
+  /* ----------------------------------------------------- tab scoping
+     The tab is the subject of the whole panel, not a filter on its last
+     column. Standing on Physiotherapists, a patient should not be
+     offered Cardiology, a cardiologist, or a pharmacy — every column
+     here is therefore narrowed to the branches this tab covers before
+     anything is ranked.
+
+     `branchIds` is null on a facility tab, where there is no specialty
+     branch to speak of: those tabs show places and nothing else. */
+  const branchIds = branchIdsFor(typeKey, data.specialties);
+
+  /** The people this tab is about — the pool every column is drawn from. */
+  const tabSpecialists =
+    type.kind === "specialist" && branchIds
+      ? data.specialists.filter((s) => (s.specialties ?? []).some((sp) => branchIds.has(sp.id)))
+      : type.kind === "specialist"
+        ? data.specialists
+        : [];
 
   /* ------------------------------------------------------- reachable
      The taxonomy is far larger than the directory: hundreds of specialty
@@ -218,13 +193,16 @@ export async function searchPanel(req, res) {
   const liveSpecialtyIds = new Set();
   const liveConditionIds = new Set();
   const liveTreatmentIds = new Set();
-  for (const sp of data.specialists) {
+  for (const sp of tabSpecialists) {
     for (const node of sp.specialties ?? []) {
       let cur = specialtyById.get(node.id);
       const guard = new Set();
       while (cur && !guard.has(cur.id)) {
         guard.add(cur.id);
-        liveSpecialtyIds.add(cur.id);
+        // Walking up from a leaf would otherwise climb out of the tab:
+        // a dental implant leads to "Dentistry", which has no business
+        // on the Specialist Doctors tab.
+        if (!branchIds || branchIds.has(cur.id)) liveSpecialtyIds.add(cur.id);
         cur = cur.parentId ? specialtyById.get(cur.parentId) : null;
       }
     }
@@ -260,7 +238,8 @@ export async function searchPanel(req, res) {
   const usingFacilityTree = type.kind === "facility";
   const tree = data.specialties;
 
-  const reachable = tree.filter((n) => liveSpecialtyIds.has(n.id));
+  const inTab = branchIds ? tree.filter((n) => branchIds.has(n.id)) : tree;
+  const reachable = inTab.filter((n) => liveSpecialtyIds.has(n.id));
   const specialtySource = popular
     ? [...reachable.filter((s) => !s.parentId), ...reachable.filter((s) => s.parentId)]
     : reachable;
@@ -276,9 +255,18 @@ export async function searchPanel(req, res) {
      Procedures and conditions together — a patient does not distinguish
      between "the thing I have" and "the thing they do about it", and
      both lead to the same place: people who treat it. */
+  // Reachability is already computed from this tab's people only, so a
+  // procedure survives here exactly when somebody on this tab performs
+  // it. The branch test is belt-and-braces for a row whose specialtyId
+  // sits outside the tab while a tagged practitioner sits inside it.
+  const inTabTaxon = (row) => !branchIds || !row.specialtyId || branchIds.has(row.specialtyId);
   const procedureSource = [
-    ...data.treatments.filter((t) => liveTreatmentIds.has(t.id)).map((t) => ({ ...t, kind: "treatment" })),
-    ...data.conditions.filter((c) => liveConditionIds.has(c.id)).map((c) => ({ ...c, kind: "condition" })),
+    ...data.treatments
+      .filter((t) => liveTreatmentIds.has(t.id) && inTabTaxon(t))
+      .map((t) => ({ ...t, kind: "treatment" })),
+    ...data.conditions
+      .filter((c) => liveConditionIds.has(c.id) && inTabTaxon(c))
+      .map((c) => ({ ...c, kind: "condition" })),
   ];
   const procedures = column(procedureSource, needle, COLUMN_LIMIT, (row) => ({
     match: row.name,
@@ -294,24 +282,10 @@ export async function searchPanel(req, res) {
   let peopleLabel = type.plural;
 
   if (type.kind === "specialist") {
-    let pool = data.specialists;
-    if (type.specialtySlug) {
-      // The Dentist tab is the specialist search scoped to the dentistry
-      // branch, not a separate directory.
-      const root = data.specialties.find((s) => s.slug === type.specialtySlug);
-      const branch = new Set();
-      if (root) {
-        branch.add(root.id);
-        let frontier = [root.id];
-        while (frontier.length) {
-          const kids = data.specialties.filter((s) => frontier.includes(s.parentId));
-          if (!kids.length) break;
-          kids.forEach((k) => branch.add(k.id));
-          frontier = kids.map((k) => k.id);
-        }
-      }
-      pool = pool.filter((s) => s.specialties.some((sp) => branch.has(sp.id)));
-    }
+    // Already narrowed to this tab's branches by `tabSpecialists`, which
+    // every column shares — so a dentist cannot appear under Aesthetics
+    // however the panel is ranked.
+    const pool = tabSpecialists;
     // With nothing typed, show the best-rated first rather than whoever
     // happens to be first in the table.
     const ordered = popular ? [...pool].sort((a, b) => b.ratingAvg - a.ratingAvg) : pool;
@@ -348,27 +322,66 @@ export async function searchPanel(req, res) {
     }));
   }
 
-  // The horizontal strip above the bar: the top level of whichever tree
-  // this tab uses, always present regardless of what has been typed, so
-  // there is a way in that needs no typing at all.
-  const stripTree = usingFacilityTree ? data.facilityCategories : data.specialties;
-  const topCategories = stripTree
-    .filter((n) => !n.parentId)
-    .map((n) => ({
+  /* The horizontal strip above the bar: the top level of whichever tree
+     this tab uses, always present regardless of what has been typed, so
+     there is a way in that needs no typing at all.
+
+     Scoped to the tab like everything else. Under a places tab the roots
+     are derived from the listings of THIS type rather than from the whole
+     facility tree — which is five roots covering hospitals, clinics, care
+     homes and pharmacies, so an unscoped strip offered "Care Homes" to
+     somebody standing on Pharmacies. Under a specialist tab it is the
+     tab's own roots: Physiotherapists offers Physiotherapy, not
+     Gynaecology. */
+  let topCategories = [];
+  if (usingFacilityTree) {
+    const categoryById = new Map(data.facilityCategories.map((c) => [c.id, c]));
+    const rootOf = (id) => {
+      let node = categoryById.get(id);
+      const guard = new Set();
+      while (node?.parentId && !guard.has(node.id)) {
+        guard.add(node.id);
+        node = categoryById.get(node.parentId);
+      }
+      return node ?? null;
+    };
+    const roots = new Map();
+    for (const f of data.facilities) {
+      if (f.facilityType !== type.facilityType) continue;
+      for (const cat of f.categories ?? []) {
+        const root = rootOf(cat.id);
+        if (root && !roots.has(root.id)) roots.set(root.id, root);
+      }
+    }
+    topCategories = [...roots.values()].map((n) => ({
       label: n.name,
       slug: n.slug,
       // One results page for everything: the strip under a places tab
       // has to land on /search with the tab preselected, not on the old
       // /facilities route, which now only redirects and would drop the
       // category on the way.
-      href: usingFacilityTree
-        ? `/search?type=${type.facilityType}&category=${n.slug}`
-        : `/search?specialty=${n.slug}`,
+      href: `/search?type=${type.facilityType}&category=${n.slug}`,
     }));
+  } else {
+    const roots = rootSlugsFor(typeKey, data.specialties);
+    topCategories = data.specialties
+      .filter((n) => !n.parentId && (!roots || roots.has(n.slug)) && liveSpecialtyIds.has(n.id))
+      .map((n) => ({
+        label: n.name,
+        slug: n.slug,
+        href: `/search?specialty=${n.slug}`,
+      }));
+  }
 
   res.json({
     q: raw,
     type: typeKey,
+    kind: type.kind,
+    /* What a bare search on this tab means to the results page: a group
+       of root specialties, or one facility type. The UI builds its URL
+       from these rather than keeping its own copy of the mapping. */
+    group: type.kind === "specialist" ? typeKey : null,
+    facilityType: type.facilityType ?? null,
     placeholder: type.placeholder,
     topCategories,
     mode: popular ? "popular" : "results",

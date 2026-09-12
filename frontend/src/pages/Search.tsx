@@ -21,6 +21,21 @@ import { Seo } from "../components/Seo";
 // filter changes, and a refresh keeps the results — none of which works
 // if the state only lives in component memory.
 
+/* The people directories, by tab key. A heading of "All Specialists"
+   over a list of physiotherapists is the same class of error as a
+   dentist appearing in the dropdown: the page has to name what it is
+   actually showing. Mirrors backend/src/lib/searchTabs.js. */
+const GROUP_HEADING: Record<string, { heading: string; one: string; many: string }> = {
+  "specialist-doctors": { heading: "Specialist Doctors", one: "specialist", many: "specialists" },
+  physiotherapists: { heading: "Physiotherapists", one: "physiotherapist", many: "physiotherapists" },
+  dentists: { heading: "Dentists", one: "dentist", many: "dentists" },
+  aesthetics: {
+    heading: "Aesthetic Practitioners",
+    one: "practitioner",
+    many: "practitioners",
+  },
+};
+
 /* One results page serves both halves of the directory, so the nouns it
    prints have to follow whichever half is being shown. */
 const PLACE_NOUN: Record<FacilityType, string> = {
@@ -52,6 +67,7 @@ function readFilters(params: URLSearchParams): SearchFilterState & { page: numbe
   };
   return {
     q: params.get("q") ?? "",
+    group: params.get("group") ?? "",
     specialty: params.get("specialty") ?? "",
     subspecialties: params.getAll("subspecialty").filter(Boolean),
     location: params.get("location") ?? "",
@@ -77,6 +93,7 @@ function writeFilters(
   if (keep?.type) qs.set("type", keep.type);
   if (keep?.category) qs.set("category", keep.category);
   if (state.q) qs.set("q", state.q);
+  if (state.group) qs.set("group", state.group);
   if (state.specialty) qs.set("specialty", state.specialty);
   state.subspecialties.forEach((s) => qs.append("subspecialty", s));
   if (state.location) qs.set("location", state.location);
@@ -263,6 +280,7 @@ export default function Search() {
     setLoading(true);
     searchSpecialists({
       q: filters.q,
+      group: filters.group,
       specialty: filters.specialty,
       subspecialties: filters.subspecialties,
       location: filters.location,
@@ -313,8 +331,10 @@ export default function Search() {
     setSearchParams(
       writeFilters({
         // Resetting clears the filters, not the search itself — someone
-        // who typed "knee replacement" still means it.
+        // who typed "knee replacement" still means it, and someone on
+        // the Dentists tab is still looking for a dentist.
         q: filters.q,
+        group: filters.group,
         specialty: filters.specialty,
         subspecialties: [],
         location: filters.location,
@@ -327,10 +347,16 @@ export default function Search() {
         page: 1,
       }, keepPlace)
     );
-  }, [filters.q, filters.specialty, filters.location, setSearchParams, keepPlace]);
+  }, [filters.q, filters.group, filters.specialty, filters.location, setSearchParams, keepPlace]);
 
   const specialty = data?.specialty ?? specialties.find((s) => s.slug === filters.specialty) ?? null;
-  const heading = heroHeadingFor(specialty, data?.subspecialties ?? []);
+  const group = GROUP_HEADING[filters.group] ?? null;
+  // A chosen specialty is more specific than the tab it was chosen
+  // from, so it wins the heading; the tab names the page otherwise.
+  const heading =
+    !specialty && (data?.subspecialties ?? []).length === 0 && group
+      ? group.heading
+      : heroHeadingFor(specialty, data?.subspecialties ?? []);
   const heroPhoto = placeMode ? placeHeroFor(placeType) : heroPhotoFor(filters.specialty);
   const locationLabel = data?.location.label ?? filters.location;
   const total = data?.total ?? 0;
@@ -397,7 +423,7 @@ export default function Search() {
                 : `${placeTotal} ${placeTotal === 1 ? PLACE_NOUN[placeType!] : PLACE_PLURAL[placeType!]} matching your search`
               : loading && !data
                 ? "Searching…"
-                : `${total} ${total === 1 ? "specialist" : "specialists"} matching your search`}
+                : `${total} ${total === 1 ? group?.one ?? "specialist" : group?.many ?? "specialists"} matching your search`}
           </p>
 
           {/* No search bar here on purpose.

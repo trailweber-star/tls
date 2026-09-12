@@ -1,4 +1,5 @@
 import { isDbConfigured } from "../config/db.js";
+import { branchSlugsFor, isKnownTab } from "../lib/searchTabs.js";
 import { specialists as specialistRepo, taxonomy as taxonomyRepo } from "../db/repos.js";
 import {
   buildSpecialistWithRelations,
@@ -267,11 +268,17 @@ function matchesText(s, words) {
 function buildPredicates(filters, taxonomy) {
   const specialtyBranch = filters.specialty ? taxonomy.branchSlugs(filters.specialty) : null;
   const subBranches = filters.subspecialties.map((slug) => taxonomy.branchSlugs(slug));
+  // The group narrows to the tab's branches. It sits alongside
+  // `specialty` rather than replacing it: a patient can be on the
+  // Specialist Doctors tab AND filtered to Orthopaedics, and both have
+  // to hold.
+  const groupBranch = filters.group ? branchSlugsFor(filters.group, taxonomy.flat) : null;
 
   const words = searchWords(filters.q);
 
   return {
     text: (s) => matchesText(s, words),
+    group: (s) => !groupBranch || s.specialties.some((sp) => groupBranch.has(sp.slug)),
     specialty: (s) => !specialtyBranch || s.specialties.some((sp) => specialtyBranch.has(sp.slug)),
     // OR across ticked sub-specialties, which is how faceted checkbox
     // lists are expected to behave (ticking more shows more, not fewer).
@@ -483,6 +490,14 @@ export async function searchSpecialists(req, res) {
 
   const filters = {
     q: (req.query.q ?? "").toString().trim(),
+    /* Which tab the search came from. A group is a set of ROOT
+       specialties — "specialist-doctors" means every root that the
+       physiotherapy, dentistry and aesthetics tabs do not claim — so a
+       bare search launched from a tab returns that tab's directory
+       rather than the whole of it. Unknown values are ignored rather
+       than returning nothing, because a stale bookmark should widen the
+       search, never empty it. */
+    group: isKnownTab(req.query.group) ? String(req.query.group) : "",
     specialty: req.query.specialty || "",
     subspecialties: parseList(req.query.subspecialty),
     resolvedLocation,

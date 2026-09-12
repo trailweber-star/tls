@@ -160,6 +160,11 @@ export function getSpecialistReviews(slug: string, page = 1, pageSize = 10): Pro
 export interface SearchParams {
   /** Free text: a name, specialty, treatment, condition, clinic or town. */
   q?: string;
+  /** Which people directory: one of the specialist tab keys
+   *  ("specialist-doctors", "physiotherapists", "dentists",
+   *  "aesthetics"). Narrows to that tab's root specialties, so a search
+   *  launched from a tab returns that tab's directory. */
+  group?: string;
   specialty?: string;
   /** Any depth of the taxonomy; repeatable (the sidebar checkboxes). */
   subspecialties?: string[];
@@ -178,6 +183,7 @@ export interface SearchParams {
 export function buildSearchQuery(params: SearchParams): URLSearchParams {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
+  if (params.group) qs.set("group", params.group);
   if (params.specialty) qs.set("specialty", params.specialty);
   (params.subspecialties ?? []).forEach((slug) => qs.append("subspecialty", slug));
   if (params.location) qs.set("location", params.location);
