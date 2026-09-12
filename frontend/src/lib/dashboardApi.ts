@@ -94,6 +94,7 @@ const post = <T,>(path: string, data?: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(data ?? {}) });
 const patch = <T,>(path: string, data: unknown) =>
   request<T>(path, { method: "PATCH", body: JSON.stringify(data) });
+const del = <T,>(path: string) => request<T>(path, { method: "DELETE" });
 
 /* ----------------------------------------------------------- types */
 
@@ -890,4 +891,70 @@ export const claimsApi = {
     }>(`/admin/claims/${id}`),
   decide: (id: string, action: "approve" | "reject", note?: string) =>
     post<{ ok: boolean; status: string }>(`/admin/claims/${id}/decide`, { action, note }),
+};
+
+
+/* ------------------------------------------------------------------ *
+ * Articles
+ *
+ * The blog's admin side. Abun has no API, webhook or Zapier action —
+ * only auto-publish to WordPress, Webflow, Wix, Shopify and Ghost — so
+ * an article arrives here as a paste of what Abun exports, and this is
+ * the door it comes through. If Abun ever ships an API, it feeds the
+ * same `import` call and nothing on this screen changes.
+ * ------------------------------------------------------------------ */
+
+export interface AdminArticleRow {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  status: "draft" | "published";
+  tags: string[];
+  publishedAt: string | null;
+  updatedAt: string;
+  source: string;
+  readingMinutes: number;
+  viewCount: number;
+  heroImageUrl: string | null;
+}
+
+export interface ArticleImportInput {
+  title: string;
+  body: string;
+  format?: "auto" | "markdown" | "html";
+  excerpt?: string;
+  heroImageUrl?: string;
+  heroImageAlt?: string;
+  authorName?: string;
+  specialtySlug?: string;
+  tags?: string[];
+  status?: "draft" | "published";
+  seoTitle?: string;
+  seoDescription?: string;
+  source?: string;
+  sourceRef?: string;
+}
+
+export const articlesApi = {
+  list: () => get<{ results: AdminArticleRow[]; demo: boolean }>("/admin/articles"),
+  import: (body: ArticleImportInput) =>
+    post<{ article: { slug: string; title: string; status: string }; created: boolean }>(
+      "/admin/articles/import",
+      body
+    ),
+  update: (
+    id: string,
+    body: Partial<{
+      status: "draft" | "published";
+      title: string;
+      excerpt: string;
+      tags: string[];
+      specialtySlug: string | null;
+      heroImageUrl: string;
+      seoTitle: string;
+      seoDescription: string;
+    }>
+  ) => patch<{ article: AdminArticleRow }>(`/admin/articles/${id}`, body),
+  remove: (id: string) => del<{ deleted: boolean }>(`/admin/articles/${id}`),
 };

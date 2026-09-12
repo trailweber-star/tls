@@ -17,7 +17,8 @@
     "payments:test": "node scripts/payments-test.mjs",
     "prepare:db": "node scripts/prepare.mjs",
     "start:prod": "node scripts/prepare.mjs && node src/server.js",
-    "tabs:test": "node scripts/tabs-test.mjs"
+    "tabs:test": "node scripts/tabs-test.mjs",
+    "articles:demo": "node scripts/seed-articles.mjs"
   },
   "keywords": [],
   "author": "",
@@ -28,9 +29,11 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
+    "marked": "^18.0.13",
     "morgan": "^1.12.0",
     "nodemailer": "^10.0.7",
     "pg": "^8.23.0",
+    "sanitize-html": "^2.17.7",
     "zod": "^4.5.4"
   },
   "devDependencies": {

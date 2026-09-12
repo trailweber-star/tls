@@ -292,3 +292,138 @@ h1, h2, h3, h4 {
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Article prose
+ *
+ * Imported article bodies are HTML from a generator: headings, lists,
+ * tables, the odd blockquote and nothing else (the sanitiser sees to
+ * that). Rather than a typography plugin with its own opinions, the
+ * body is styled here against this site's own tokens, so an Abun
+ * article reads as part of the site instead of as a syndicated block.
+ *
+ * Measure is set on the container, not per element, and the vertical
+ * rhythm uses margins between siblings rather than on every element —
+ * so the first heading never pushes a gap above itself.
+ * ------------------------------------------------------------------ */
+
+.prose-tls {
+  color: var(--ink);
+  font-size: 16.5px;
+  line-height: 1.75;
+}
+
+.prose-tls > * + * { margin-top: 1.15em; }
+
+.prose-tls h2 {
+  margin-top: 2.1em;
+  font-family: var(--font-display, inherit);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  scroll-margin-top: 96px;   /* the fixed header, for #anchor links */
+  text-wrap: balance;
+}
+
+.prose-tls h3 {
+  margin-top: 1.7em;
+  font-family: var(--font-display, inherit);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  scroll-margin-top: 96px;
+}
+
+.prose-tls h4 {
+  margin-top: 1.5em;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.prose-tls p { color: var(--ink-muted); }
+.prose-tls strong { color: var(--ink); font-weight: 700; }
+
+/* a[href], not a — the sanitiser strips the href from an unsafe link and
+   leaves the tag behind, and a teal underlined thing that does nothing
+   when clicked is worse than plain text. */
+.prose-tls a[href] {
+  color: var(--teal-700);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--teal-300);
+}
+.prose-tls a[href]:hover { text-decoration-color: var(--teal-600); }
+
+.prose-tls ul,
+.prose-tls ol { padding-left: 1.35em; color: var(--ink-muted); }
+.prose-tls ul { list-style: disc; }
+.prose-tls ol { list-style: decimal; }
+.prose-tls li + li { margin-top: 0.5em; }
+.prose-tls li::marker { color: var(--teal-600); }
+
+.prose-tls blockquote {
+  padding: 0.15em 0 0.15em 1.25em;
+  border-left: 3px solid var(--teal-500);
+  color: var(--ink);
+  font-size: 17.5px;
+  font-style: normal;
+}
+
+.prose-tls img {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+
+.prose-tls figure { margin-top: 1.6em; }
+.prose-tls figcaption {
+  margin-top: 0.7em;
+  color: var(--ink-faint);
+  font-size: 13px;
+  text-align: center;
+}
+
+.prose-tls hr { margin: 2.2em 0; border: 0; border-top: 1px solid var(--line); }
+
+/* A table on a phone is the one thing in an article that can push the
+   page sideways, so it scrolls inside its own box. */
+.prose-tls .table-scroll,
+.prose-tls table { display: block; overflow-x: auto; }
+.prose-tls table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+.prose-tls th,
+.prose-tls td {
+  padding: 0.7em 0.9em;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.prose-tls th {
+  background: var(--paper-muted);
+  color: var(--ink);
+  font-weight: 700;
+}
+.prose-tls td { color: var(--ink-muted); }
+
+.prose-tls code {
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  background: var(--paper-muted);
+  font-size: 0.9em;
+}
+.prose-tls pre {
+  overflow-x: auto;
+  padding: 1em 1.1em;
+  border-radius: 14px;
+  background: var(--navy-950);
+  color: #dbe7ef;
+}
+.prose-tls pre code { background: none; padding: 0; }

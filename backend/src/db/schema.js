@@ -30,6 +30,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -771,6 +772,67 @@ export const reviews = pgTable(
     // The admin queue reads this every time the dashboard loads.
     index("reviews_moderation_idx").on(t.moderationStatus, t.createdAt),
   ]
+);
+
+/* ============================================================== blog
+
+   Articles are written in Abun and land here through the importer in
+   controllers/articles.controller.js. The body is stored as SANITISED
+   html: the sanitising happens once, on the way in, so nothing on the
+   read path has to remember to do it and no future endpoint can serve
+   an unsanitised body by omission.
+
+   sourceRef holds the identifier the origin uses — an Abun article id,
+   a WordPress post id — which is what makes re-importing the same
+   article an update rather than a duplicate. It is nullable because a
+   post pasted by hand has no origin to point at.
+   ============================================================== */
+
+export const articleStatusEnum = pgEnum("article_status", ["draft", "published"]);
+
+export const articles = pgTable(
+  "articles",
+  {
+    id: id(),
+
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    excerpt: text("excerpt"),
+    bodyHtml: text("body_html").notNull(),
+
+    heroImageUrl: text("hero_image_url"),
+    heroImageAlt: text("hero_image_alt"),
+
+    authorName: text("author_name"),
+    /* The specialty this article belongs beside. A knee article shown
+       under Orthopaedics is how a blog earns its keep on a directory:
+       it links back into the listings rather than sitting in a silo. */
+    specialtyId: text("specialty_id").references(() => specialties.id),
+    tags: text("tags").array().notNull().default([]),
+
+    status: articleStatusEnum("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+
+    // What Google shows. Falls back to title and excerpt when unset,
+    // which is the usual case for generated content.
+    seoTitle: text("seo_title"),
+    seoDescription: text("seo_description"),
+
+    source: text("source").notNull().default("manual"),
+    sourceRef: text("source_ref"),
+
+    readingMinutes: integer("reading_minutes").notNull().default(1),
+    viewCount: integer("view_count").notNull().default(0),
+
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    // The list page reads published articles newest first, and nothing
+    // else; this is the index that query wants.
+    publishedIdx: index("articles_published_idx").on(table.status, table.publishedAt),
+    sourceIdx: uniqueIndex("articles_source_ref_idx").on(table.source, table.sourceRef),
+  })
 );
 
 export const leads = pgTable(

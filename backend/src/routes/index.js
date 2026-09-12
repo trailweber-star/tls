@@ -92,6 +92,14 @@ import {
 } from "../controllers/claims.controller.js";
 import { listContactMessages, submitContactMessage } from "../controllers/contact.controller.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import {
+  deleteArticle,
+  getArticle,
+  importArticle,
+  listAllArticles,
+  listArticles,
+  updateArticle,
+} from "../controllers/articles.controller.js";
 
 const router = Router();
 
@@ -113,6 +121,16 @@ router.post("/specialists/:slug/reviews", createSpecialistReview);
 router.get("/specialists/:slug", getSpecialistBySlug);
 
 router.get("/search/panel", searchPanel);
+
+/* The blog. Public read; everything that writes is admin-only, including
+   the importer — it is the one door articles come through, so it is the
+   one door that has to be locked. */
+router.get("/articles", listArticles);
+router.get("/articles/:slug", getArticle);
+router.get("/admin/articles", requireAuth, requireRole("admin"), listAllArticles);
+router.post("/admin/articles/import", requireAuth, requireRole("admin"), importArticle);
+router.patch("/admin/articles/:id", requireAuth, requireRole("admin"), updateArticle);
+router.delete("/admin/articles/:id", requireAuth, requireRole("admin"), deleteArticle);
 router.get("/geo/reverse", reverseGeocode);
 // What the address field types against, and the one lookup that runs
 // when a suggestion is picked.

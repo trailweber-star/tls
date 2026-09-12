@@ -79,6 +79,7 @@ export function Footer() {
               <FooterLink to="/search?specialty=orthopaedics">Orthopaedics</FooterLink>
               <FooterLink to="/search?specialty=dentistry">Dentistry</FooterLink>
               <FooterLink to="/about">About us</FooterLink>
+              <FooterLink to="/blog">Health guides</FooterLink>
               <FooterLink to="/contact">Contact us</FooterLink>
             </ul>
           </div>

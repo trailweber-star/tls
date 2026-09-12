@@ -1,4 +1,4 @@
-import { Routes, Route, Outlet, Navigate } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useParams } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -13,6 +13,8 @@ import Pricing from "./pages/Pricing";
 import Claim from "./pages/Claim";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import SignIn from "./pages/SignIn";
@@ -30,6 +32,7 @@ import AdminSpecialists from "./pages/admin/AdminSpecialists";
 import AdminMembers from "./pages/admin/AdminMembers";
 import AdminAudit from "./pages/admin/AdminAudit";
 import AdminMessages from "./pages/admin/AdminMessages";
+import AdminArticles from "./pages/admin/AdminArticles";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { BarChart3, CalendarDays, MessageSquare, Settings } from "lucide-react";
 
@@ -54,6 +57,12 @@ function PublicLayout() {
   );
 }
 
+/** /articles/:slug kept alive, carrying the slug across to /blog/:slug. */
+function ArticleRedirect() {
+  const { slug = "" } = useParams();
+  return <Navigate to={`/blog/${slug}`} replace />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -67,6 +76,8 @@ export default function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           {/* The wordings people type or link by habit, so neither a
@@ -75,6 +86,11 @@ export default function App() {
           <Route path="/terms-of-use" element={<Navigate to="/terms" replace />} />
           <Route path="/terms-and-conditions" element={<Navigate to="/terms" replace />} />
           <Route path="/cookies" element={<Navigate to="/privacy#cookies" replace />} />
+          {/* Named /blog, but the earlier copy and the ClinWell document
+              both say "articles" — one redirect is cheaper than a 404 a
+              year from now. */}
+          <Route path="/articles" element={<Navigate to="/blog" replace />} />
+          <Route path="/articles/:slug" element={<ArticleRedirect />} />
           <Route path="/specialists/:slug" element={<SpecialistProfile />} />
           <Route path="/clinics/:slug" element={<ClinicProfile />} />
           {/* The places directory and the specialist directory are one
@@ -187,6 +203,7 @@ export default function App() {
               sidebar links straight to that tab rather than to a second
               page showing the same table. */}
           <Route path="claims" element={<Navigate to="/admin/verifications?tab=claims" replace />} />
+          <Route path="articles" element={<AdminArticles />} />
           <Route path="specialists" element={<AdminSpecialists />} />
           <Route path="reviews" element={<ReviewModeration />} />
           <Route path="audit" element={<AdminAudit />} />

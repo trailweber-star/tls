@@ -863,6 +863,85 @@ export const reviews = {
 
 /* ============================================================ leads */
 
+/* ------------------------------------------------------------------ *
+ * Articles
+ *
+ * Rows come back exactly as the demo array in data/mock.js supplies
+ * them, so the blog controller never branches on which mode it is in.
+ * ------------------------------------------------------------------ */
+export const articles = {
+  /** Published only, newest first — what the public blog reads. */
+  async published({ tag = null, specialtyId = null } = {}) {
+    const where = [eq(t.articles.status, "published")];
+    if (specialtyId) where.push(eq(t.articles.specialtyId, specialtyId));
+    const rows = await db()
+      .select()
+      .from(t.articles)
+      .where(and(...where))
+      .orderBy(desc(t.articles.publishedAt));
+    // Tag filtering in JavaScript rather than SQL: the array containment
+    // operator differs across drivers, the set is small, and this keeps
+    // the demo and database paths behaving identically.
+    return tag ? rows.filter((r) => (r.tags ?? []).includes(tag)) : rows;
+  },
+
+  /** Everything, including drafts — the admin list. */
+  async all() {
+    return db().select().from(t.articles).orderBy(desc(t.articles.updatedAt));
+  },
+
+  async findBySlug(slug) {
+    const [row] = await db().select().from(t.articles).where(eq(t.articles.slug, slug)).limit(1);
+    return row ?? null;
+  },
+
+  async findById(id) {
+    const [row] = await db().select().from(t.articles).where(eq(t.articles.id, id)).limit(1);
+    return row ?? null;
+  },
+
+  /** The row a re-import should update rather than duplicate. */
+  async findBySource(source, sourceRef) {
+    if (!sourceRef) return null;
+    const [row] = await db()
+      .select()
+      .from(t.articles)
+      .where(and(eq(t.articles.source, source), eq(t.articles.sourceRef, sourceRef)))
+      .limit(1);
+    return row ?? null;
+  },
+
+  async create(input) {
+    const [row] = await db()
+      .insert(t.articles)
+      .values({ ...input, id: input.id ?? newId("art") })
+      .returning();
+    return row;
+  },
+
+  async update(id, patch) {
+    const [row] = await db()
+      .update(t.articles)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(t.articles.id, id))
+      .returning();
+    return row ?? null;
+  },
+
+  async remove(id) {
+    await db().delete(t.articles).where(eq(t.articles.id, id));
+  },
+
+  /** Fire-and-forget: a failed counter must never fail a page view. */
+  async recordView(id) {
+    await db()
+      .update(t.articles)
+      .set({ viewCount: sql`${t.articles.viewCount} + 1` })
+      .where(eq(t.articles.id, id))
+      .catch(() => {});
+  },
+};
+
 export const leads = {
   async create(input) {
     const [row] = await db()
