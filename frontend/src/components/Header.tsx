@@ -19,7 +19,11 @@ const NAV = [
   { to: "/search?type=care_home", label: "Care Homes", match: "care_home" },
   { to: "/pricing", label: "Pricing", match: "/pricing" },
   { to: "/about", label: "About", match: "/about" },
-  { to: "/contact", label: "Contact", match: "/contact" },
+  /* Guides rather than Contact. Contact appears twice in the footer —
+     in its own column and in the legal row — and a directory's header
+     is better spent on something a patient will actually click than on
+     a link they only look for once they already have a problem. */
+  { to: "/blog", label: "Guides", match: "/blog" },
 ];
 
 // Fixed header height, shared with Home.tsx: the homepage pulls its hero
