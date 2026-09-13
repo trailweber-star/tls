@@ -97,6 +97,7 @@ import {
   getAdminArticle,
   getArticle,
   importArticle,
+  previewArticle,
   listAllArticles,
   listArticles,
   updateArticle,
@@ -130,6 +131,7 @@ router.get("/articles", listArticles);
 router.get("/articles/:slug", getArticle);
 router.get("/admin/articles", requireAuth, requireRole("admin"), listAllArticles);
 router.post("/admin/articles/import", requireAuth, requireRole("admin"), importArticle);
+router.post("/admin/articles/preview", requireAuth, requireRole("admin"), previewArticle);
 router.get("/admin/articles/:id", requireAuth, requireRole("admin"), getAdminArticle);
 router.patch("/admin/articles/:id", requireAuth, requireRole("admin"), updateArticle);
 router.delete("/admin/articles/:id", requireAuth, requireRole("admin"), deleteArticle);

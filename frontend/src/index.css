@@ -427,3 +427,23 @@ h1, h2, h3, h4 {
   color: #dbe7ef;
 }
 .prose-tls pre code { background: none; padding: 0; }
+
+/* Colours a writer can reach for, from the palette the site already
+   uses — inserted by the editor as <span class="c-teal">, which the
+   sanitiser keeps because it allows class and drops style. A free
+   colour picker would put hot pink in a clinical article by Friday;
+   these four cannot clash with anything around them. */
+.prose-tls .c-teal { color: var(--teal-700); }
+.prose-tls .c-navy { color: var(--navy-950); }
+.prose-tls .c-muted { color: var(--ink-muted); }
+.prose-tls .c-danger { color: var(--danger); }
+.prose-tls .c-teal,
+.prose-tls .c-navy,
+.prose-tls .c-danger { font-weight: 600; }
+
+.prose-tls mark {
+  padding: 0.05em 0.25em;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--teal-600) 16%, transparent);
+  color: var(--ink);
+}

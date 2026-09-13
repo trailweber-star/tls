@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   BookOpen,
   ExternalLink,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { DashboardShell, Panel } from "../../components/DashboardShell";
 import { EmptyState, ErrorBlock, LoadingBlock, relativeTime } from "../../components/dashboard/ui";
+import { BodyEditor } from "../../components/BodyEditor";
 import { ImageUploadField } from "../../components/ImageUploadField";
 import { articlesApi } from "../../lib/dashboardApi";
 import type { AdminArticleDetail, AdminArticleRow, ArticleImportInput } from "../../lib/dashboardApi";
@@ -351,33 +353,72 @@ function RowMenu({
   onToggle: () => void;
   onDelete: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const open = at !== null;
+  const button = useRef<HTMLButtonElement>(null);
+
+  /* Positioned against the viewport and rendered at the end of the
+     document rather than inside the row.
+
+     The table sits in a horizontally scrolling container, and a
+     scrolling container clips its children in BOTH directions — so a
+     menu positioned inside one is cut off at the container's edge. On
+     the last row that clipped away the entire menu: the button worked,
+     the menu opened, and nothing appeared. A portal has no such
+     container to be trapped in. */
+  const place = useCallback(() => {
+    const r = button.current?.getBoundingClientRect();
+    if (!r) return;
+    const MENU_HEIGHT = 190;
+    const below = window.innerHeight - r.bottom;
+    setAt({
+      // Flips above the button when there is not room under it.
+      top: below < MENU_HEIGHT ? r.top - Math.min(MENU_HEIGHT, r.top - 8) - 6 : r.bottom + 6,
+      right: Math.max(8, window.innerWidth - r.right),
+    });
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     function away(e: MouseEvent) {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+      if (!button.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.("[data-row-menu]")) {
+        setAt(null);
+      }
     }
     function key(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setAt(null);
     }
+    /* A fixed menu does not move with the page, so it is re-placed
+       against the button whenever anything scrolls — including the
+       table's own sideways scroll, which on a phone is how you reach
+       this button in the first place. Closing on scroll instead looked
+       like the menu never opened. */
+    const follow = () => {
+      const r = button.current?.getBoundingClientRect();
+      if (!r || r.bottom < 0 || r.top > window.innerHeight) setAt(null);
+      else place();
+    };
     document.addEventListener("mousedown", away);
     document.addEventListener("keydown", key);
+    window.addEventListener("resize", follow);
+    window.addEventListener("scroll", follow, true);
     return () => {
       document.removeEventListener("mousedown", away);
       document.removeEventListener("keydown", key);
+      window.removeEventListener("resize", follow);
+      window.removeEventListener("scroll", follow, true);
     };
-  }, [open]);
+  }, [open, place]);
 
   const item =
     "flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[13px] font-semibold text-ink transition hover:bg-paper-tint disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <div ref={wrap} className="relative">
+    <>
       <button
+        ref={button}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setAt(null) : place())}
         disabled={busy}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -393,71 +434,73 @@ function RowMenu({
         )}
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          /* Anchored to the right edge so it never runs off the table,
-             and above the rows below it. */
-          className="absolute right-0 z-20 mt-1.5 w-48 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-lg shadow-navy-950/10"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            disabled={disabled}
-            onClick={() => {
-              setOpen(false);
-              onEdit();
-            }}
-            className={item}
+      {at &&
+        createPortal(
+          <div
+            role="menu"
+            data-row-menu
+            style={{ position: "fixed", top: at.top, right: at.right }}
+            className="z-50 w-48 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-xl shadow-navy-950/15"
           >
-            <Pencil className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
-            Edit
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={disabled}
-            onClick={() => {
-              setOpen(false);
-              onToggle();
-            }}
-            className={item}
-          >
-            {row.status === "published" ? (
-              <EyeOff className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
-            ) : (
-              <Eye className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
-            )}
-            {row.status === "published" ? "Unpublish" : "Publish"}
-          </button>
-          <a
-            role="menuitem"
-            href={`/blog/${row.slug}`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => setOpen(false)}
-            className={item}
-          >
-            <ExternalLink className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
-            View on the site
-          </a>
-          <div className="my-1 border-t border-line-soft" />
-          <button
-            type="button"
-            role="menuitem"
-            disabled={disabled}
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
-            className={`${item} text-danger hover:bg-danger/5`}
-          >
-            <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={disabled}
+              onClick={() => {
+                setAt(null);
+                onEdit();
+              }}
+              className={item}
+            >
+              <Pencil className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+              Edit
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={disabled}
+              onClick={() => {
+                setAt(null);
+                onToggle();
+              }}
+              className={item}
+            >
+              {row.status === "published" ? (
+                <EyeOff className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+              ) : (
+                <Eye className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+              )}
+              {row.status === "published" ? "Unpublish" : "Publish"}
+            </button>
+            <a
+              role="menuitem"
+              href={`/blog/${row.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setAt(null)}
+              className={item}
+            >
+              <ExternalLink className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+              View on the site
+            </a>
+            <div className="my-1 border-t border-line-soft" />
+            <button
+              type="button"
+              role="menuitem"
+              disabled={disabled}
+              onClick={() => {
+                setAt(null);
+                onDelete();
+              }}
+              className={`${item} text-danger hover:bg-danger/5`}
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+              Delete
+            </button>
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 
@@ -499,8 +542,6 @@ function ArticleForm({
   useEffect(() => {
     panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
-
-  const words = form.body.trim() ? form.body.trim().split(/\s+/).length : 0;
 
   function set<K extends keyof ArticleImportInput>(key: K, value: ArticleImportInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -606,21 +647,12 @@ function ArticleForm({
             />
           </label>
 
-          <label className="block">
-            <span className="flex items-baseline justify-between">
-              <span className="text-[12.5px] font-bold text-ink">Body</span>
-              <span className="text-[12px] text-ink-faint">
-                Markdown or HTML — both work. {words > 0 && `${words} words`}
-              </span>
-            </span>
-            <textarea
-              value={form.body}
-              onChange={(e) => set("body", e.target.value)}
-              rows={14}
-              placeholder={"## A heading\n\nParagraph text, **bold**, [links](https://example.com) and lists. Paste from anywhere — the formatting is preserved."}
-              className={`mt-1.5 font-mono text-[13px] leading-relaxed ${inputClass}`}
-            />
-          </label>
+          <BodyEditor
+            value={form.body}
+            onChange={(next) => set("body", next)}
+            format={form.format ?? "auto"}
+            rows={16}
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">

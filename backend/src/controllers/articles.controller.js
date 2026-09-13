@@ -314,6 +314,30 @@ export async function importArticle(req, res) {
   });
 }
 
+/**
+ * POST /api/admin/articles/preview — what this body will look like.
+ *
+ * Runs the writer's draft through the exact pipeline an import runs
+ * through, and returns nothing but the HTML. Rendering a preview in the
+ * browser instead would mean a second parser and a second allow-list,
+ * and the day they disagreed the preview would be a promise the page
+ * did not keep — markup that looked fine while writing and vanished on
+ * publish.
+ *
+ * Stores nothing. Signed-in administrators only, like the rest of this
+ * section, because it is a markdown renderer and an open one is a
+ * denial-of-service target.
+ */
+export function previewArticle(req, res) {
+  const body = String(req.body?.body ?? "");
+  const format = ["auto", "markdown", "html"].includes(req.body?.format) ? req.body.format : "auto";
+  if (!body.trim()) return res.json({ html: "" });
+  if (body.length > 400_000) return res.status(400).json({ error: "Body: is too long to render." });
+
+  const html = withHeadingIds(renderArticleBody(body, { format: format === "markdown" ? "md" : format }));
+  res.json({ html, readingMinutes: readingMinutes(html), excerpt: excerptFrom(html) });
+}
+
 /** Appends -2, -3 … rather than failing on a title used twice. */
 async function uniqueSlug(base) {
   const root = slugify(base) || "article";

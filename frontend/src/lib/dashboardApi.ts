@@ -1021,4 +1021,11 @@ export const articlesApi = {
     }>
   ) => patch<{ article: AdminArticleRow }>(`/admin/articles/${id}`, body),
   remove: (id: string) => del<{ deleted: boolean }>(`/admin/articles/${id}`),
+  /* Rendered by the server rather than in the browser: one parser, one
+     sanitiser, so a preview cannot promise markup the page then drops. */
+  preview: (body: string, format: "auto" | "markdown" | "html" = "auto") =>
+    post<{ html: string; readingMinutes?: number; excerpt?: string }>("/admin/articles/preview", {
+      body,
+      format,
+    }),
 };
