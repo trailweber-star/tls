@@ -28,7 +28,7 @@ import {
  * ------------------------------------------------------------------ */
 
 /** What the file is for. Only affects the generated filename. */
-const KINDS = new Set(["profile-photo", "cover", "gallery", "logo"]);
+const KINDS = new Set(["profile-photo", "cover", "gallery", "logo", "article"]);
 
 // POST /api/uploads/image?kind=profile-photo   (body: the raw image)
 export async function uploadImage(req, res) {

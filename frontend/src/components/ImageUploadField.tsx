@@ -33,7 +33,7 @@ export function ImageUploadField({
   hint?: string;
   value: string;
   onChange: (url: string) => void;
-  kind?: "profile-photo" | "cover" | "gallery" | "logo" | "image";
+  kind?: "profile-photo" | "cover" | "gallery" | "logo" | "image" | "article";
   shape?: "avatar" | "wide";
   id: string;
 }) {

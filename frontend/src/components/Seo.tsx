@@ -23,6 +23,15 @@ export function Seo({
   image,
   /** Search results, dashboards and anything behind a login. */
   noIndex = false,
+  /** "article" for a blog post: Facebook, LinkedIn and Slack all render
+   *  a different, richer card for one, and it is the only way the
+   *  published and modified times below are read at all. */
+  type = "website",
+  publishedTime,
+  modifiedTime,
+  author,
+  section,
+  tags,
   /** Extra structured data for this page. */
   jsonLd,
 }: {
@@ -31,6 +40,12 @@ export function Seo({
   path?: string;
   image?: string;
   noIndex?: boolean;
+  type?: "website" | "article";
+  publishedTime?: string;
+  modifiedTime?: string;
+  author?: string;
+  section?: string;
+  tags?: string[];
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }) {
   // Titles read "Page — Brand" except the home page, which is already
@@ -48,10 +63,21 @@ export function Seo({
 
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
-      <meta property="og:type" content="website" />
+      <meta property="og:type" content={type} />
       <meta property="og:site_name" content={SITE_NAME} />
       {url && <meta property="og:url" content={url} />}
       <meta property="og:image" content={ogImage} />
+
+      {type === "article" && publishedTime && (
+        <meta property="article:published_time" content={publishedTime} />
+      )}
+      {type === "article" && modifiedTime && (
+        <meta property="article:modified_time" content={modifiedTime} />
+      )}
+      {type === "article" && author && <meta property="article:author" content={author} />}
+      {type === "article" && section && <meta property="article:section" content={section} />}
+      {type === "article" &&
+        (tags ?? []).map((tag) => <meta key={tag} property="article:tag" content={tag} />)}
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={fullTitle} />

@@ -7,6 +7,7 @@ import cors from "cors";
 import morgan from "morgan";
 import apiRoutes from "./routes/index.js";
 import { isDbConfigured } from "./config/db.js";
+import { robotsTxt, sitemapXml } from "./controllers/sitemap.controller.js";
 import { previewGate } from "./middleware/previewGate.js";
 
 const app = express();
@@ -46,10 +47,16 @@ if (STAGING) {
     res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
     next();
   });
-  app.get("/robots.txt", (req, res) => {
-    res.type("text/plain").send("User-agent: *\nDisallow: /\n");
-  });
 }
+
+/* robots.txt and sitemap.xml, in both modes. They used to exist only on
+   a staging deployment, which meant that in production a crawler asking
+   for /robots.txt fell through to the single-page-app catch-all and got
+   index.html with a 200 — an HTML document where a text file was
+   expected. The controller decides what to say based on whether this
+   deployment is gated; see controllers/sitemap.controller.js. */
+app.get("/robots.txt", robotsTxt);
+app.get("/sitemap.xml", sitemapXml);
 
 /* One shared password over the whole deployment, when SITE_PASSWORD is
    set — see middleware/previewGate.js for why it is a cookie and not

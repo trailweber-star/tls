@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { DashboardShell, Panel } from "../../components/DashboardShell";
 import { EmptyState, ErrorBlock, LoadingBlock, relativeTime } from "../../components/dashboard/ui";
+import { ImageUploadField } from "../../components/ImageUploadField";
 import { articlesApi } from "../../lib/dashboardApi";
 import type { AdminArticleRow, ArticleImportInput } from "../../lib/dashboardApi";
 
@@ -155,7 +156,7 @@ export default function AdminArticles() {
             className="inline-flex items-center gap-2 rounded-full bg-navy-950 px-5 py-2.5 text-[13.5px] font-bold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" strokeWidth={2.5} />
-            Paste from Abun
+            New article
           </button>
         </div>
       </div>
@@ -180,7 +181,7 @@ export default function AdminArticles() {
           <EmptyState
             icon={FileText}
             title="No articles yet"
-            body="Generate an article in Abun, copy its markdown, and paste it here. The slug, excerpt and reading time are worked out for you."
+            body="Write or paste an article to get started. The slug, excerpt, reading time and contents list are worked out for you."
           />
         ) : (
           <div className="relative overflow-x-auto">
@@ -198,6 +199,22 @@ export default function AdminArticles() {
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b border-line-soft last:border-0">
                     <td className="px-5 py-4">
+                      <div className="flex items-start gap-3">
+                        {row.heroImageUrl ? (
+                          <img
+                            src={row.heroImageUrl}
+                            alt=""
+                            className="h-12 w-16 shrink-0 rounded-lg object-cover ring-1 ring-line"
+                          />
+                        ) : (
+                          <span
+                            title="No cover image"
+                            className="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-paper-tint text-[10px] font-bold uppercase tracking-wide text-ink-faint ring-1 ring-line"
+                          >
+                            No cover
+                          </span>
+                        )}
+                        <div className="min-w-0">
                       <a
                         href={`/blog/${row.slug}`}
                         target="_blank"
@@ -216,6 +233,8 @@ export default function AdminArticles() {
                           </span>
                         ))}
                       </p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-5 py-4">
                       <span
@@ -318,7 +337,7 @@ function ImportForm({
         specialtySlug: form.specialtySlug || undefined,
         heroImageUrl: form.heroImageUrl?.trim() || undefined,
         excerpt: form.excerpt?.trim() || undefined,
-        // The Abun title is the stable reference: re-pasting an edited
+        // The title is the stable reference: re-pasting an edited
         // version of the same article updates it rather than creating a
         // near-duplicate with a "-2" slug.
         sourceRef: form.title.trim().toLowerCase().slice(0, 180),
@@ -337,7 +356,7 @@ function ImportForm({
 
   return (
     <Panel
-      title="Paste an article from Abun"
+      title="Add an article"
       className="mb-5"
       action={
         <button type="button" onClick={onClose} aria-label="Close" className="text-ink-faint hover:text-ink">
@@ -368,7 +387,7 @@ function ImportForm({
             value={form.body}
             onChange={(e) => set("body", e.target.value)}
             rows={14}
-            placeholder={"## A heading\n\nParagraph text, **bold**, [links](https://example.com) and lists — paste exactly what Abun gives you."}
+            placeholder={"## A heading\n\nParagraph text, **bold**, [links](https://example.com) and lists. Paste from anywhere — the formatting is preserved."}
             className={`mt-1.5 font-mono text-[13px] leading-relaxed ${inputClass}`}
           />
         </label>
@@ -406,26 +425,44 @@ function ImportForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-[12.5px] font-bold text-ink">Hero image URL</span>
-            <input
-              type="url"
-              value={form.heroImageUrl ?? ""}
-              onChange={(e) => set("heroImageUrl", e.target.value)}
-              placeholder="https://… or /images/…"
-              className={`mt-1.5 ${inputClass}`}
-            />
-          </label>
-          <label className="block">
-            <span className="text-[12.5px] font-bold text-ink">Image description</span>
-            <input
-              type="text"
-              value={form.heroImageAlt ?? ""}
-              onChange={(e) => set("heroImageAlt", e.target.value)}
-              placeholder="A physiotherapist supporting a patient"
-              className={`mt-1.5 ${inputClass}`}
-            />
-          </label>
+          {/* Uploaded rather than pasted. Abun gives you an article, not
+              a hosted image, and asking somebody to find a URL for a
+              picture sitting in their downloads folder is how every
+              article ends up without one. */}
+          <ImageUploadField
+            id="article-hero"
+            label="Cover image"
+            hint="Shown on the card and at the top of the article. Landscape works best."
+            kind="article"
+            shape="wide"
+            value={form.heroImageUrl ?? ""}
+            onChange={(url) => set("heroImageUrl", url)}
+          />
+          <div className="flex flex-col gap-4">
+            <label className="block">
+              <span className="text-[12.5px] font-bold text-ink">Image description</span>
+              <input
+                type="text"
+                value={form.heroImageAlt ?? ""}
+                onChange={(e) => set("heroImageAlt", e.target.value)}
+                placeholder="A physiotherapist supporting a patient"
+                className={`mt-1.5 ${inputClass}`}
+              />
+              <span className="mt-1 block text-[12px] text-ink-faint">
+                What the picture shows, for screen readers and for Google.
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-[12.5px] font-bold text-ink">…or paste an image URL</span>
+              <input
+                type="url"
+                value={form.heroImageUrl ?? ""}
+                onChange={(e) => set("heroImageUrl", e.target.value)}
+                placeholder="https://…"
+                className={`mt-1.5 ${inputClass}`}
+              />
+            </label>
+          </div>
         </div>
 
         <label className="block">

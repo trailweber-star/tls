@@ -7,11 +7,13 @@ import { formatArticleDate, listArticles } from "../lib/blogApi";
 import type { ArticleCard, ArticleList } from "../lib/blogApi";
 import heroImg from "../assets/images/hero-clinic.jpg";
 
+const SITE_URL = import.meta.env.VITE_SITE_URL || "https://www.toplocalspecialists.com";
+
 /* ------------------------------------------------------------------ *
  * The blog
  *
- * Written in Abun, imported here, and rendered in this site's own
- * clothes rather than a syndicated widget — same navy hero, same teal
+ * Articles are imported through the admin screen and rendered in this
+ * site's own clothes rather than in a syndicated widget — same navy hero, same teal
  * accent, same card geometry as the directory, so a reader who arrives
  * from Google lands somewhere that plainly belongs to the site they are
  * about to be asked to trust.
@@ -71,18 +73,55 @@ export default function Blog() {
 
   return (
     <main className="flex-1 bg-paper">
+      {/* A tag or a page-two view is a near-duplicate of this page with
+          a subset of the same cards. Both stay crawlable — the links on
+          them lead to articles — but the canonical points home and they
+          are kept out of the index, which is what stops a blog of nine
+          guides competing with itself across thirty thin URLs. */}
       <Seo
-        title="Health Guides & Articles"
-        description="Plain-English guides to treatments, recovery and choosing a private specialist in the UK — written and reviewed by the Top Local Specialists team."
+        title={tag ? `${tag} guides` : "Health Guides & Articles"}
+        description={
+          tag
+            ? `Guides about ${tag.toLowerCase()} — treatments, recovery and choosing a specialist, written in plain English by the Top Local Specialists team.`
+            : "Plain-English guides to treatments, recovery and choosing a private specialist in the UK — written and reviewed by the Top Local Specialists team."
+        }
         path="/blog"
+        noIndex={Boolean(tag) || page > 1}
         jsonLd={[
           ORGANISATION_JSON_LD,
           {
             "@context": "https://schema.org",
             "@type": "Blog",
+            "@id": `${SITE_URL}/blog`,
             name: "Top Local Specialists — Health Guides",
             description:
               "Guides to treatments, recovery and choosing a private healthcare specialist in the UK.",
+            inLanguage: "en-GB",
+            publisher: { "@type": "Organization", name: "Top Local Specialists" },
+            /* The posts themselves, so the listing can be understood
+               without crawling every card first. */
+            blogPost: articles.slice(0, 10).map((a) => ({
+              "@type": "BlogPosting",
+              headline: a.title,
+              description: a.excerpt,
+              datePublished: a.publishedAt,
+              url: `${SITE_URL}/blog/${a.slug}`,
+              ...(a.heroImageUrl
+                ? {
+                    image: /^https?:\/\//i.test(a.heroImageUrl)
+                      ? a.heroImageUrl
+                      : `${SITE_URL}${a.heroImageUrl}`,
+                  }
+                : {}),
+            })),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+              { "@type": "ListItem", position: 2, name: "Health guides", item: `${SITE_URL}/blog` },
+            ],
           },
         ]}
       />

@@ -18,8 +18,8 @@ export const demoArticles = [
     specialtySlug: "orthopaedics",
     tags: ["Recovery", "Orthopaedics"],
     authorName: "Top Local Specialists",
-    heroImageUrl: "/images/specialist-orthopaedic.jpg",
-    heroImageAlt: "A physiotherapist supporting a patient through a knee exercise",
+    heroImageUrl: "/images/guide-recovery.jpg",
+    heroImageAlt: "A bright modern clinic consulting room",
     excerpt:
       "Most of the recovery that matters happens in the first six weeks. Here is what a typical week-by-week looks like, and when to call your surgeon rather than wait.",
     publishedDaysAgo: 3,
@@ -62,8 +62,8 @@ If you are still deciding on a surgeon, or want a second opinion before committi
     specialtySlug: "physiotherapy",
     tags: ["Physiotherapy", "Choosing care"],
     authorName: "Top Local Specialists",
-    heroImageUrl: "/images/specialist-physio.png",
-    heroImageAlt: "A physiotherapist assessing a patient's shoulder movement",
+    heroImageUrl: "/images/guide-physiotherapy.jpg",
+    heroImageAlt: "A physiotherapy treatment room",
     excerpt:
       "For most joint and back problems, conservative treatment is tried first — not to delay surgery, but because a large share of people never need it.",
     publishedDaysAgo: 9,
@@ -105,8 +105,8 @@ There is nothing awkward about seeking one, and most consultants expect it for e
     specialtySlug: null,
     tags: ["Choosing care", "Verification"],
     authorName: "Top Local Specialists",
-    heroImageUrl: "/images/specialist-orthopaedic.jpg",
-    heroImageAlt: "A clinician's registration certificate on a consulting room wall",
+    heroImageUrl: "/images/guide-verification.jpg",
+    heroImageAlt: "The entrance to a private hospital",
     excerpt:
       "Every UK clinician appears on a public register you can search for free in under a minute. Here is which register, and what to look for once you are there.",
     publishedDaysAgo: 18,

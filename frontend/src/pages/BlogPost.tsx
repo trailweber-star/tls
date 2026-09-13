@@ -6,6 +6,11 @@ import { Seo, ORGANISATION_JSON_LD } from "../components/Seo";
 import { formatArticleDate, getArticle } from "../lib/blogApi";
 import type { Article, ArticleCard } from "../lib/blogApi";
 
+const SITE_URL = import.meta.env.VITE_SITE_URL || "https://www.toplocalspecialists.com";
+
+/** Structured data needs absolute URLs; an uploaded cover is a path. */
+const absolute = (url: string) => (/^https?:\/\//i.test(url) ? url : `${SITE_URL}${url}`);
+
 /* ------------------------------------------------------------------ *
  * One article
  *
@@ -106,21 +111,52 @@ export default function BlogPost() {
         description={article.seoDescription}
         path={`/blog/${article.slug}`}
         image={article.heroImageUrl ?? undefined}
+        type="article"
+        publishedTime={article.publishedAt}
+        modifiedTime={article.updatedAt}
+        author={article.authorName ?? "Top Local Specialists"}
+        section={article.specialty?.name}
+        tags={article.tags}
         jsonLd={[
           ORGANISATION_JSON_LD,
           {
             "@context": "https://schema.org",
             "@type": "Article",
-            headline: article.title,
+            /* mainEntityOfPage is what tells Google this article IS this
+               page rather than something merely described on it — without
+               it the markup can be read as a mention, and the rich result
+               is not offered. */
+            mainEntityOfPage: { "@type": "WebPage", "@id": `${SITE_URL}/blog/${article.slug}` },
+            headline: article.title.slice(0, 110),
             description: article.seoDescription,
             datePublished: article.publishedAt,
             dateModified: article.updatedAt,
+            inLanguage: "en-GB",
+            wordCount: article.readingMinutes * 225,
+            timeRequired: `PT${article.readingMinutes}M`,
+            ...(article.specialty ? { articleSection: article.specialty.name } : {}),
+            ...(article.tags.length ? { keywords: article.tags.join(", ") } : {}),
             author: { "@type": "Organization", name: article.authorName ?? "Top Local Specialists" },
             publisher: {
               "@type": "Organization",
               name: "Top Local Specialists",
+              logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
             },
-            ...(article.heroImageUrl ? { image: article.heroImageUrl } : {}),
+            ...(article.heroImageUrl
+              ? { image: [absolute(article.heroImageUrl)] }
+              : {}),
+          },
+          /* The trail Google prints under the title in a result. Without
+             it the breadcrumb line is guessed from the URL, and a guessed
+             one is frequently wrong. */
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+              { "@type": "ListItem", position: 2, name: "Health guides", item: `${SITE_URL}/blog` },
+              { "@type": "ListItem", position: 3, name: article.title },
+            ],
           },
         ]}
       />
@@ -136,7 +172,7 @@ export default function BlogPost() {
               src={article.heroImageUrl}
               alt=""
               aria-hidden
-              className="absolute inset-0 h-full w-full object-cover opacity-25"
+              className="absolute inset-0 h-full w-full object-cover opacity-[0.18]"
             />
             <div
               aria-hidden
@@ -176,6 +212,27 @@ export default function BlogPost() {
           </p>
         </div>
       </section>
+
+      {/* ==================================================== cover
+          The hero only washes this image behind the title at a quarter
+          opacity, which is atmosphere rather than a picture. An article
+          about a knee replacement should show the thing it is about, so
+          the cover is printed properly here, pulled up to straddle the
+          navy band and the page. */}
+      {article.heroImageUrl && (
+        <figure className="mx-auto -mt-8 w-full max-w-[900px] px-5 sm:-mt-12 sm:px-8">
+          <img
+            src={article.heroImageUrl}
+            alt={article.heroImageAlt ?? ""}
+            className="aspect-[16/9] w-full rounded-2xl object-cover shadow-[0_30px_60px_-30px_rgba(6,22,38,0.55)] ring-1 ring-black/5"
+          />
+          {article.heroImageAlt && (
+            <figcaption className="mt-3 text-center text-[12.5px] text-ink-faint">
+              {article.heroImageAlt}
+            </figcaption>
+          )}
+        </figure>
+      )}
 
       {/* ================================================== the body */}
       <article className="mx-auto w-full max-w-[760px] px-5 py-10 sm:px-8 sm:py-14">
