@@ -2,12 +2,13 @@
   "name": "tls-mern",
   "private": true,
   "version": "1.0.0",
-  "description": "Top Local Specialists — UK healthcare specialist and facility directory",
+  "description": "Top Local Specialists \u2014 UK healthcare specialist and facility directory",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "//": "One command per thing a host needs. `build` produces the site the API will serve; `start` applies migrations and boots. Nothing here is specific to any one provider.",
+    "//": "One command per thing a host needs. `npm run dev` is the one for a laptop: it checks the database, migrates, and runs both halves together. `build` produces the site the API will serve; `start` applies migrations and boots.",
+    "dev": "node scripts/dev.mjs",
     "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build && npm --prefix backend install --omit=dev",
     "start": "npm --prefix backend run start:prod",
     "migrate": "npm --prefix backend run db:migrate",
