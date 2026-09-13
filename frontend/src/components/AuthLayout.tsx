@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { BadgeCheck, ShieldCheck, Users } from "lucide-react";
 import logoImg from "../assets/images/logo.webp";
+import asideImg from "../assets/images/hero-surgeon.webp";
 import { Seo } from "./Seo";
 
 /**
@@ -51,6 +52,25 @@ export function AuthLayout({
 
       {/* ------------------------------------------------------ aside */}
       <aside className="relative hidden flex-col justify-center overflow-hidden bg-navy-950 px-12 text-white lg:flex">
+        {/* A room the people signing in actually work in, blurred back
+            almost to texture. Scaled up because a blur fades out at the
+            edges of its own element and would show a pale rim. */}
+        <img
+          src={asideImg}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-75 blur-[6px]"
+        />
+        {/* The wash is a left-to-right gradient rather than a flat dim,
+            because the text all sits in the left third: it is nearly
+            solid navy where the words are and thins out towards the
+            edge, so the photograph is still visible as a photograph
+            without ever being behind a sentence. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-r from-navy-950 via-navy-950/92 to-navy-950/45"
+        />
+        <div aria-hidden className="absolute inset-0 bg-navy-950/25" />
         <div
           aria-hidden
           className="absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-teal-500/10 blur-3xl"
