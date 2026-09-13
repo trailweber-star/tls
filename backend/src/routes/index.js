@@ -75,6 +75,7 @@ import {
   simulatePayment,
   startCheckout,
 } from "../controllers/billing.controller.js";
+import { receivePracticeStatus } from "../controllers/clinwellStatus.controller.js";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -233,6 +234,16 @@ router.post("/billing/simulate-payment", requireAuth, requireRole("specialist"),
 // The provider's callback. Unauthenticated by necessity; the payload is
 // verified by the provider adapter, never trusted on its face.
 router.post("/billing/webhook", paymentWebhook);
+
+/* --------------------------------------------------------- partners */
+/* The inbound half of the ClinWell integration (contract v1.0.1,
+   Appendix B): one nightly push telling us which practices are live on
+   ClinWell. Unauthenticated by this router's standards — it carries no
+   TLS session, because the caller is a server, not a person — and
+   authenticated inside the handler by bearer key plus an HMAC over the
+   raw body. It may write the ClinWell badge and nothing else; see the
+   handler's header for why that boundary is worth designing around. */
+router.post("/partners/clinwell/practices/status", receivePracticeStatus);
 
 /* ---------------------------------------------------------------- auth */
 router.post("/auth/register", register);

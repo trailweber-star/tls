@@ -8,7 +8,8 @@ import {
 } from "../db/repos.js";
 import { entitlementsFor } from "./plans.js";
 import { buildEnquiryEmail, sendMail } from "./mailer.js";
-import { NOTIFICATION_TYPES, notifyAdmins } from "./notifications.js";
+import { NOTIFICATION_TYPES, notify, notifyAdmins } from "./notifications.js";
+import { expireStaleBadges } from "../controllers/clinwellStatus.controller.js";
 
 /* ------------------------------------------------------------------ *
  * Overdue-approval sweep
@@ -237,10 +238,124 @@ export function startReminderSweep() {
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * Renewal reminders — contract v1.0.1 §6.2
+ *
+ * "TLS sends the practice reminders at 10 days, 3 days, 48 hours and
+ * 24 hours before the renewal date. These are TLS emails; ClinWell
+ * sends nothing before the due date."
+ *
+ * So this is an obligation, not a nicety: if it does not run, nobody
+ * warns the practice, the renewal fails, and the first thing they hear
+ * about it is a banner inside ClinWell telling them access ends in
+ * fourteen days.
+ *
+ * Each threshold fires in its own window rather than "any time after
+ * the threshold is crossed". The difference matters on the day this
+ * ships: a practice already six days from renewal would otherwise get
+ * the ten-day, three-day, forty-eight-hour and twenty-four-hour
+ * notices in the same sweep. With windows, exactly one bucket can match
+ * at any moment, so a late start sends one email rather than four.
+ *
+ * The notification key carries the bucket, which is what stops a sweep
+ * running every half hour from re-sending the same notice fifty times.
+ * ------------------------------------------------------------------ */
+
+/** Hours before renewal, largest first. Each is its own bucket. */
+export const RENEWAL_THRESHOLDS = [
+  { bucket: "10d", hours: 240, label: "10 days" },
+  { bucket: "3d", hours: 72, label: "3 days" },
+  { bucket: "48h", hours: 48, label: "48 hours" },
+  { bucket: "24h", hours: 24, label: "24 hours" },
+];
+
+/**
+ * Which reminder, if any, is due for a renewal date right now.
+ *
+ * Returns the one bucket whose window contains `now`, or null. Windows
+ * are half-open and abut exactly, so no instant belongs to two buckets
+ * and none falls between them.
+ */
+export function renewalBucket(renewsAt, now = Date.now()) {
+  const due = new Date(renewsAt).getTime();
+  if (!Number.isFinite(due) || now >= due) return null;
+
+  for (const [i, threshold] of RENEWAL_THRESHOLDS.entries()) {
+    const opens = due - threshold.hours * 3600_000;
+    const next = RENEWAL_THRESHOLDS[i + 1];
+    const closes = next ? due - next.hours * 3600_000 : due;
+    if (now >= opens && now < closes) return threshold;
+  }
+  return null;
+}
+
+/** Paid subscriptions with a renewal date ahead of them. */
+async function renewingSubscriptions() {
+  if (!isDbConfigured()) {
+    const { mockSpecialistsWithRelations } = await import("../data/mock.js");
+    return mockSpecialistsWithRelations.filter((s) => s.planRenewsAt && s.planStatus === "active");
+  }
+  const rows = await specialistRepo.all();
+  return rows.filter((s) => s.planRenewsAt && s.planStatus === "active");
+}
+
+/** One pass. Exported so it can be run on demand and in tests. */
+export async function sweepRenewalReminders({ now = Date.now() } = {}) {
+  const subscriptions = await renewingSubscriptions();
+  let checked = 0;
+  let raised = 0;
+
+  for (const specialist of subscriptions) {
+    /* Only plans that cost money have a renewal worth warning about,
+       and entitlementsFor is the only sanctioned way to ask. */
+    const entitlements = entitlementsFor(specialist);
+    if (entitlements.selectedPlan === "basic") continue;
+
+    checked += 1;
+
+    const threshold = renewalBucket(specialist.planRenewsAt, now);
+    if (!threshold) continue;
+
+    /* A notification needs an account to belong to. A listing with no
+       user attached is an imported one nobody has claimed, and it has
+       no renewal either. */
+    if (!specialist.userId) continue;
+
+    const renews = new Date(specialist.planRenewsAt);
+    const amount = entitlements.selectedPlanName ?? "your subscription";
+    const body =
+      `${amount} renews on ${renews.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}` +
+      ` — ${threshold.label} from now.`;
+
+    const result = await notify({
+      userId: String(specialist.userId),
+      type: NOTIFICATION_TYPES.RENEWAL_DUE,
+      title: `Your renewal is ${threshold.label} away`,
+      body,
+      url: "/dashboard/billing",
+      subjectId: specialist.id,
+      email: specialist.email ?? null,
+      /* The bucket is in the key, so each threshold sends once and a
+         sweep every thirty minutes cannot re-send it. */
+      key: `${NOTIFICATION_TYPES.RENEWAL_DUE}:${specialist.id}:${threshold.bucket}`,
+    });
+
+    if (result?.created) raised += 1;
+  }
+
+  if (raised > 0) console.log(`[reminders] ${raised} renewal reminder(s) sent`);
+  return { checked, raised };
+}
+
 async function runSweep() {
   await sweepOverdueApprovals().catch((e) => console.error("[reminders] approval sweep failed:", e?.message ?? e));
   await sweepOverdueReviews().catch((e) => console.error("[reminders] review sweep failed:", e?.message ?? e));
   await releaseHeldEnquiries().catch((e) => console.error("[reminders] enquiry release failed:", e?.message ?? e));
+  await sweepRenewalReminders().catch((e) => console.error("[reminders] renewal sweep failed:", e?.message ?? e));
+  /* Appendix B: a badge nobody has confirmed for 72 hours comes down,
+     so a ClinWell outage cannot leave "Runs on ClinWell" on the public
+     site indefinitely. */
+  await expireStaleBadges().catch((e) => console.error("[reminders] badge expiry failed:", e?.message ?? e));
 }
 
 export function stopReminderSweep() {

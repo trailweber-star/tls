@@ -1058,3 +1058,240 @@ export const adminAudit = {
     return rows;
   },
 };
+
+
+/* ========================================================== ClinWell */
+
+/**
+ * The outbound event outbox. The contract's retry schedule runs for
+ * over fourteen hours (§4.1), so an event is a row that survives a
+ * deploy rather than an awaited call inside a request.
+ */
+export const clinwellEvents = {
+  async create(input) {
+    const [row] = await db()
+      .insert(t.clinwellEvents)
+      .values({ id: input.id ?? newId("cwe"), ...input })
+      .returning();
+    return row;
+  },
+
+  /**
+   * Is this practice already using that exact instant? ClinWell orders
+   * by occurredAt, so a tie is a state it has to break arbitrarily —
+   * and between "cancelled" and "resumed" that is the difference
+   * between a practice keeping access and losing it.
+   */
+  async occupied(specialistId, occurredAt) {
+    const [row] = await db()
+      .select({ id: t.clinwellEvents.id })
+      .from(t.clinwellEvents)
+      .where(
+        and(eq(t.clinwellEvents.specialistId, specialistId), eq(t.clinwellEvents.occurredAt, occurredAt))
+      )
+      .limit(1);
+    return Boolean(row);
+  },
+
+  /** Undelivered, not dead, due now — oldest first, so order is kept. */
+  async due(limit = 25) {
+    return db()
+      .select()
+      .from(t.clinwellEvents)
+      .where(
+        and(
+          sql`${t.clinwellEvents.deliveredAt} is null`,
+          sql`${t.clinwellEvents.deadAt} is null`,
+          lt(t.clinwellEvents.nextAttemptAt, new Date())
+        )
+      )
+      .orderBy(asc(t.clinwellEvents.occurredAt))
+      .limit(limit);
+  },
+
+  async markDelivered(id, { status, response }) {
+    const [row] = await db()
+      .update(t.clinwellEvents)
+      .set({
+        deliveredAt: new Date(),
+        lastStatus: status ?? null,
+        lastError: null,
+        response: response ?? null,
+        attempts: sql`${t.clinwellEvents.attempts} + 1`,
+      })
+      .where(eq(t.clinwellEvents.id, id))
+      .returning();
+    return row ?? null;
+  },
+
+  async scheduleRetry(id, { attempts, nextAttemptAt, status, error }) {
+    const [row] = await db()
+      .update(t.clinwellEvents)
+      .set({ attempts, nextAttemptAt, lastStatus: status ?? null, lastError: error ?? null })
+      .where(eq(t.clinwellEvents.id, id))
+      .returning();
+    return row ?? null;
+  },
+
+  async markDead(id, { status, error, attempts }) {
+    const [row] = await db()
+      .update(t.clinwellEvents)
+      .set({ deadAt: new Date(), attempts, lastStatus: status ?? null, lastError: error ?? null })
+      .where(eq(t.clinwellEvents.id, id))
+      .returning();
+    return row ?? null;
+  },
+
+  async findByEventId(eventId) {
+    const [row] = await db()
+      .select()
+      .from(t.clinwellEvents)
+      .where(eq(t.clinwellEvents.eventId, eventId))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /** For the admin screen: what has died and needs a person. */
+  async dead(limit = 50) {
+    return db()
+      .select()
+      .from(t.clinwellEvents)
+      .where(sql`${t.clinwellEvents.deadAt} is not null`)
+      .orderBy(desc(t.clinwellEvents.deadAt))
+      .limit(limit);
+  },
+};
+
+/**
+ * Inbound badge batches. A repeated batchId must return the FIRST
+ * response rather than apply twice (Appendix B), so the response is
+ * stored on the row — it is the only way to honour that.
+ */
+export const clinwellBatches = {
+  /**
+   * Claim a batchId. Returns { claimed: true } for a new one, the
+   * stored row for one already seen. The insert is the lock: two
+   * concurrent deliveries of the same batch race on the primary key
+   * and exactly one wins, which is what makes the 409 correct rather
+   * than a guess.
+   */
+  async claim(batchId, practiceCount) {
+    const existing = await this.find(batchId);
+    if (existing) return { claimed: false, row: existing };
+    try {
+      const [row] = await db()
+        .insert(t.clinwellBatches)
+        .values({ batchId, practiceCount: practiceCount ?? null })
+        .returning();
+      return { claimed: true, row };
+    } catch {
+      /* Lost the race. Whoever won is either still working (409) or
+         finished (duplicate), and find() tells the caller which. */
+      const row = await this.find(batchId);
+      return { claimed: false, row: row ?? null };
+    }
+  },
+
+  async find(batchId) {
+    const [row] = await db()
+      .select()
+      .from(t.clinwellBatches)
+      .where(eq(t.clinwellBatches.batchId, batchId))
+      .limit(1);
+    return row ?? null;
+  },
+
+  async complete(batchId, response) {
+    const [row] = await db()
+      .update(t.clinwellBatches)
+      .set({ completedAt: new Date(), response })
+      .where(eq(t.clinwellBatches.batchId, batchId))
+      .returning();
+    return row ?? null;
+  },
+
+  /** A batch that never completed must not block the next delivery. */
+  async release(batchId) {
+    await db().delete(t.clinwellBatches).where(eq(t.clinwellBatches.batchId, batchId));
+  },
+};
+
+/**
+ * The badge, and only the badge.
+ *
+ * This is a deliberately tiny repo with a deliberately tiny surface,
+ * because it is the write path for data that arrives from outside the
+ * company (the nightly ClinWell push, Appendix B). `set` names five
+ * columns and can reach nothing else: verificationStatus, plan,
+ * publication and contact details are not addressable from here.
+ *
+ * "Runs on ClinWell" is a statement about a software subscription.
+ * "Verified" is a statement that a human checked a licence against a
+ * regulator's register. Keeping them on separate write paths is what
+ * stops a billing failure at a software vendor from ever downgrading a
+ * clinician's credibility on a healthcare directory.
+ */
+export const clinwellBadges = {
+  /** Just the columns the decision needs — no profile assembly. */
+  async forSlug(slug) {
+    const [row] = await db()
+      .select({
+        id: t.specialists.id,
+        slug: t.specialists.slug,
+        fullName: t.specialists.fullName,
+        clinwellWorkspaceId: t.specialists.clinwellWorkspaceId,
+        clinwellLive: t.specialists.clinwellLive,
+        clinwellLiveAt: t.specialists.clinwellLiveAt,
+        clinwellStatus: t.specialists.clinwellStatus,
+        clinwellStatusAt: t.specialists.clinwellStatusAt,
+        clinwellBadgeExpiresAt: t.specialists.clinwellBadgeExpiresAt,
+      })
+      .from(t.specialists)
+      .where(eq(t.specialists.slug, slug))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /**
+   * Write the badge. Every field is picked out by name rather than
+   * spread from the argument, so a caller cannot smuggle in a column
+   * this endpoint has no business writing.
+   */
+  async set(id, patch) {
+    const [row] = await db()
+      .update(t.specialists)
+      .set({
+        clinwellLive: Boolean(patch.clinwellLive),
+        clinwellLiveAt: patch.clinwellLiveAt ?? null,
+        clinwellBadgeExpiresAt: patch.clinwellBadgeExpiresAt ?? null,
+        clinwellStatus: patch.clinwellStatus ?? null,
+        clinwellStatusAt: patch.clinwellStatusAt ?? null,
+      })
+      .where(eq(t.specialists.id, id))
+      .returning({
+        id: t.specialists.id,
+        clinwellLive: t.specialists.clinwellLive,
+        clinwellStatus: t.specialists.clinwellStatus,
+      });
+    return row ?? null;
+  },
+
+  /** Live badges nobody has confirmed since `before` (Appendix B: 72h). */
+  async expiredBefore(before) {
+    return db()
+      .select({
+        id: t.specialists.id,
+        slug: t.specialists.slug,
+        clinwellStatus: t.specialists.clinwellStatus,
+        clinwellStatusAt: t.specialists.clinwellStatusAt,
+      })
+      .from(t.specialists)
+      .where(
+        and(
+          eq(t.specialists.clinwellLive, true),
+          sql`${t.specialists.clinwellBadgeExpiresAt} is not null`,
+          lt(t.specialists.clinwellBadgeExpiresAt, before)
+        )
+      );
+  },
+};

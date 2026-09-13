@@ -56,6 +56,25 @@ const NEVER_PUBLIC = [
   "importSource",
   "sourceUrl",
   "sourceImportedAt",
+  /* The ClinWell integration's internals. Exactly one of these columns
+     is a public fact — clinwellLive, which drives the "Runs on
+     ClinWell" badge — and the rest are plumbing:
+
+       clinwellWorkspaceId  an identifier for a clinical records system
+       clinwellSlug         how the practice is registered on their side
+       clinwellStatus       pending_invite | active | suspended
+       clinwellStatusAt     when they last told us
+       clinwellBadgeExpiresAt  when we stop believing them
+
+     A workspace id on a public page is an identifier for somebody's
+     patient records sitting in a JSON response, and "suspended" is a
+     billing fact about a practice that patients have no business
+     reading. The badge is the only thing the public needs. */
+  "clinwellWorkspaceId",
+  "clinwellSlug",
+  "clinwellStatus",
+  "clinwellStatusAt",
+  "clinwellBadgeExpiresAt",
 ];
 
 function stripPrivate(record) {

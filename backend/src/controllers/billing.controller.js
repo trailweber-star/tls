@@ -23,7 +23,12 @@ import {
   verifiesWebhooks,
   verifyWebhookSignature,
 } from "../lib/payments.js";
-import { isClinWellConnected, provisionWorkspace, ssoUrl, workspaceSummary } from "../lib/clinwell.js";
+/* provisionWorkspace is deliberately not imported any more: under
+   contract v1.0.1 the workspace is created by the subscription.activated
+   event and its id arrives in ClinWell's response, so there is no
+   synchronous "provision" call to make. */
+import { isClinWellConnected, ssoUrl, workspaceSummary } from "../lib/clinwell.js";
+import { onCancelled, onPaymentFailed, onPaymentSucceeded } from "../lib/clinwellLifecycle.js";
 import { mockSpecialistsWithRelations, updateDemoSpecialist } from "../data/mock.js";
 import { specialistIdOf } from "../middleware/auth.js";
 import { sendMail } from "../lib/mailer.js";
@@ -171,6 +176,12 @@ export async function changePlan(req, res) {
       planInterval: interval,
       planRenewsAt: null,
     });
+    /* §6.4: a downgrade to a plan without ClinWell IS a cancellation to
+       ClinWell, with effectiveAt set to the last day already paid for.
+       Queued from `specialist`, the row as it was before the downgrade,
+       because the patch has just cleared the renewal date this event
+       needs. */
+    await onCancelled(specialist, { effectiveAt: specialist.planRenewsAt });
     return res.json({ ok: true, outcome: "downgraded", subscription: summarise(updated) });
   }
 
@@ -274,11 +285,22 @@ export async function paymentWebhook(req, res) {
     return res.json({ received: true, applied });
   }
   if (event.kind === "payment_failed") {
+    const before = await loadSpecialist(order.specialistId);
     await patchSpecialist(order.specialistId, { planStatus: "past_due" });
+    /* dueAt is the renewal date that failed, read before the patch.
+       ClinWell holds access for exactly 14 days from it and then
+       suspends on its own clock (§6.3), so this one date decides
+       whether a practice loses clinical software early or a fortnight
+       late. */
+    if (before) await onPaymentFailed(before, { dueAt: before.planRenewsAt });
     return res.json({ received: true, applied: true });
   }
   if (event.kind === "canceled") {
+    const before = await loadSpecialist(order.specialistId);
     await patchSpecialist(order.specialistId, { planStatus: "canceled" });
+    /* effectiveAt is the last day already paid for. ClinWell keeps
+       access until the end of it and withdraws nothing early (§6.4). */
+    if (before) await onCancelled(before, { effectiveAt: before.planRenewsAt });
     return res.json({ received: true, applied: true });
   }
   res.json({ received: true, applied: false });
@@ -294,6 +316,12 @@ async function activateSubscription(order, { providerRef } = {}) {
   const paid = await markOrderPaid(order.id, { providerRef });
   if (!paid.ok) return false;
   if (paid.alreadyApplied) return true; // providers retry; do not extend twice
+
+  /* Captured BEFORE the patch, because the patch erases the very
+     distinction ClinWell cares about: once planStatus reads "active"
+     there is no way to tell a first activation from a recovered
+     payment from a practice un-cancelling. See lib/clinwellLifecycle.js. */
+  const before = await loadSpecialist(order.specialistId);
 
   const renewsAt = addInterval(new Date(), order.interval).toISOString();
   const patch = {
@@ -314,16 +342,30 @@ async function activateSubscription(order, { providerRef } = {}) {
   await patchSpecialist(order.specialistId, patch);
 
   if (getPlan(order.planId).features.clinwell) {
-    try {
-      const specialist = await loadSpecialist(order.specialistId);
-      const ws = await provisionWorkspace(specialist ?? { id: order.specialistId });
-      await patchSpecialist(order.specialistId, { clinwellWorkspaceId: ws.workspaceId });
-    } catch (err) {
-      console.error(
-        `[billing] ClinWell provisioning failed for ${order.specialistId} — subscription is active, ` +
-          `workspace will be retried: ${err?.message ?? err}`
-      );
+    /* The workspace is created by the subscription.activated event, and
+       its id comes back in ClinWell's response — so this queues the
+       event rather than awaiting a workspace. The outbox owns delivery
+       and the retry schedule from here (lib/clinwellSender.js), which
+       is what lets the subscription stand even if ClinWell is down.
+
+       Until the id arrives the dashboard shows "workspace being
+       prepared" rather than a broken page. When a payment recovers or a
+       practice un-cancels, this sends payment.recovered or resumed
+       instead, and never both. */
+    const queued = await onPaymentSucceeded(before ?? { id: order.specialistId }, {
+      planId: order.planId,
+      interval: order.interval,
+      renewsAt,
+    });
+    if (queued?.skipped && queued.skipped !== "no-clinwell-event") {
+      console.warn(`[billing] ClinWell event not queued for ${order.specialistId}: ${queued.skipped}`);
     }
+    /* Nudge the outbox so a new subscription is not waiting on the next
+       sweep tick. Deliberately not awaited: the practice's confirmation
+       must not wait on ClinWell answering. */
+    import("../lib/clinwellSender.js")
+      .then((m) => m.drainOutbox())
+      .catch(() => {});
   }
 
   await sendMail({

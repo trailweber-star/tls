@@ -6,6 +6,8 @@ import { registerGeocoder } from "./lib/geocoders.js";
 import { registerMailer } from "./lib/mailer.js";
 import { registerPaymentProvider } from "./lib/paymentProviders.js";
 import { registerPushProvider } from "./lib/pushProvider.js";
+import { registerClinWell } from "./lib/clinwellProvider.js";
+import { startOutboxSweep } from "./lib/clinwellSender.js";
 
 const PORT = process.env.PORT || 4000;
 
@@ -32,6 +34,12 @@ async function main() {
   // no account and no vendor either way — see lib/pushProvider.js.
   registerPushProvider();
 
+  // The clinical suite, behind a boundary. Reads go straight to
+  // ClinWell and are never stored here; writes go through an outbox
+  // because the contract's retry schedule runs for fourteen hours —
+  // see lib/clinwellProvider.js and lib/clinwellSender.js.
+  registerClinWell();
+
   app.listen(PORT, () => {
     console.log(`[server] listening on http://localhost:${PORT}`);
   });
@@ -40,6 +48,12 @@ async function main() {
   // goes looking for them. This raises one reminder per overdue
   // application, de-duplicated by key so restarts don't stack them.
   startReminderSweep();
+
+  // Drains queued ClinWell events. Separate from the reminder sweep
+  // because it runs every minute rather than every half hour: a
+  // practice waiting for its clinical workspace should not wait
+  // twenty-nine minutes for the next tick.
+  startOutboxSweep();
 }
 
 main().catch((err) => {

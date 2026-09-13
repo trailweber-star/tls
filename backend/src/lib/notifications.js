@@ -31,6 +31,10 @@ export const NOTIFICATION_TYPES = {
   REVIEW_PENDING: "review_pending",
   REVIEW_OVERDUE: "review_overdue",
   ARTICLE_PENDING: "article_pending",
+  // Contract v1.0.1 §6.2 — sent to the practice, not to an admin.
+  RENEWAL_DUE: "renewal_due",
+  // An outbound ClinWell event exhausted its retry schedule.
+  CLINWELL_EVENT_FAILED: "clinwell_event_failed",
 };
 
 /** Which notifications count as work an admin still has to do. */
@@ -45,6 +49,10 @@ const ACTIONABLE = new Set([
   // An article submitted for review is work: it is invisible to patients
   // and the member who wrote it is waiting on a decision.
   NOTIFICATION_TYPES.ARTICLE_PENDING,
+  // A ClinWell event that died is work: a lost cancellation means a
+  // practice keeps clinical software it stopped paying for, and only a
+  // person can decide whether to re-send it or fix the data first.
+  NOTIFICATION_TYPES.CLINWELL_EVENT_FAILED,
 ]);
 
 function normalise(row) {

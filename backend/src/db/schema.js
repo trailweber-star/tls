@@ -161,6 +161,13 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "review_overdue",
   // A member submitted an article, or one written for them came back.
   "article_pending",
+  // Contract v1.0.1 §6.2: the practice's renewal is approaching. Sent
+  // at 10 days, 3 days, 48 hours and 24 hours.
+  "renewal_due",
+  // An outbound ClinWell event exhausted its retry schedule. Somebody
+  // has to look, because a lost cancellation means a practice keeps
+  // clinical software it stopped paying for.
+  "clinwell_event_failed",
 ]);
 
 export const claimStatusEnum = pgEnum("claim_status", ["pending", "approved", "rejected"]);
@@ -603,10 +610,39 @@ export const specialists = pgTable(
     planActivatedAt: timestamp("plan_activated_at", { withTimezone: true }),
     planRenewsAt: timestamp("plan_renews_at", { withTimezone: true }),
 
-    // Opaque handle for the practice's ClinWell workspace. This is the
-    // ONLY ClinWell value stored here — no clinical data crosses the
-    // boundary (see lib/clinwell.js).
+    // Opaque handle for the practice's ClinWell workspace: a UUID v4
+    // issued once on subscription.activated and never changed
+    // (contract v1.0.1 §4.1). No clinical data crosses the boundary —
+    // see lib/clinwell.js.
     clinwellWorkspaceId: text("clinwell_workspace_id"),
+
+    /* The practice slug as registered on ClinWell's side, which is not
+       always our own. Dr Moholkar's clinic is "dkc" there while its
+       profile here has a longer name-based slug, and §4.1 forbids
+       normalising on either side — so the registered value has to be
+       storable rather than derived. Null means "the same as our slug",
+       which is correct for every practice registered from scratch. */
+    clinwellSlug: text("clinwell_slug"),
+
+    /* --------------------------------------- the ClinWell badge
+       ClinWell pushes one status per practice nightly (Appendix B) and
+       these columns are the ONLY thing that push may write. They are
+       deliberately not verificationStatus: "Runs on ClinWell" says a
+       practice pays for clinical software, "verified" says a human
+       checked a licence against a regulator's register. A lapsed direct
+       debit must not be able to un-verify a clinician, and separate
+       columns are what make that impossible rather than unlikely.
+
+       The badge expires 72 hours after the last successful batch that
+       named the practice, so a ClinWell outage that stops the nightly
+       push eventually takes the badge down instead of leaving a stale
+       claim on the public site for ever. */
+    clinwellLive: boolean("clinwell_live").notNull().default(false),
+    clinwellLiveAt: timestamp("clinwell_live_at", { withTimezone: true }),
+    clinwellBadgeExpiresAt: timestamp("clinwell_badge_expires_at", { withTimezone: true }),
+    // pending_invite | active | suspended, as ClinWell last reported it.
+    clinwellStatus: text("clinwell_status"),
+    clinwellStatusAt: timestamp("clinwell_status_at", { withTimezone: true }),
 
     /* ---------------------------------------- premium-tier content
        Stored for every specialist regardless of plan, and hidden rather
@@ -1279,6 +1315,101 @@ export const facilityCategoryLinksRelations = relations(facilityCategoryLinks, (
 
 export const reviewsRelations = relations(reviews, ({ one }) => ({
   condition: one(conditions, { fields: [reviews.conditionId], references: [conditions.id] }),
+}));
+
+/* ------------------------------------------------------------------ *
+ * ClinWell outbound events — an outbox, not a fire-and-forget call
+ *
+ * The contract's retry schedule (1 min, 5 min, 30 min, 2 h, 12 h) runs
+ * for over fourteen hours, far longer than any request this
+ * application serves, so an event has to survive a deploy. That means
+ * a row.
+ *
+ * occurredAt is ClinWell's ordering key (§6.6). It is stamped when the
+ * state change happens, frozen for the life of the row, and unique per
+ * practice — so a retry can never look newer than it is, and two
+ * events for one practice can never tie.
+ * ------------------------------------------------------------------ */
+export const clinwellEvents = pgTable(
+  "clinwell_events",
+  {
+    id: id(),
+
+    // Ours, generated once, reused by every retry. ClinWell's
+    // idempotency key: resending the same one does nothing.
+    eventId: text("event_id").notNull(),
+
+    // subscription.activated | subscription.resumed |
+    // subscription.cancelled | payment.failed | payment.recovered
+    event: text("event").notNull(),
+
+    specialistId: text("specialist_id")
+      .notNull()
+      .references(() => specialists.id, { onDelete: "cascade" }),
+
+    // The slug as registered on the ClinWell side, copied onto the row
+    // rather than read at send time: the event describes something that
+    // already happened, and a later rename must not rewrite history.
+    practiceSlug: text("practice_slug").notNull(),
+
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+
+    // The body exactly as it will be signed. Held rather than rebuilt,
+    // because the signature covers raw bytes and a rebuild that
+    // reordered one key would invalidate a signature already correct.
+    payload: jsonb("payload").notNull(),
+
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+
+    // Set when the schedule is exhausted, or when a 4xx says retrying
+    // is pointless. Never retried again, and raised to an administrator.
+    deadAt: timestamp("dead_at", { withTimezone: true }),
+
+    lastStatus: integer("last_status"),
+    lastError: text("last_error"),
+
+    // What ClinWell answered, so a 409 carrying the existing
+    // workspaceId is not thrown away.
+    response: jsonb("response"),
+
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("clinwell_events_event_id_idx").on(table.eventId),
+    uniqueIndex("clinwell_events_practice_occurred_idx").on(table.specialistId, table.occurredAt),
+    index("clinwell_events_due_idx").on(table.nextAttemptAt),
+  ]
+);
+
+/**
+ * Inbound badge batches, kept so a repeated batchId returns the FIRST
+ * response rather than being applied twice (Appendix B). Storing the
+ * response is the only way to honour that, so the response is the row.
+ *
+ * completedAt is null while the first delivery is still in flight; a
+ * second request arriving in that window gets 409 and is told to retry
+ * in 30 seconds — the same rule we asked ClinWell to adopt on their
+ * enquiry route, so it would be poor form not to honour it here.
+ */
+export const clinwellBatches = pgTable(
+  "clinwell_batches",
+  {
+    batchId: text("batch_id").primaryKey().notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    response: jsonb("response"),
+    practiceCount: integer("practice_count"),
+  },
+  (table) => [index("clinwell_batches_received_idx").on(table.receivedAt)]
+);
+
+export const clinwellEventsRelations = relations(clinwellEvents, ({ one }) => ({
+  specialist: one(specialists, {
+    fields: [clinwellEvents.specialistId],
+    references: [specialists.id],
+  }),
 }));
 
 export const leadsRelations = relations(leads, ({ one }) => ({
