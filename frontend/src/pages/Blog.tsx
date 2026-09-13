@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, BookOpen, Clock, Loader2 } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Loader2, Search, User, X } from "lucide-react";
 import { HEADER_HEIGHT } from "../components/Header";
 import { Seo, ORGANISATION_JSON_LD } from "../components/Seo";
 import { formatArticleDate, listArticles } from "../lib/blogApi";
@@ -10,32 +10,45 @@ import heroImg from "../assets/images/hero-clinic.jpg";
 const SITE_URL = import.meta.env.VITE_SITE_URL || "https://www.toplocalspecialists.com";
 
 /* ------------------------------------------------------------------ *
- * The blog
+ * The guides
  *
- * Articles are imported through the admin screen and rendered in this
- * site's own clothes rather than in a syndicated widget — same navy hero, same teal
- * accent, same card geometry as the directory, so a reader who arrives
- * from Google lands somewhere that plainly belongs to the site they are
- * about to be asked to trust.
+ * Laid out like the blog this replaces — a column of articles with a
+ * sidebar beside it — because that shape is what the client and their
+ * readers already know, and there is nothing wrong with it.
  *
- * The filter state lives in the URL, as it does on /search, so a tag is
- * a shareable link and the back button steps through filters.
+ * What is different is what the sidebar holds. The old one carried
+ * WordPress's defaults: a Recent Comments widget on a site with no
+ * comments, and a month-by-month archive nobody has ever clicked. This
+ * one carries the two things a reader of a healthcare directory
+ * actually wants — a search box, and the specialties the articles are
+ * filed under, counted so an empty category never appears.
+ *
+ * Every filter lives in the URL, as on /search, so a category is a
+ * shareable link and the back button steps through filters.
  * ------------------------------------------------------------------ */
 
 export default function Blog() {
   const [params, setParams] = useSearchParams();
   const tag = params.get("tag") ?? "";
+  const specialty = params.get("specialty") ?? "";
+  const q = params.get("q") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
 
   const [data, setData] = useState<ArticleList | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  /* Typed into, but not yet committed to the URL — so the list does not
+     re-fetch on every keystroke and the back button does not fill up
+     with half-typed words. */
+  const [typed, setTyped] = useState(q);
+
+  useEffect(() => setTyped(q), [q]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setFailed(false);
-    listArticles({ tag: tag || undefined, page })
+    listArticles({ tag: tag || undefined, specialty: specialty || undefined, q: q || undefined, page })
       .then((res) => {
         if (!cancelled) setData(res);
       })
@@ -48,80 +61,48 @@ export default function Blog() {
     return () => {
       cancelled = true;
     };
-  }, [tag, page]);
+  }, [tag, specialty, q, page]);
 
-  function setTag(next: string) {
+  /** One place that writes the URL, so filters can never contradict. */
+  function apply(next: { tag?: string; specialty?: string; q?: string; page?: number }) {
     const qs = new URLSearchParams();
-    if (next) qs.set("tag", next);
+    const merged = { tag, specialty, q, page: 1, ...next };
+    if (merged.tag) qs.set("tag", merged.tag);
+    if (merged.specialty) qs.set("specialty", merged.specialty);
+    if (merged.q) qs.set("q", merged.q);
+    if (merged.page && merged.page > 1) qs.set("page", String(merged.page));
     setParams(qs);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function goToPage(next: number) {
-    const qs = new URLSearchParams(params);
-    if (next > 1) qs.set("page", String(next));
-    else qs.delete("page");
-    setParams(qs);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  const articles = data?.results ?? [];
-  // The newest article leads the page at full width. A grid of equal
-  // cards gives a reader no way in; one lead does.
-  const [lead, ...rest] = page === 1 && !tag ? articles : [];
-  const grid = page === 1 && !tag ? rest : articles;
+  const filtered = Boolean(tag || specialty || q);
+  const heading = useMemo(() => {
+    if (q) return `Results for “${q}”`;
+    if (data?.specialty) return data.specialty.name;
+    if (tag) return tag;
+    return "Latest guides";
+  }, [q, tag, data?.specialty]);
 
   return (
     <main className="flex-1 bg-paper">
-      {/* A tag or a page-two view is a near-duplicate of this page with
-          a subset of the same cards. Both stay crawlable — the links on
-          them lead to articles — but the canonical points home and they
-          are kept out of the index, which is what stops a blog of nine
-          guides competing with itself across thirty thin URLs. */}
       <Seo
-        title={tag ? `${tag} guides` : "Health Guides & Articles"}
-        description={
-          tag
-            ? `Guides about ${tag.toLowerCase()} — treatments, recovery and choosing a specialist, written in plain English by the Top Local Specialists team.`
-            : "Plain-English guides to treatments, recovery and choosing a private specialist in the UK — written and reviewed by the Top Local Specialists team."
+        title={
+          specialty && data?.specialty
+            ? `${data.specialty.name} guides`
+            : "Health guides — Top Local Specialists"
         }
+        description="Plain-English guides to treatments, recovery and choosing private care in the UK, written and checked by verified specialists."
         path="/blog"
-        noIndex={Boolean(tag) || page > 1}
         jsonLd={[
           ORGANISATION_JSON_LD,
           {
             "@context": "https://schema.org",
             "@type": "Blog",
             "@id": `${SITE_URL}/blog`,
-            name: "Top Local Specialists — Health Guides",
-            description:
-              "Guides to treatments, recovery and choosing a private healthcare specialist in the UK.",
+            name: "Top Local Specialists — Health guides",
+            url: `${SITE_URL}/blog`,
             inLanguage: "en-GB",
             publisher: { "@type": "Organization", name: "Top Local Specialists" },
-            /* The posts themselves, so the listing can be understood
-               without crawling every card first. */
-            blogPost: articles.slice(0, 10).map((a) => ({
-              "@type": "BlogPosting",
-              headline: a.title,
-              description: a.excerpt,
-              datePublished: a.publishedAt,
-              url: `${SITE_URL}/blog/${a.slug}`,
-              ...(a.heroImageUrl
-                ? {
-                    image: /^https?:\/\//i.test(a.heroImageUrl)
-                      ? a.heroImageUrl
-                      : `${SITE_URL}${a.heroImageUrl}`,
-                  }
-                : {}),
-            })),
-          },
-          {
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-              { "@type": "ListItem", position: 2, name: "Health guides", item: `${SITE_URL}/blog` },
-            ],
           },
         ]}
       />
@@ -131,142 +112,349 @@ export default function Blog() {
         className="relative overflow-hidden bg-navy-950 text-white"
         style={{ marginTop: -HEADER_HEIGHT, paddingTop: HEADER_HEIGHT }}
       >
-        <img
-          src={heroImg}
-          alt=""
-          aria-hidden
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.22]"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-br from-navy-950 via-navy-950/95 to-navy-900/80"
-        />
-        <div className="relative mx-auto w-full max-w-[1180px] px-5 py-14 sm:px-8 sm:py-20">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-teal-200 ring-1 ring-white/15">
-            <BookOpen className="h-3.5 w-3.5" strokeWidth={2.2} />
+        <img src={heroImg} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover opacity-20" />
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-navy-950 via-navy-950/90 to-navy-950/60" />
+        <div className="relative mx-auto w-full max-w-[1180px] px-5 py-12 sm:px-8 sm:py-16">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-wide text-teal-300 ring-1 ring-white/15">
+            <BookOpen className="h-3.5 w-3.5" strokeWidth={2.5} />
             Health guides
-          </p>
-          <h1 className="mt-5 max-w-[18ch] font-display text-[34px] font-bold leading-[1.08] sm:text-[46px]">
-            Straight answers about
-            <span className="text-teal-300"> private healthcare</span>
+          </span>
+          <h1 className="mt-5 max-w-[20ch] font-display text-[32px] font-bold leading-[1.1] sm:text-[42px]">
+            Written by the people who do the work.
           </h1>
-          <p className="mt-4 max-w-[62ch] text-[15.5px] leading-relaxed text-white/70">
-            What treatment involves, how long recovery really takes, and how to tell whether the
-            specialist in front of you is the right one. Written plainly, with no product to sell you
-            beyond finding the right clinician.
+          <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-white/70">
+            Treatments, recovery and how private care actually works — in plain English, from verified
+            specialists and the clinics they practise in.
           </p>
         </div>
       </section>
 
-      {/* ================================================== filters */}
-      {(data?.tags.length ?? 0) > 0 && (
-        <div className="border-b border-line bg-paper-muted">
-          <div className="mx-auto flex w-full max-w-[1180px] gap-2 overflow-x-auto px-5 py-4 sm:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <FilterChip label="All guides" active={!tag} onClick={() => setTag("")} />
-            {data?.tags.map((t) => (
-              <FilterChip
-                key={t.name}
-                label={t.name}
-                count={t.count}
-                active={tag === t.name}
-                onClick={() => setTag(t.name)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ================================================== body */}
+      <div className="mx-auto w-full max-w-[1180px] px-5 py-10 sm:px-8 sm:py-14">
+        <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
+          {/* ------------------------------------------- articles */}
+          <div className="min-w-0">
+            <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
+              <h2 className="font-display text-[22px] font-bold text-ink">{heading}</h2>
+              {data && (
+                <p className="text-[13px] text-ink-muted">
+                  {data.total} {data.total === 1 ? "guide" : "guides"}
+                  {filtered && (
+                    <button
+                      type="button"
+                      onClick={() => apply({ tag: "", specialty: "", q: "" })}
+                      className="ml-3 inline-flex items-center gap-1 font-bold text-teal-700 hover:underline"
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={2.4} />
+                      Clear
+                    </button>
+                  )}
+                </p>
+              )}
+            </div>
 
-      {/* ================================================== articles */}
-      <div className="mx-auto w-full max-w-[1180px] px-5 py-12 sm:px-8 sm:py-16">
-        {loading ? (
-          <div className="flex items-center justify-center gap-2.5 py-24 text-ink-muted">
-            <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" strokeWidth={2} />
-            <span className="text-[14px] font-semibold">Loading guides…</span>
-          </div>
-        ) : failed ? (
-          <Empty
-            title="We couldn't load the guides"
-            body="Something went wrong at our end rather than yours. Refreshing usually fixes it."
-          />
-        ) : articles.length === 0 ? (
-          <Empty
-            title={tag ? `Nothing filed under "${tag}" yet` : "No guides published yet"}
-            body={
-              tag
-                ? "Try another topic, or browse everything."
-                : "New guides are added regularly. In the meantime, the directory is the fastest way to find a specialist."
-            }
-            action={tag ? { label: "Browse all guides", onClick: () => setTag("") } : undefined}
-          />
-        ) : (
-          <>
-            {lead && <LeadCard article={lead} />}
+            {loading ? (
+              <p className="flex items-center gap-2 py-16 text-[14px] text-ink-muted">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading guides…
+              </p>
+            ) : failed ? (
+              <p className="rounded-2xl border border-line bg-white p-8 text-[14px] text-ink-muted">
+                The guides could not be loaded just now. Please try again shortly.
+              </p>
+            ) : !data || data.results.length === 0 ? (
+              <div className="rounded-2xl border border-line bg-white p-10 text-center">
+                <p className="font-display text-[19px] font-bold text-ink">
+                  {q ? `Nothing matches “${q}”` : "No guides here yet"}
+                </p>
+                <p className="mx-auto mt-2 max-w-[46ch] text-[14px] leading-relaxed text-ink-muted">
+                  {q
+                    ? "Try a condition or a treatment — knee, physiotherapy, recovery."
+                    : "New guides are published regularly. Try another category."}
+                </p>
+                {filtered && (
+                  <button
+                    type="button"
+                    onClick={() => apply({ tag: "", specialty: "", q: "" })}
+                    className="mt-5 inline-flex items-center gap-2 rounded-full bg-navy-950 px-5 py-2.5 text-[13.5px] font-bold text-white transition hover:bg-teal-700"
+                  >
+                    Show every guide
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {data.results.map((article) => (
+                  <ArticleRow key={article.slug} article={article} onTag={(t) => apply({ tag: t, q: "" })} />
+                ))}
+              </div>
+            )}
 
-            <ul
-              className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${lead ? "mt-10" : ""}`}
-            >
-              {grid.map((a) => (
-                <li key={a.slug}>
-                  <Card article={a} />
-                </li>
-              ))}
-            </ul>
-
-            {(data?.pageCount ?? 1) > 1 && (
-              <nav className="mt-12 flex items-center justify-center gap-2" aria-label="Pagination">
-                <PageButton disabled={page <= 1} onClick={() => goToPage(page - 1)}>
-                  Previous
-                </PageButton>
-                <span className="px-3 text-[13.5px] font-semibold text-ink-muted">
-                  Page {page} of {data?.pageCount}
-                </span>
-                <PageButton
-                  disabled={page >= (data?.pageCount ?? 1)}
-                  onClick={() => goToPage(page + 1)}
-                >
-                  Next
-                </PageButton>
+            {data && data.pageCount > 1 && (
+              <nav className="mt-9 flex items-center justify-center gap-2" aria-label="Pages">
+                {Array.from({ length: data.pageCount }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => apply({ page: n })}
+                    aria-current={n === page ? "page" : undefined}
+                    className={`h-10 min-w-10 rounded-xl px-3 text-[13.5px] font-bold transition ${
+                      n === page
+                        ? "bg-navy-950 text-white"
+                        : "border border-line bg-white text-ink hover:border-teal-300 hover:bg-teal-50"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
               </nav>
             )}
-          </>
-        )}
-      </div>
-
-      {/* ====================================================== CTA */}
-      <section className="border-t border-line bg-navy-950 text-white">
-        <div className="mx-auto flex w-full max-w-[1180px] flex-col items-start gap-6 px-5 py-12 sm:px-8 sm:py-16 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="font-display text-[24px] font-bold leading-tight sm:text-[30px]">
-              Ready to find the right specialist?
-            </h2>
-            <p className="mt-2 max-w-[54ch] text-[14.5px] leading-relaxed text-white/70">
-              Every clinician on the directory is checked against their regulator before they appear.
-            </p>
           </div>
-          <Link
-            to="/search"
-            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-teal-500 px-6 py-3.5 text-[14px] font-bold text-navy-950 transition hover:bg-teal-400"
-          >
-            Search the directory
-            <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
-          </Link>
+
+          {/* -------------------------------------------- sidebar */}
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <div className="space-y-5">
+              {/* Search first, because it is the only thing on this
+                  column that answers a question the reader arrived
+                  with. */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  apply({ q: typed.trim(), tag: "", specialty: "" });
+                }}
+                className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(6,22,38,.04)]"
+              >
+                <label htmlFor="blog-search" className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-faint">
+                  Search the guides
+                </label>
+                <div className="mt-2.5 flex gap-2">
+                  <div className="relative flex-1">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint"
+                      strokeWidth={2.2}
+                    />
+                    <input
+                      id="blog-search"
+                      type="search"
+                      value={typed}
+                      onChange={(e) => setTyped(e.target.value)}
+                      placeholder="Knee, recovery, physio…"
+                      className="w-full rounded-xl border border-line bg-paper py-2.5 pl-9 pr-3 text-[14px] text-ink outline-none transition placeholder:text-ink-faint focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500/20"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="shrink-0 rounded-xl bg-navy-950 px-4 text-[13.5px] font-bold text-white transition hover:bg-teal-700"
+                  >
+                    Go
+                  </button>
+                </div>
+              </form>
+
+              {data && data.categories.length > 0 && (
+                <SidebarCard title="Categories">
+                  <ul className="-mx-1">
+                    {data.categories.map((cat) => (
+                      <li key={cat.slug}>
+                        <SidebarLink
+                          label={cat.name}
+                          count={cat.count}
+                          active={specialty === cat.slug}
+                          onClick={() => apply({ specialty: specialty === cat.slug ? "" : cat.slug, tag: "", q: "" })}
+                        />
+                        {cat.children.length > 0 && (
+                          <ul className="ml-3 border-l border-line-soft pl-2">
+                            {cat.children.map((child) => (
+                              <li key={child.slug}>
+                                <SidebarLink
+                                  label={child.name}
+                                  count={child.count}
+                                  small
+                                  active={specialty === child.slug}
+                                  onClick={() =>
+                                    apply({ specialty: specialty === child.slug ? "" : child.slug, tag: "", q: "" })
+                                  }
+                                />
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </SidebarCard>
+              )}
+
+              {data && data.tags.length > 0 && (
+                <SidebarCard title="Topics">
+                  <div className="flex flex-wrap gap-1.5">
+                    {data.tags.slice(0, 12).map((t) => (
+                      <button
+                        key={t.name}
+                        type="button"
+                        onClick={() => apply({ tag: tag === t.name ? "" : t.name, specialty: "", q: "" })}
+                        className={`rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition ${
+                          tag === t.name
+                            ? "bg-navy-950 text-white"
+                            : "bg-paper-tint text-ink-muted hover:bg-teal-50 hover:text-teal-700"
+                        }`}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                </SidebarCard>
+              )}
+
+              {data && data.recent.length > 0 && (
+                <SidebarCard title="Recently published">
+                  <ul className="space-y-3">
+                    {data.recent.map((r) => (
+                      <li key={r.slug}>
+                        <Link
+                          to={`/blog/${r.slug}`}
+                          className="group block text-[13.5px] font-semibold leading-snug text-ink transition hover:text-teal-700"
+                        >
+                          {r.title}
+                          <span className="mt-0.5 block text-[12px] font-normal text-ink-faint">
+                            {formatArticleDate(r.publishedAt)}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </SidebarCard>
+              )}
+
+              {/* The reason the blog exists on a directory. */}
+              <div className="overflow-hidden rounded-2xl bg-navy-950 p-5 text-white">
+                <p className="font-display text-[17px] font-bold leading-snug">
+                  Ready to speak to someone?
+                </p>
+                <p className="mt-2 text-[13px] leading-relaxed text-white/70">
+                  Every specialist here is checked against their regulator before they appear.
+                </p>
+                <Link
+                  to="/search"
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-teal-500 px-4 py-2.5 text-[13px] font-bold text-navy-950 transition hover:bg-teal-400"
+                >
+                  Find a specialist
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.6} />
+                </Link>
+              </div>
+            </div>
+          </aside>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
 
-/* ------------------------------------------------------------- parts */
+/* ------------------------------------------------------------------ *
+ * One article in the list
+ *
+ * Image on the left where there is one, and the card holds its shape
+ * when there is not — an empty grey rectangle where a photograph should
+ * be looks worse than a card that was never going to have one.
+ * ------------------------------------------------------------------ */
 
-function FilterChip({
+function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: string) => void }) {
+  return (
+    <article className="group overflow-hidden rounded-2xl border border-line bg-white transition hover:border-teal-300 hover:shadow-[0_18px_40px_-28px_rgba(6,22,38,.45)]">
+      <div className={article.heroImageUrl ? "grid sm:grid-cols-[240px_1fr]" : ""}>
+        {article.heroImageUrl && (
+          <Link to={`/blog/${article.slug}`} className="relative block overflow-hidden bg-paper-tint">
+            <img
+              src={article.heroImageUrl}
+              alt={article.heroImageAlt ?? ""}
+              loading="lazy"
+              className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-full"
+            />
+            {article.specialty && (
+              <span className="absolute left-3 top-3 rounded-full bg-navy-950/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-teal-300 backdrop-blur">
+                {article.specialty.name}
+              </span>
+            )}
+          </Link>
+        )}
+
+        <div className="p-5 sm:p-6">
+          {!article.heroImageUrl && article.specialty && (
+            <span className="mb-2.5 inline-block rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-teal-700">
+              {article.specialty.name}
+            </span>
+          )}
+
+          <h3 className="font-display text-[20px] font-bold leading-snug text-ink sm:text-[22px]">
+            <Link to={`/blog/${article.slug}`} className="transition hover:text-teal-700">
+              {article.title}
+            </Link>
+          </h3>
+
+          {/* The byline the old blog had, and the one thing a directory
+              can put in it that a WordPress blog cannot: the author is a
+              clinician with a profile on this site. */}
+          <p className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] text-ink-faint">
+            {article.authorName && (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-ink-muted">
+                <User className="h-3.5 w-3.5" strokeWidth={2.2} />
+                {article.authorName}
+              </span>
+            )}
+            <time dateTime={article.publishedAt}>{formatArticleDate(article.publishedAt)}</time>
+            <span aria-hidden>·</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" strokeWidth={2.2} />
+              {article.readingMinutes} min read
+            </span>
+          </p>
+
+          <p className="mt-3 text-[14.5px] leading-relaxed text-ink-muted">{article.excerpt}</p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Link
+              to={`/blog/${article.slug}`}
+              className="inline-flex items-center gap-2 rounded-full bg-navy-950 px-4 py-2 text-[13px] font-bold text-white transition group-hover:bg-teal-700"
+            >
+              Continue reading
+              <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" strokeWidth={2.6} />
+            </Link>
+            {article.tags.slice(0, 2).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => onTag(t)}
+                className="rounded-full bg-paper-tint px-2.5 py-1 text-[12px] font-semibold text-ink-muted transition hover:bg-teal-50 hover:text-teal-700"
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function SidebarCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(6,22,38,.04)]">
+      <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-faint">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function SidebarLink({
   label,
   count,
   active,
+  small,
   onClick,
 }: {
   label: string;
-  count?: number;
+  count: number;
   active: boolean;
+  small?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -274,155 +462,18 @@ function FilterChip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-bold transition ${
-        active
-          ? "bg-navy-950 text-white"
-          : "bg-white text-ink ring-1 ring-line hover:bg-teal-50 hover:ring-teal-300"
-      }`}
+      className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition ${
+        small ? "text-[13px]" : "text-[13.5px] font-semibold"
+      } ${active ? "bg-teal-50 text-teal-700" : "text-ink hover:bg-paper-tint"}`}
     >
-      {label}
-      {count != null && (
-        <span className={active ? "ml-1.5 text-white/60" : "ml-1.5 text-ink-faint"}>{count}</span>
-      )}
-    </button>
-  );
-}
-
-function Meta({ article, tone = "muted" }: { article: ArticleCard; tone?: "muted" | "light" }) {
-  const colour = tone === "light" ? "text-white/65" : "text-ink-faint";
-  return (
-    <p className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] font-semibold ${colour}`}>
-      <time dateTime={article.publishedAt}>{formatArticleDate(article.publishedAt)}</time>
-      <span aria-hidden>·</span>
-      <span className="inline-flex items-center gap-1">
-        <Clock className="h-3.5 w-3.5" strokeWidth={2} />
-        {article.readingMinutes} min read
+      <span className="min-w-0 truncate">{label}</span>
+      <span
+        className={`shrink-0 text-[11.5px] font-bold tabular-nums ${
+          active ? "text-teal-700" : "text-ink-faint"
+        }`}
+      >
+        {count}
       </span>
-      {article.specialty && (
-        <>
-          <span aria-hidden>·</span>
-          <span>{article.specialty.name}</span>
-        </>
-      )}
-    </p>
-  );
-}
-
-function LeadCard({ article }: { article: ArticleCard }) {
-  return (
-    <Link
-      to={`/blog/${article.slug}`}
-      className="group grid overflow-hidden rounded-3xl bg-navy-950 text-white ring-1 ring-navy-800 transition hover:ring-teal-500 md:grid-cols-[1.05fr_1fr]"
-    >
-      <div className="relative min-h-[220px] overflow-hidden md:min-h-[340px]">
-        {article.heroImageUrl ? (
-          <img
-            src={article.heroImageUrl}
-            alt={article.heroImageAlt ?? ""}
-            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-teal-700 to-navy-900" />
-        )}
-      </div>
-      <div className="flex flex-col justify-center gap-3 p-7 sm:p-10">
-        <span className="inline-flex w-fit rounded-full bg-teal-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-teal-300">
-          Latest
-        </span>
-        <h2 className="font-display text-[24px] font-bold leading-tight sm:text-[30px]">
-          {article.title}
-        </h2>
-        <p className="text-[14.5px] leading-relaxed text-white/70">{article.excerpt}</p>
-        <Meta article={article} tone="light" />
-        <span className="mt-1 inline-flex items-center gap-2 text-[14px] font-bold text-teal-300">
-          Read the guide
-          <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" strokeWidth={2.4} />
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-function Card({ article }: { article: ArticleCard }) {
-  return (
-    <Link
-      to={`/blog/${article.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white ring-1 ring-line transition hover:-translate-y-0.5 hover:shadow-[0_24px_48px_-28px_rgba(6,22,38,0.45)] hover:ring-teal-300"
-    >
-      <div className="relative aspect-[16/10] overflow-hidden bg-paper-tint">
-        {article.heroImageUrl ? (
-          <img
-            src={article.heroImageUrl}
-            alt={article.heroImageAlt ?? ""}
-            loading="lazy"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-          />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-br from-teal-100 to-paper-tint" />
-        )}
-        {article.tags[0] && (
-          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-bold text-teal-700 shadow-sm">
-            {article.tags[0]}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-2.5 p-5">
-        <h3 className="font-display text-[17px] font-bold leading-snug text-ink group-hover:text-teal-700">
-          {article.title}
-        </h3>
-        <p className="line-clamp-3 text-[13.5px] leading-relaxed text-ink-muted">{article.excerpt}</p>
-        <div className="mt-auto pt-2">
-          <Meta article={article} />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function PageButton({
-  children,
-  disabled,
-  onClick,
-}: {
-  children: React.ReactNode;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="rounded-full border border-line px-5 py-2.5 text-[13.5px] font-bold text-ink transition hover:border-teal-300 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent"
-    >
-      {children}
     </button>
-  );
-}
-
-function Empty({
-  title,
-  body,
-  action,
-}: {
-  title: string;
-  body: string;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div className="rounded-3xl border border-line bg-paper-muted px-6 py-20 text-center">
-      <BookOpen className="mx-auto h-8 w-8 text-teal-600" strokeWidth={1.6} />
-      <h2 className="mt-4 font-display text-[20px] font-bold text-ink">{title}</h2>
-      <p className="mx-auto mt-2 max-w-[48ch] text-[14px] leading-relaxed text-ink-muted">{body}</p>
-      {action && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className="mt-6 rounded-full bg-navy-950 px-5 py-2.5 text-[13.5px] font-bold text-white transition hover:bg-teal-700"
-        >
-          {action.label}
-        </button>
-      )}
-    </div>
   );
 }

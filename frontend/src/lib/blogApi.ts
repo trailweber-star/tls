@@ -31,6 +31,13 @@ export interface Article extends ArticleCard {
   updatedAt: string;
 }
 
+export interface BlogCategory {
+  slug: string;
+  name: string;
+  count: number;
+  children: { slug: string; name: string; count: number }[];
+}
+
 export interface ArticleList {
   results: ArticleCard[];
   total: number;
@@ -39,6 +46,11 @@ export interface ArticleList {
   pageCount: number;
   tags: { name: string; count: number }[];
   specialty: { slug: string; name: string } | null;
+  /** Specialties that actually have articles, nested Orthopaedics → Knee. */
+  categories: BlogCategory[];
+  /** The five newest, unaffected by whatever filter is on. */
+  recent: { slug: string; title: string; publishedAt: string }[];
+  q: string;
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -47,10 +59,13 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function listArticles(params: { tag?: string; specialty?: string; page?: number } = {}) {
+export function listArticles(
+  params: { tag?: string; specialty?: string; q?: string; page?: number } = {}
+) {
   const qs = new URLSearchParams();
   if (params.tag) qs.set("tag", params.tag);
   if (params.specialty) qs.set("specialty", params.specialty);
+  if (params.q) qs.set("q", params.q);
   if (params.page && params.page > 1) qs.set("page", String(params.page));
   const query = qs.toString();
   return get<ArticleList>(`/articles${query ? `?${query}` : ""}`);

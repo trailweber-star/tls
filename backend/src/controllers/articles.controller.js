@@ -80,6 +80,33 @@ async function published(filters = {}) {
   return articleRepo.published(filters);
 }
 
+/**
+ * Search, in JavaScript, deliberately.
+ *
+ * A directory's guides number in the dozens, not the millions, so a
+ * full-text index would be a lot of machinery — and a schema migration
+ * — to sort a list that fits in memory. Title first, because a person
+ * typing "knee" means the article about knees, not the one that
+ * mentions a knee in passing.
+ */
+function matches(row, q) {
+  const needle = q.toLowerCase();
+  const title = (row.title ?? "").toLowerCase();
+  if (title.includes(needle)) return 2;
+  const rest = `${row.excerpt ?? ""} ${(row.tags ?? []).join(" ")} ${toPlainText(row.bodyHtml)}`.toLowerCase();
+  return rest.includes(needle) ? 1 : 0;
+}
+
+function search(rows, q) {
+  const trimmed = String(q ?? "").trim();
+  if (!trimmed) return rows;
+  return rows
+    .map((row) => ({ row, rank: matches(row, trimmed) }))
+    .filter((x) => x.rank > 0)
+    .sort((a, b) => b.rank - a.rank || new Date(b.row.publishedAt) - new Date(a.row.publishedAt))
+    .map((x) => x.row);
+}
+
 /* ------------------------------------------------------------ shaping */
 
 /** What a card needs. Never the body — a list of twenty articles should
@@ -124,10 +151,21 @@ export async function listArticles(req, res) {
   const specialtySlug = String(req.query.specialty ?? "").trim();
   const specialty = specialtySlug ? specialties.find((s) => s.slug === specialtySlug) : null;
 
-  const rows = await published({
-    tag: req.query.tag ? String(req.query.tag) : null,
-    specialtyId: specialty?.id ?? null,
-  });
+  const q = String(req.query.q ?? "").slice(0, 120);
+
+  /* Choosing Orthopaedics has to include the articles filed under Knee.
+     The taxonomy is one level deep, so this is a parent plus its
+     children rather than a recursive walk. */
+  const specialtyIds = specialty
+    ? new Set([specialty.id, ...specialties.filter((s) => s.parentId === specialty.id).map((s) => s.id)])
+    : null;
+
+  const rows = search(
+    (await published({ tag: req.query.tag ? String(req.query.tag) : null })).filter(
+      (r) => !specialtyIds || specialtyIds.has(r.specialtyId)
+    ),
+    q
+  );
 
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = Math.min(24, Math.max(1, Number(req.query.pageSize) || 9));
@@ -135,10 +173,46 @@ export async function listArticles(req, res) {
 
   // The tag list is built from what is actually published, so a filter
   // can never offer a tag that returns nothing.
+  const everything = await published();
   const tagCounts = new Map();
-  for (const row of await published()) {
+  for (const row of everything) {
     for (const tag of row.tags ?? []) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
   }
+
+  /* Categories for the sidebar, nested the way the taxonomy already is:
+     Orthopaedics with Knee beneath it. Counted from published articles
+     only, and a specialty with nothing under it is left out — an empty
+     category is a dead link that makes the blog look abandoned. */
+  const bySpecialty = new Map();
+  for (const row of everything) {
+    if (row.specialtyId) bySpecialty.set(row.specialtyId, (bySpecialty.get(row.specialtyId) ?? 0) + 1);
+  }
+  const totalFor = (node) => {
+    const own = bySpecialty.get(node.id) ?? 0;
+    const children = specialties.filter((s) => s.parentId === node.id);
+    return own + children.reduce((sum, c) => sum + (bySpecialty.get(c.id) ?? 0), 0);
+  };
+  const categories = specialties
+    .filter((s) => !s.parentId)
+    .map((root) => ({
+      slug: root.slug,
+      name: root.name,
+      count: totalFor(root),
+      children: specialties
+        .filter((s) => s.parentId === root.id && (bySpecialty.get(s.id) ?? 0) > 0)
+        .map((child) => ({ slug: child.slug, name: child.name, count: bySpecialty.get(child.id) ?? 0 })),
+    }))
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  /* The five most recent, for the sidebar. Computed from the unfiltered
+     set so it does not change as somebody filters — a "recent" list that
+     empties when you search is a broken list. */
+  const recent = everything.slice(0, 5).map((r) => ({
+    slug: r.slug,
+    title: r.title,
+    publishedAt: r.publishedAt,
+  }));
 
   res.json({
     results: rows.slice(start, start + pageSize).map((r) => toCard(r, specialtyById)),
@@ -150,6 +224,9 @@ export async function listArticles(req, res) {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     specialty: specialty ? { slug: specialty.slug, name: specialty.name } : null,
+    categories,
+    recent,
+    q,
   });
 }
 
