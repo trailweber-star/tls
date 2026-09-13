@@ -159,6 +159,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   // 24-hour chase when nobody has looked at it.
   "review_pending",
   "review_overdue",
+  // A member submitted an article, or one written for them came back.
+  "article_pending",
 ]);
 
 export const claimStatusEnum = pgEnum("claim_status", ["pending", "approved", "rejected"]);
@@ -788,7 +790,22 @@ export const reviews = pgTable(
    post pasted by hand has no origin to point at.
    ============================================================== */
 
-export const articleStatusEnum = pgEnum("article_status", ["draft", "published"]);
+/* draft            being written by whoever owns it
+   awaiting_author  written for a member, sitting with them to read and edit
+   in_review        submitted, in the administrator's queue
+   changes_requested sent back to the member with a note
+   published        live on /blog
+
+   The order matters to nobody; the transitions are enforced in
+   controllers/articles.controller.js, which is the only place that
+   knows which move is legal from where. */
+export const articleStatusEnum = pgEnum("article_status", [
+  "draft",
+  "awaiting_author",
+  "in_review",
+  "changes_requested",
+  "published",
+]);
 
 export const articles = pgTable(
   "articles",
@@ -825,6 +842,23 @@ export const articles = pgTable(
     // which is the usual case for generated content.
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
+
+    /* Who the article is BY — a member is a specialist or a facility,
+       never both, so two nullable references rather than one
+       polymorphic column: the database can then enforce that the id
+       exists. Both null is an article by the directory itself. */
+    authorSpecialistId: text("author_specialist_id").references(() => specialists.id),
+    authorFacilityId: text("author_facility_id").references(() => facilities.id),
+
+    /* Who typed it, which is not always who it is by — that is the
+       whole point of writing one on a member's behalf. */
+    createdByUserId: text("created_by_user_id").references(() => users.id),
+
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id),
+    /** What the administrator said when sending it back. The member reads this. */
+    reviewNote: text("review_note"),
 
     source: text("source").notNull().default("manual"),
     sourceRef: text("source_ref"),

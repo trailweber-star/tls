@@ -93,6 +93,14 @@ import {
 import { listContactMessages, submitContactMessage } from "../controllers/contact.controller.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import {
+  assignArticle,
+  createMyArticle,
+  getMyArticle,
+  listMyArticles,
+  reviewArticle,
+  updateMyArticle,
+} from "../controllers/memberArticles.controller.js";
+import {
   deleteArticle,
   getAdminArticle,
   getArticle,
@@ -133,7 +141,17 @@ router.get("/admin/articles", requireAuth, requireRole("admin"), listAllArticles
 router.post("/admin/articles/import", requireAuth, requireRole("admin"), importArticle);
 router.post("/admin/articles/preview", requireAuth, requireRole("admin"), previewArticle);
 router.get("/admin/articles/:id", requireAuth, requireRole("admin"), getAdminArticle);
+router.post("/admin/articles/:id/assign", requireAuth, requireRole("admin"), assignArticle);
+router.post("/admin/articles/:id/review", requireAuth, requireRole("admin"), reviewArticle);
 router.patch("/admin/articles/:id", requireAuth, requireRole("admin"), updateArticle);
+
+/* A member writing for the guides. Gated on the plan's
+   contentPublishing feature inside the controller, because the plan
+   catalogue is the only place that says which tier includes it. */
+router.get("/dashboard/articles", requireAuth, listMyArticles);
+router.post("/dashboard/articles", requireAuth, createMyArticle);
+router.get("/dashboard/articles/:id", requireAuth, getMyArticle);
+router.patch("/dashboard/articles/:id", requireAuth, updateMyArticle);
 router.delete("/admin/articles/:id", requireAuth, requireRole("admin"), deleteArticle);
 router.get("/geo/reverse", reverseGeocode);
 // What the address field types against, and the one lookup that runs

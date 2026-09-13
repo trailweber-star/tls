@@ -36,6 +36,20 @@
       "when": 1789341000000,
       "tag": "0004_article_source_body",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789349000000,
+      "tag": "0005_article_authorship",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789350000000,
+      "tag": "0006_article_notification_type",
+      "breakpoints": true
     }
   ]
 }

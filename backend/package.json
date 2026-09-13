@@ -19,7 +19,8 @@
     "start:prod": "node scripts/prepare.mjs && node src/server.js",
     "tabs:test": "node scripts/tabs-test.mjs",
     "articles:demo": "node scripts/seed-articles.mjs",
-    "push:test": "node scripts/push-test.mjs"
+    "push:test": "node scripts/push-test.mjs",
+    "articles:test": "node scripts/articles-workflow-test.mjs"
   },
   "keywords": [],
   "author": "",

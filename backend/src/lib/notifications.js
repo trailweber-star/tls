@@ -30,6 +30,7 @@ export const NOTIFICATION_TYPES = {
   APPLICATION_DECIDED: "application_decided",
   REVIEW_PENDING: "review_pending",
   REVIEW_OVERDUE: "review_overdue",
+  ARTICLE_PENDING: "article_pending",
 };
 
 /** Which notifications count as work an admin still has to do. */
@@ -41,6 +42,9 @@ const ACTIONABLE = new Set([
   // patients and unanswerable by the provider until someone decides.
   NOTIFICATION_TYPES.REVIEW_PENDING,
   NOTIFICATION_TYPES.REVIEW_OVERDUE,
+  // An article submitted for review is work: it is invisible to patients
+  // and the member who wrote it is waiting on a decision.
+  NOTIFICATION_TYPES.ARTICLE_PENDING,
 ]);
 
 function normalise(row) {

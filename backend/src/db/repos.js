@@ -890,6 +890,24 @@ export const articles = {
     return db().select().from(t.articles).orderBy(desc(t.articles.updatedAt));
   },
 
+  /** One member's own articles, whatever state they are in. */
+  async forAuthorSpecialist(specialistId) {
+    return db()
+      .select()
+      .from(t.articles)
+      .where(eq(t.articles.authorSpecialistId, specialistId))
+      .orderBy(desc(t.articles.updatedAt));
+  },
+
+  /** The review queue: submitted, oldest first, because that is fair. */
+  async awaitingReview() {
+    return db()
+      .select()
+      .from(t.articles)
+      .where(eq(t.articles.status, "in_review"))
+      .orderBy(asc(t.articles.submittedAt));
+  },
+
   async findBySlug(slug) {
     const [row] = await db().select().from(t.articles).where(eq(t.articles.slug, slug)).limit(1);
     return row ?? null;
