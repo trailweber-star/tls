@@ -854,7 +854,13 @@ export interface NotificationFeed {
   unread: number;
   /** The subset that is outstanding work — this is what the badge shows. */
   actionable: number;
-  push: { connected: boolean; provider: string | null; devices: number };
+  push: {
+    connected: boolean;
+    provider: string | null;
+    devices: number;
+    /** The browser's half of the VAPID pair. Null when push is off. */
+    publicKey: string | null;
+  };
 }
 
 export const notificationsApi = {
@@ -864,6 +870,8 @@ export const notificationsApi = {
   markAllRead: () => post<{ ok: boolean; marked: number }>("/notifications/read-all"),
   subscribePush: (subscription: unknown) =>
     post<{ ok: boolean; connected: boolean; devices: number }>("/notifications/subscribe", subscription),
+  unsubscribePush: (endpoint: string) =>
+    post<{ ok: boolean; devices: number }>("/notifications/unsubscribe", { endpoint }),
 };
 
 /* -------------------------------------------------------------- claims */

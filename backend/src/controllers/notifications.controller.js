@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { hasPushProvider, pushProviderName, pushSubscriptions } from "../lib/push.js";
 import { notificationStore } from "../lib/notifications.js";
+import { vapidPublicKey } from "../lib/pushProvider.js";
 
 /* ------------------------------------------------------------------ *
  * Notifications API
@@ -23,7 +24,15 @@ export async function listNotifications(req, res) {
     // rather than things that merely happened. That is the number the
     // badge shows.
     actionable: await notificationStore.actionableCount(userId),
-    push: { connected: hasPushProvider(), provider: pushProviderName(), devices: (await pushSubscriptions.forUser(userId)).length },
+    push: {
+      connected: hasPushProvider(),
+      provider: pushProviderName(),
+      devices: (await pushSubscriptions.forUser(userId)).length,
+      /* Published deliberately. The VAPID public key is the browser's
+         half of the pair — it has to reach the page to subscribe at
+         all, and it grants nothing on its own. */
+      publicKey: vapidPublicKey(),
+    },
   });
 }
 

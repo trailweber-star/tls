@@ -18,7 +18,8 @@
     "prepare:db": "node scripts/prepare.mjs",
     "start:prod": "node scripts/prepare.mjs && node src/server.js",
     "tabs:test": "node scripts/tabs-test.mjs",
-    "articles:demo": "node scripts/seed-articles.mjs"
+    "articles:demo": "node scripts/seed-articles.mjs",
+    "push:test": "node scripts/push-test.mjs"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +35,7 @@
     "nodemailer": "^10.0.7",
     "pg": "^8.23.0",
     "sanitize-html": "^2.17.7",
+    "web-push": "^3.6.7",
     "zod": "^4.5.4"
   },
   "devDependencies": {

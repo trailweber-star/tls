@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, BellOff, CheckCheck, Clock3, Loader2, ShieldCheck, UserPlus } from "lucide-react";
+import { Bell, BellOff, BellRing, CheckCheck, Clock3, Loader2, ShieldCheck, UserPlus } from "lucide-react";
 import { notificationsApi } from "../../lib/dashboardApi";
 import type { Notification, NotificationFeed } from "../../lib/dashboardApi";
+import { currentState, disablePush, enablePush } from "../../lib/pushClient";
+import type { PushState } from "../../lib/pushClient";
 import { relativeTime } from "./ui";
 
 /* ------------------------------------------------------------------ *
@@ -238,14 +240,92 @@ export function NotificationBell({ tone = "dark" }: { tone?: "dark" | "light" } 
             )}
           </div>
 
-          {feed && !feed.push.connected && (
-            <p className="border-t border-line-soft bg-paper-muted px-4 py-2.5 text-[11.5px] leading-relaxed text-ink-faint">
-              Email and in-app alerts are on. Push to your phone needs a provider connected — these same notifications
-              go out the moment it is.
-            </p>
-          )}
+          {feed && <PushFooter serverHasKeys={Boolean(feed.push.publicKey)} publicKey={feed.push.publicKey} />}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Turning desktop alerts on
+ *
+ * Lives in the panel rather than in settings because this is the moment
+ * somebody wants it: they have just opened the bell to see whether
+ * anything happened, which is exactly the chore the notification
+ * removes.
+ *
+ * The prompt is only ever raised by the button. Asking on load is why
+ * browsers now bury the permission dialog, and a person who dismisses
+ * one can be barred from being asked again.
+ * ------------------------------------------------------------------ */
+
+function PushFooter({ serverHasKeys, publicKey }: { serverHasKeys: boolean; publicKey: string | null }) {
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    currentState(serverHasKeys).then((s) => alive && setState(s));
+    return () => {
+      alive = false;
+    };
+  }, [serverHasKeys]);
+
+  if (!state) return null;
+
+  const shell = "border-t border-line-soft bg-paper-muted px-4 py-2.5 text-[11.5px] leading-relaxed";
+
+  if (state === "unconfigured") {
+    return (
+      <p className={`${shell} text-ink-faint`}>
+        Email and in-app alerts are on. Desktop notifications need a pair of keys on the server — two
+        minutes of setup, no account and no supplier.
+      </p>
+    );
+  }
+  if (state === "unsupported") {
+    return <p className={`${shell} text-ink-faint`}>This browser cannot show desktop notifications.</p>;
+  }
+  if (state === "denied") {
+    return (
+      <p className={`${shell} text-ink-faint`}>
+        Notifications are blocked for this site. Allow them in the address bar — the padlock, then
+        Notifications — and they will turn on here.
+      </p>
+    );
+  }
+
+  async function toggle() {
+    setBusy(true);
+    try {
+      setState(state === "on" ? await disablePush() : await enablePush(publicKey ?? ""));
+    } catch {
+      setState("off");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={`${shell} flex items-center justify-between gap-3 text-ink-muted`}>
+      <span className="flex items-center gap-1.5">
+        {state === "on" ? (
+          <BellRing className="h-3.5 w-3.5 text-teal-600" strokeWidth={2.2} />
+        ) : (
+          <BellOff className="h-3.5 w-3.5" strokeWidth={2.2} />
+        )}
+        {state === "on" ? "Desktop alerts are on for this device" : "Get these on your desktop"}
+      </span>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={busy}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-[11.5px] font-bold text-ink transition hover:border-teal-300 hover:bg-teal-50 disabled:opacity-50"
+      >
+        {busy && <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.4} />}
+        {state === "on" ? "Turn off" : "Turn on"}
+      </button>
     </div>
   );
 }

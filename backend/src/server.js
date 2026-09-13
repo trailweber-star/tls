@@ -5,6 +5,7 @@ import { startReminderSweep } from "./lib/reminders.js";
 import { registerGeocoder } from "./lib/geocoders.js";
 import { registerMailer } from "./lib/mailer.js";
 import { registerPaymentProvider } from "./lib/paymentProviders.js";
+import { registerPushProvider } from "./lib/pushProvider.js";
 
 const PORT = process.env.PORT || 4000;
 
@@ -26,6 +27,10 @@ async function main() {
   // Card payments. Simulated until Stripe's keys are present — see
   // lib/paymentProviders.js.
   registerPaymentProvider();
+
+  // Desktop notifications for the admin. Off unless VAPID keys are set;
+  // no account and no vendor either way — see lib/pushProvider.js.
+  registerPushProvider();
 
   app.listen(PORT, () => {
     console.log(`[server] listening on http://localhost:${PORT}`);
