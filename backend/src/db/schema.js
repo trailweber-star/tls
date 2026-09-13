@@ -616,13 +616,20 @@ export const specialists = pgTable(
     // see lib/clinwell.js.
     clinwellWorkspaceId: text("clinwell_workspace_id"),
 
-    /* The practice slug as registered on ClinWell's side, which is not
-       always our own. Dr Moholkar's clinic is "dkc" there while its
-       profile here has a longer name-based slug, and §4.1 forbids
-       normalising on either side — so the registered value has to be
-       storable rather than derived. Null means "the same as our slug",
-       which is correct for every practice registered from scratch. */
-    clinwellSlug: text("clinwell_slug"),
+    /* ClinWell's OWN slug for this clinic — "dkc" for Dr Moholkar's —
+       used in exactly one place: the §7 embed URL,
+       app.clinwell.ai/book/<clinicSlug>/enquiry.
+
+       It is NOT a substitute for our slug. There are two slugs and
+       neither replaces the other: `slug` above is what we send in every
+       event and what ClinWell sends back in the nightly push, and the
+       two are joined on ClinWell's side by the workspace row rather than
+       by being the same string.
+
+       So null here means "no booking embed", never "fall back to our
+       slug" — our slug on their host is a guaranteed 404 for every
+       patient who clicks it. */
+    clinwellClinicSlug: text("clinwell_clinic_slug"),
 
     /* --------------------------------------- the ClinWell badge
        ClinWell pushes one status per practice nightly (Appendix B) and

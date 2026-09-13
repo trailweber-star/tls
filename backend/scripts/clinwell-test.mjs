@@ -52,7 +52,7 @@ const {
 } = await import("../src/lib/clinwellEvents.js");
 const { sign, verify, signedString } = await import("../src/lib/clinwellSignature.js");
 const { BACKOFF_MS, attempt } = await import("../src/lib/clinwellSender.js");
-const { eventForPayment, practiceSlug } = await import("../src/lib/clinwellLifecycle.js");
+const { clinicSlug, eventForPayment, practiceSlug } = await import("../src/lib/clinwellLifecycle.js");
 const { decide, BADGE_TTL_MS } = await import("../src/controllers/clinwellStatus.controller.js");
 const { renewalBucket } = await import("../src/lib/reminders.js");
 const { enquiryBody, forwardingGate } = await import("../src/lib/clinwellEnquiries.js");
@@ -94,7 +94,11 @@ section("Appendix A — the signature scheme");
 section("§4.1 — the envelope, and where the dates live");
 {
   const specialist = {
-    slug: "dkc",
+    /* Our slug, which is what goes in practice.slug. The clinic slug
+       ClinWell knows ("dkc") is deliberately different here, so the
+       assertions below catch a build that sends the wrong one. */
+    slug: "mr-kirti-moholkar",
+    clinwellClinicSlug: "dkc",
     fullName: "Kirti Moholkar",
     clinicName: "Droitwich Knee & Shoulder Clinic",
     email: "practice@example.com",
@@ -119,6 +123,8 @@ section("§4.1 — the envelope, and where the dates live");
   check("yearly becomes annual", a.plan.interval === "annual" && intervalFor("monthly") === "monthly");
   check("renewsAt is YYYY-MM-DD", a.plan.renewsAt === "2027-09-11");
   check("occurredAt is second-precision ISO UTC", a.occurredAt === "2026-09-11T09:30:00Z");
+  check("practice.slug is OUR slug", a.practice.slug === "mr-kirti-moholkar");
+  check("ClinWell's clinic slug is never sent in an event", JSON.stringify(a).includes("dkc") === false);
 
   check("regulator is never sent", !("regulator" in a.practice));
   check("registrationNumber is never sent", !("registrationNumber" in a.practice));
@@ -193,8 +199,20 @@ section("§6.6 — which event a payment actually is");
   check("canceled → resumed", eventForPayment(canceled, { planId: "clinwell" }) === "subscription.resumed");
   check("an ordinary renewal sends nothing", eventForPayment(active, { planId: "clinwell" }) === null);
   check("a plan without ClinWell sends nothing", eventForPayment(fresh, { planId: "premium" }) === null);
-  check("the registered slug wins over ours", practiceSlug({ slug: "mr-k-moholkar", clinwellSlug: "dkc" }) === "dkc");
-  check("ours is used when none is registered", practiceSlug({ slug: "mr-k-moholkar" }) === "mr-k-moholkar");
+  /* Two slugs, and `practice.slug` is always ours. Sahil confirmed the
+     TLS slug travels in both directions and that ClinWell's clinic slug
+     ("dkc") never appears in an event — they join the two by the
+     workspace row. An earlier build had this backwards. */
+  check(
+    "practice.slug is OURS even when a clinic slug is stored",
+    practiceSlug({ slug: "mr-k-moholkar", clinwellClinicSlug: "dkc" }) === "mr-k-moholkar"
+  );
+  check("and ours when none is stored", practiceSlug({ slug: "mr-k-moholkar" }) === "mr-k-moholkar");
+  check("the clinic slug is reachable separately, for the embed", clinicSlug({ clinwellClinicSlug: "dkc" }) === "dkc");
+  check(
+    "and has NO fallback to ours — our slug on their host 404s",
+    clinicSlug({ slug: "mr-k-moholkar" }) === null
+  );
 }
 
 section("§4.1 — the retry ladder");
@@ -251,6 +269,21 @@ section("§4.1 — the retry ladder");
 
   const rateLimited = await attempt(row, { fetchImpl: reply(429, {}, { "retry-after": "90" }) });
   check("Retry-After overrides our own schedule", rateLimited.waitMs === 90_000, String(rateLimited.waitMs));
+
+  /* Sahil's ruling: payment.recovered with nothing suspended answers
+     200 with workspaceId and status active, clears the grace clock, and
+     is never an error — "drop it after one 2xx". So a 2xx must mark the
+     row delivered and never be retried, whatever the body says. */
+  const recovered = {
+    ...row,
+    event: "payment.recovered",
+    payload: paymentRecovered({ eventId: "evt_r", occurredAt: "2026-09-11T09:30:00Z", slug: "dkc" }),
+  };
+  const noop = await attempt(recovered, {
+    fetchImpl: reply(200, { workspaceId: "3f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d", status: "active" }),
+  });
+  check("payment.recovered with nothing suspended is delivered, not retried", noop.outcome === "delivered");
+  check("and its workspaceId is kept", noop.response?.workspaceId?.length === 36);
 
   let sentBody = null;
   let sentHeaders = null;
@@ -329,6 +362,20 @@ section("Appendix B — the badge decision");
   );
 
   const patch = decide(stored, { slug: "dkc", workspaceId: WS, verified: true, status: "active" }, { now }).patch;
+
+  /* The badge is only ever written by the nightly batch (Sahil's rule,
+     and Appendix B's). The event path must therefore not touch the two
+     columns the batch compares against — clinwellStatus and
+     clinwellStatusAt — because that timestamp holds ClinWell's clock,
+     and stamping it with ours would make the next batch look stale and
+     be discarded while the integration appeared to work. */
+  const senderSource = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/lib/clinwellSender.js", import.meta.url), "utf8")
+  );
+  const writeBlock = senderSource.slice(senderSource.indexOf("const workspaceId = result.response?.workspaceId"));
+  const writeCall = writeBlock.slice(0, writeBlock.indexOf("}"));
+  check("the event path stores only the workspace id", writeCall.includes("clinwellWorkspaceId"));
+  check("and never the badge's own clock", !writeCall.includes("clinwellStatusAt"));
   check("every mention refreshes the 72-hour window", patch.clinwellBadgeExpiresAt - now === BADGE_TTL_MS);
   check("72 hours is three nightly pushes' grace", BADGE_TTL_MS === 72 * 3600_000);
 
@@ -595,7 +642,7 @@ const batch = (batchId, practices) => ({ batchId, generatedAt: new Date().toISOS
      there. */
   const flat = after?.specialist ?? after ?? {};
   check("the workspace id is not on a public profile", !("clinwellWorkspaceId" in flat));
-  check("nor the registered slug", !("clinwellSlug" in flat));
+  check("nor ClinWell's clinic slug", !("clinwellClinicSlug" in flat));
   check("nor the internal status or badge expiry", !("clinwellStatus" in flat) && !("clinwellBadgeExpiresAt" in flat));
   check("but the badge itself is public", "clinwellLive" in flat);
 }
@@ -658,52 +705,57 @@ async function asAdmin(method, path, body) {
   const target = await asAdmin("GET", `/admin/members/${encodeURIComponent(slug)}`);
   check("the member record carries a ClinWell block", Boolean(target.body?.clinwell), String(target.status));
   check(
-    "it shows the slug we would actually send",
-    typeof target.body?.clinwell?.effectiveSlug === "string",
-    JSON.stringify(target.body?.clinwell)?.slice(0, 120)
+    "it shows the TLS slug Synthiq needs from us",
+    target.body?.clinwell?.tlsSlug === slug,
+    JSON.stringify(target.body?.clinwell)?.slice(0, 140)
   );
+  check("and keeps the clinic slug as a separate field", "clinicSlug" in (target.body?.clinwell ?? {}));
 
   const bad = await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, {
-    clinwellSlug: "DKC Clinic",
+    clinicSlug: "DKC Clinic",
   });
   check("a slug outside the contract's pattern is refused", bad.status === 400, String(bad.status));
   check("and the refusal explains it is not normalised either side", /not normalised/i.test(bad.body?.error ?? ""));
 
   const tooLong = await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, {
-    clinwellSlug: "a".repeat(101),
+    clinicSlug: "a".repeat(101),
   });
   check("over 100 characters is refused", tooLong.status === 400, String(tooLong.status));
 
-  const set = await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, { clinwellSlug: "dkc" });
-  check("a valid slug is accepted", set.status === 200, String(set.status));
-  check("and is echoed back as the effective slug", set.body?.clinwell?.effectiveSlug === "dkc");
+  const set = await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, { clinicSlug: "dkc" });
+  check("a valid clinic slug is accepted", set.status === 200, String(set.status));
+  check("and echoed back", set.body?.clinwell?.clinicSlug === "dkc");
+  check("without altering our own slug", set.body?.clinwell?.tlsSlug === slug);
 
-  /* The bug this caught the first time: the slug shown and the slug in
-     the embed URL were worked out separately and disagreed. */
   const embed = set.body?.clinwell?.embedUrl;
   check(
-    "the embed URL uses the same slug it reports",
-    !embed || embed.includes("/book/dkc/enquiry"),
+    "the embed URL uses ClinWell's clinic slug, not ours",
+    !embed || (embed.includes("/book/dkc/enquiry") && !embed.includes(slug)),
     String(embed)
   );
 
-  /* And the inbound push must find the practice by that registered
-     slug, which is the reading §7 implies. */
-  const byRegistered = await push(batch(`b-registered-${Date.now()}`, [{ slug: "dkc", workspaceId: WS, verified: true }]));
-  check(
-    "a nightly push naming the REGISTERED slug finds the practice",
-    byRegistered.body?.results?.[0]?.outcome !== "unknown_practice",
-    byRegistered.body?.results?.[0]?.outcome
-  );
-
+  /* The nightly push carries OUR slug. This is the reading Sahil
+     confirmed, and the one the lookup now implements. */
   const byOurs = await push(batch(`b-ours-${Date.now()}`, [{ slug, workspaceId: WS, verified: true }]));
   check(
-    "and one naming OUR slug still finds it too",
+    "a nightly push naming our TLS slug finds the practice",
     byOurs.body?.results?.[0]?.outcome !== "unknown_practice",
     byOurs.body?.results?.[0]?.outcome
   );
 
-  await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, { clinwellSlug: "" });
+  /* And one naming the CLINIC slug must not: that string is ClinWell's
+     own and never travels in a badge batch, so treating it as a TLS
+     slug could badge the wrong listing. */
+  const byClinic = await push(batch(`b-clinic-${Date.now()}`, [{ slug: "dkc", workspaceId: WS, verified: true }]));
+  check(
+    "one naming ClinWell's clinic slug is unknown_practice, not a wrong match",
+    byClinic.body?.results?.[0]?.outcome === "unknown_practice",
+    byClinic.body?.results?.[0]?.outcome
+  );
+
+  await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, { clinicSlug: "" });
+  const cleared = await asAdmin("GET", `/admin/members/${encodeURIComponent(slug)}`);
+  check("clearing it leaves no embed URL rather than falling back to ours", cleared.body?.clinwell?.embedUrl === null);
 }
 
 {

@@ -33,6 +33,19 @@ wrong. Listed because a stale note is worse than no note:
   a duplicate from a failure".
 - **The embed is a full ClinWell URL**, not a path on our host:
   `https://app.clinwell.ai/book/{clinicSlug}/enquiry`.
+- **There are two slugs, not one.** The first build assumed a single
+  slug per practice that TLS would sometimes substitute for ClinWell's.
+  Wrong in both directions: see "Identifiers" below. The correction
+  removed a fallback that would have built booking URLs out of our own
+  slug — a guaranteed 404 shown to patients.
+- **The event path was writing the badge's own clock.** Storing
+  `clinwellStatusAt` from an event response put OUR timestamp in the
+  column the nightly batch is compared against for out-of-order
+  delivery. A batch generated at 03:00 would then look older than a
+  status written at 14:00, and every push after that would be discarded
+  as `stale` while the integration appeared to work. The batch now owns
+  those two columns outright; the event path stores only the workspace
+  id, and a test asserts it.
 
 ## Transport
 
@@ -112,9 +125,10 @@ clock — TLS sends no second event (§6.3). That one date decides whether
 a practice loses clinical software a fortnight early or a fortnight
 late.
 
-**Still open with Sahil:** what `payment.recovered` does when nothing is
-suspended (recovery inside the grace window). A 2xx no-op is assumed;
-if it is an error instead, the sender's retry decision changes.
+**`payment.recovered` when nothing is suspended** — settled. It answers
+`200 {workspaceId, status: "active"}`, clears the grace clock and does
+nothing else. The same 200 when no grace period is running at all. Never
+an error: **drop it after one 2xx**, which is what the sender does.
 
 ## Payload rules
 
@@ -135,28 +149,55 @@ on `activated` and is new in v1.0.1. `plan.interval` is `monthly` or
 `listing_id`), alone among the endpoints; only `workspaceId` is
 camelCase. `message` and `listing_id` are top-level, outside `enquirer`.
 
-## Identifiers
+## Identifiers — and the two slugs
+
+There are **two slugs** and neither substitutes for the other. This is
+the single easiest thing to get wrong in the integration, and both
+readings of v1.0.1 as written are wrong; Sahil settled it directly:
+
+| | whose | where it is used |
+|---|---|---|
+| `practice.slug` | **ours** — `/specialists/<slug>` | every event we send, and the nightly badge push coming back. Never substituted. |
+| `clinicSlug` | **ClinWell's** — `dkc` for Dr Moholkar | one place only: the §7 embed URL `app.clinwell.ai/book/<clinicSlug>/enquiry`. Never sent to them; they already have it. |
+
+They are joined **on ClinWell's side by the workspace row**, not by
+being the same string. Nothing on this site gets renamed. Sahil has
+withdrawn the earlier instruction to make TLS use `dkc`, and §7 will be
+corrected in the next revision.
+
+The handshake for a new practice is therefore: we send Synthiq our
+listing slug → they store it against their clinic record → their badge
+push carries our slug back → an admin enters their clinic slug here for
+the embed.
+
+Stored as `specialists.clinwell_clinic_slug`, set by an admin on the
+member record. Null means **no booking embed**, never "fall back to our
+slug" — our slug on their host is a guaranteed 404, and the code has no
+fallback path that could produce one.
 
 - `workspaceId` is a **UUID v4**, issued once on `activated`, never
   changed, echoed in every status push. No `ws_` prefix — the examples
   in our own §5 draft used one and were wrong.
-- The practice slug for §4.3 and §4.4 is **`dkc`**, exactly as
-  registered on ClinWell's side. **No normalising on either side.**
-  Future practices: they give us the slug at pre-registration.
-- **An ambiguity worth resolving with Sahil.** Appendix B calls the
-  pushed slug "the TLS slug", while §7 says `clinicSlug` is the same
-  string as `practice.slug` and for Dr Moholkar it is `dkc` — which is
-  not this site's own slug for that listing. We therefore store a
-  `clinwell_slug` column (null meaning "same as ours") and match an
-  inbound push against either. That is tolerant of both readings, but
-  one reading is correct and it would be better to know which.
-- Embed: `https://app.clinwell.ai/book/dkc/enquiry` in an iframe on
-  `toplocalspecialists.com`. It **404s until ClinWell switches the
-  integration on**; Synthiq confirms when. Gated on
-  `clinwell_live` so no patient ever meets that 404.
-- **Also open:** who flips `clinwell_live` at go-live. §7 says "Synthiq
-  confirms when", which reads as manual. Asked whether anything inbound
-  will say so instead.
+- The embed **404s until ClinWell switches the practice on**. Gated on
+  `clinwell_live` so no patient meets that 404.
+
+### Going live for a practice — settled
+
+Nothing inbound announces it. Sahil messages us, and then the **next
+03:00 batch carries that practice with `verified: true`**. That batch is
+the machine signal, and `clinwell_live` is **only ever written by the
+batch** — there is deliberately no manual flip anywhere in this
+codebase, and none should be added.
+
+One operational consequence worth knowing before the day arrives: the
+embed needs BOTH the badge live and a clinic slug. The badge arrives by
+itself overnight; the clinic slug does not. **Enter the clinic slug on
+the member record in advance**, or the practice goes live with the badge
+showing and no booking widget, and nobody will connect the two.
+
+Enquiry forwarding is a **separate switch** from the badge and stays
+shut until Sahil's message *and* the DPA reference — going live on
+ClinWell does not open it.
 
 ## The boundary that must not erode
 
@@ -210,7 +251,7 @@ the column was added.
 | The dashboard panel, incl. §6.1 sign-in copy | `frontend/src/components/dashboard/ClinWellPanel.tsx` |
 | "Runs on ClinWell" badge + §7 embed | `frontend/src/pages/SpecialistProfile.tsx` |
 | Schema | `backend/drizzle/0007_clinwell_integration.sql`, `0008_clinwell_enquiry_forwarding.sql` |
-| 151 checks | `backend/scripts/clinwell-test.mjs` — `npm run clinwell:test` |
+| 162 checks | `backend/scripts/clinwell-test.mjs` — `npm run clinwell:test` |
 
 ## The backlog that must never be forwarded
 

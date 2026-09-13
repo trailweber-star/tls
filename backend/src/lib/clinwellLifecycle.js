@@ -30,12 +30,35 @@ import { queueEvent } from "./clinwellSender.js";
 import { getPlan } from "./plans.js";
 
 /**
- * The slug ClinWell knows this practice by. Ours unless a different one
- * was registered on their side; §4.1 forbids normalising either value,
- * so this returns the registered string untouched or nothing at all.
+ * The slug that goes in `practice.slug` — which is always OURS, the one
+ * in /specialists/<slug>.
+ *
+ * There are two slugs in this integration and confusing them is easy,
+ * so it is worth being blunt about which is which:
+ *
+ *   practice.slug   ours. Sent in every event, and sent back to us in
+ *                   the nightly badge push. Never substituted.
+ *   clinicSlug      ClinWell's, e.g. "dkc". Used only in the §7 embed
+ *                   URL, and never sent to them — they already know it.
+ *
+ * They are joined on ClinWell's side by the workspace row, not by being
+ * the same string. An earlier version of this returned ClinWell's slug
+ * in preference to ours, which would have made every event describe a
+ * practice under a name their handler does not index by.
  */
 export function practiceSlug(specialist) {
-  return specialist?.clinwellSlug ?? specialist?.slug ?? null;
+  return specialist?.slug ?? null;
+}
+
+/**
+ * ClinWell's own clinic slug, for the embed URL and nothing else.
+ *
+ * No fallback to our slug, deliberately: our slug on their host builds
+ * a booking URL that 404s, and a 404 shown to a patient trying to reach
+ * a doctor is worse than showing no booking widget at all.
+ */
+export function clinicSlug(specialist) {
+  return specialist?.clinwellClinicSlug ?? null;
 }
 
 /** Does this plan entitle the practice to ClinWell at all? */
@@ -100,12 +123,7 @@ export async function onPaymentSucceeded(before, { planId, interval, renewsAt })
         specialist: before,
         event,
         build: ({ eventId, occurredAt }) =>
-          activated({
-            eventId,
-            occurredAt,
-            specialist: { ...before, clinwellSlug: slug },
-            plan: { interval, renewsAt },
-          }),
+          activated({ eventId, occurredAt, specialist: before, plan: { interval, renewsAt } }),
       });
     }
 

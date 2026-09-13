@@ -349,35 +349,41 @@ export async function getMember(req, res) {
 async function clinwellStateFor(member) {
   const entitled = Boolean(entitlementsFor(member)?.features?.clinwell);
 
+  /* Two slugs, kept apart on purpose, because conflating them is the
+     mistake this screen exists to prevent somebody making:
+
+       tlsSlug     ours. What we send in every event and what ClinWell
+                   sends back in the nightly push. Read-only here.
+       clinicSlug  ClinWell's, e.g. "dkc". Used only in the embed URL,
+                   and the one value an admin sets by hand.
+
+     ClinWell joins the two on their side by the workspace row. They
+     are not expected to match and neither is a default for the other. */
   if (!isDbConfigured()) {
-    return { entitled, slug: null, effectiveSlug: member.slug ?? null, demo: true };
+    return { entitled, tlsSlug: member.slug ?? null, clinicSlug: null, demo: true };
   }
 
   const row = member.slug ? await clinwellBadges.forSlug(member.slug).catch(() => null) : null;
-
-  /* Worked out once and reused, so the slug shown and the slug in the
-     embed URL cannot disagree — which they did, the first time this was
-     written with the fallback repeated in two places. */
-  const registered = row?.clinwellSlug ?? member.clinwellSlug ?? null;
-  const effectiveSlug = registered ?? member.slug ?? null;
+  const clinicSlug = row?.clinwellClinicSlug ?? member.clinwellClinicSlug ?? null;
 
   return {
     entitled,
-    /* What is registered on their side, if it differs from ours. */
-    slug: registered,
-    /* What we would actually send, so nobody has to work out the
-       fallback in their head. */
-    effectiveSlug,
+    /* What Synthiq needs from us in order to register the practice. */
+    tlsSlug: member.slug ?? null,
+    /* What they told us their clinic is called. Null until an admin
+       enters it, which means no booking embed — never our slug as a
+       stand-in, because that URL 404s on their host. */
+    clinicSlug,
     workspaceId: row?.clinwellWorkspaceId ?? null,
     live: Boolean(row?.clinwellLive),
     status: row?.clinwellStatus ?? null,
     statusAt: row?.clinwellStatusAt ?? null,
     badgeExpiresAt: row?.clinwellBadgeExpiresAt ?? null,
-    /* The embed 404s until ClinWell switches the practice on, so this
-       is what the public site is allowed to render. */
+    /* What the public site is allowed to render. Needs BOTH: the badge
+       live, and a clinic slug to point at. */
     embedUrl:
-      row?.clinwellLive && effectiveSlug
-        ? `https://app.clinwell.ai/book/${encodeURIComponent(effectiveSlug)}/enquiry`
+      row?.clinwellLive && clinicSlug
+        ? `https://app.clinwell.ai/book/${encodeURIComponent(clinicSlug)}/enquiry`
         : null,
   };
 }
@@ -385,13 +391,18 @@ async function clinwellStateFor(member) {
 /**
  * PATCH /api/admin/members/:id/clinwell
  *
- * Sets the practice slug as registered on ClinWell's side, which is not
- * always ours: Dr Moholkar's clinic is "dkc" there while its profile
- * here has a longer name-based slug. §4.1 forbids normalising on either
- * side, so this stores exactly what is typed and validates rather than
- * tidies — a slug this endpoint "helpfully" lower-cased or hyphenated
- * would be a slug ClinWell does not recognise, and the failure would
- * arrive as a 400 on an event nobody is watching.
+ * Sets ClinWell's OWN slug for this clinic — "dkc" for Dr Moholkar's —
+ * which is used in exactly one place: the §7 booking embed URL.
+ *
+ * It is not a replacement for our slug. What we send ClinWell is always
+ * the listing's own slug, and Synthiq stores that against their clinic
+ * record; this field is the other half of that pairing, and nothing
+ * here renames anything on this site.
+ *
+ * Validates rather than tidies. A slug this endpoint "helpfully"
+ * lower-cased or hyphenated would be one ClinWell does not recognise,
+ * and the failure would be a 404 inside an iframe that nobody is
+ * watching — seen only by a patient trying to book.
  *
  * Deliberately its own endpoint rather than a field on the annotate
  * route: that one writes to the user account, this writes to the
@@ -403,43 +414,47 @@ export async function updateMemberClinwell(req, res) {
   if (!member) return res.status(404).json({ error: "No such member" });
   if (!isDbConfigured()) return res.status(503).json({ error: "Setting a ClinWell slug needs a database." });
 
-  if (req.body?.clinwellSlug === undefined) return res.status(400).json({ error: "Nothing to change." });
+  /* The old field name is still accepted so a half-updated client does
+     not silently post nothing. */
+  const supplied = req.body?.clinicSlug ?? req.body?.clinwellClinicSlug ?? req.body?.clinwellSlug;
+  if (supplied === undefined) return res.status(400).json({ error: "Nothing to change." });
 
-  const raw = String(req.body.clinwellSlug ?? "").trim();
+  const raw = String(supplied ?? "").trim();
 
-  /* Empty clears it, which means "the same as our slug" — the right
-     default for a practice registered from scratch. */
+  /* Empty clears it, which means "no booking embed" — our own enquiry
+     form is then used, which is the right answer for every practice
+     that has one. */
   let slug = null;
   if (raw) {
-    if (raw.length > 100) return res.status(400).json({ error: "A ClinWell slug is at most 100 characters." });
+    if (raw.length > 100) return res.status(400).json({ error: "A ClinWell clinic slug is at most 100 characters." });
     if (!/^[a-z0-9-]+$/.test(raw)) {
       return res.status(400).json({
         error:
-          "A ClinWell slug is lower-case letters, digits and hyphens only. Enter it exactly as Synthiq registered it — it is not normalised on either side.",
+          "A ClinWell clinic slug is lower-case letters, digits and hyphens only. Enter it exactly as Synthiq gave it — it is not normalised on either side.",
       });
     }
     slug = raw;
   }
 
-  const updated = await specialistRepo.setClinwellSlug(member.id, slug).catch((err) => {
-    /* The unique index. Two listings pointing at one ClinWell practice
-       would send one practice's enquiries into another's workspace. */
-    if (String(err?.message ?? "").includes("clinwell_slug")) return { conflict: true };
+  const updated = await specialistRepo.setClinwellClinicSlug(member.id, slug).catch((err) => {
+    /* The unique index. Two listings pointing at one ClinWell clinic
+       would put two practices' patients through one booking widget. */
+    if (String(err?.message ?? "").includes("clinwell_clinic_slug")) return { conflict: true };
     throw err;
   });
   if (updated?.conflict) {
-    return res.status(409).json({ error: "Another listing is already registered with that ClinWell slug." });
+    return res.status(409).json({ error: "Another listing already uses that ClinWell clinic slug." });
   }
 
   await audit(req, {
-    action: "member.clinwell-slug",
+    action: "member.clinwell-clinic-slug",
     subjectType: "member",
     subjectId: member.id,
     subjectLabel: member.fullName,
-    detail: { from: member.clinwellSlug ?? null, to: slug },
+    detail: { from: member.clinwellClinicSlug ?? null, to: slug },
   });
 
-  res.json({ ok: true, clinwell: await clinwellStateFor({ ...member, clinwellSlug: slug }) });
+  res.json({ ok: true, clinwell: await clinwellStateFor({ ...member, clinwellClinicSlug: slug }) });
 }
 
 /* ------------------------------------------------------------- audit */

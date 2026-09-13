@@ -92,7 +92,8 @@ async function freeOccurredAt(repos, specialistId, at) {
 export async function queueEvent({ specialist, event, build, occurredAt = new Date() }) {
   if (!isDbConfigured()) return { skipped: "demo-mode" };
 
-  const slug = specialist?.clinwellSlug ?? specialist?.slug ?? null;
+  /* Our slug, always — see practiceSlug() in clinwellLifecycle.js. */
+  const slug = specialist?.slug ?? null;
   if (!slug) return { skipped: "no-practice-slug" };
 
   const repos = await import("../db/repos.js");
@@ -253,15 +254,25 @@ export async function drainOutbox({ fetchImpl = fetch, limit = 25 } = {}) {
 
       /* activated (and a 409 saying it was already done) is where the
          workspace id comes from. It is the only ClinWell value this
-         application stores, so it is written the moment it arrives. */
+         application stores, so it is written the moment it arrives.
+
+         ONLY the workspace id. An event response also carries a
+         `status`, and writing it here would be wrong in a way that
+         takes weeks to notice: clinwellStatusAt is the timestamp the
+         nightly batch is compared against to detect out-of-order
+         delivery (Appendix B), and it holds ClinWell's clock. Stamping
+         it with OUR clock at event-delivery time would mean a batch
+         generated at 03:00 could look older than a status we wrote at
+         14:00 — and every badge push after that would be discarded as
+         stale while the integration appeared to be working.
+
+         Sahil's rule is the simple version of the same thing: the badge
+         is only ever written by the batch. So the batch owns those two
+         columns outright, and this path does not touch them. */
       const workspaceId = result.response?.workspaceId;
       if (workspaceId) {
         await specialistRepo
-          .update(row.specialistId, {
-            clinwellWorkspaceId: String(workspaceId),
-            clinwellStatus: result.response?.status ?? null,
-            clinwellStatusAt: new Date(),
-          })
+          .update(row.specialistId, { clinwellWorkspaceId: String(workspaceId) })
           .catch((err) => console.error("[clinwell] could not store workspaceId:", err?.message ?? err));
       }
       continue;

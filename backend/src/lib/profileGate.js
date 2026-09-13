@@ -61,7 +61,7 @@ const NEVER_PUBLIC = [
      ClinWell" badge — and the rest are plumbing:
 
        clinwellWorkspaceId  an identifier for a clinical records system
-       clinwellSlug         how the practice is registered on their side
+       clinwellClinicSlug   ClinWell's own slug for the clinic
        clinwellStatus       pending_invite | active | suspended
        clinwellStatusAt     when they last told us
        clinwellBadgeExpiresAt  when we stop believing them
@@ -71,7 +71,7 @@ const NEVER_PUBLIC = [
      billing fact about a practice that patients have no business
      reading. The badge is the only thing the public needs. */
   "clinwellWorkspaceId",
-  "clinwellSlug",
+  "clinwellClinicSlug",
   "clinwellStatus",
   "clinwellStatusAt",
   "clinwellBadgeExpiresAt",
@@ -147,17 +147,20 @@ export function gateProfile(profile, source, viewer = "public") {
 
   /* §7: the one ClinWell URL that may be embedded on this site, and
      only while the badge is live.
-     
-     Derived here rather than in the frontend because the slug it needs
-     (clinwellSlug, which is not always our own) is stripped from public
-     responses two lines above — and because the gate belongs next to
-     the badge it depends on. The URL 404s until ClinWell switches the
-     practice on, so a stale badge must not leave a patient looking at
-     a broken enquiry form. */
-  const clinwellSlug = source?.clinwellSlug ?? source?.slug ?? null;
+
+     It uses ClinWell's OWN clinic slug and has NO fallback to ours.
+     That absence is the point: the two slugs are different strings
+     joined on ClinWell's side by the workspace row, so our slug on
+     their host is a guaranteed 404. An earlier version of this line
+     fell back to `source.slug`, which would have put a dead booking
+     form in front of every patient of every practice whose clinic slug
+     had not been filled in.
+
+     Null here means "no booking widget, use our own enquiry form",
+     which is the right answer for every practice that has one. */
   out.clinwellEmbedUrl =
-    source?.clinwellLive && clinwellSlug
-      ? `https://app.clinwell.ai/book/${encodeURIComponent(clinwellSlug)}/enquiry`
+    source?.clinwellLive && source?.clinwellClinicSlug
+      ? `https://app.clinwell.ai/book/${encodeURIComponent(source.clinwellClinicSlug)}/enquiry`
       : null;
 
   if (privileged) {

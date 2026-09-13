@@ -323,17 +323,19 @@ export const specialists = {
   },
 
   /**
-   * The practice slug as registered on ClinWell's side. One column, on
+   * ClinWell's own clinic slug, for the §7 embed URL. One column, on
    * purpose: it is the only ClinWell value a person ever sets by hand,
-   * and it is part of a contract with a third party. Null means "the
-   * same as our slug".
+   * and it is part of a contract with a third party.
+   *
+   * Null means "no booking embed" — never "use our slug instead". Our
+   * slug on their host builds a URL that 404s.
    */
-  async setClinwellSlug(id, slug) {
+  async setClinwellClinicSlug(id, slug) {
     const [row] = await db()
       .update(t.specialists)
-      .set({ clinwellSlug: slug })
+      .set({ clinwellClinicSlug: slug })
       .where(eq(t.specialists.id, id))
-      .returning({ id: t.specialists.id, clinwellSlug: t.specialists.clinwellSlug });
+      .returning({ id: t.specialists.id, clinwellClinicSlug: t.specialists.clinwellClinicSlug });
     return row ?? null;
   },
 
@@ -1273,40 +1275,36 @@ export const clinwellBadges = {
   /**
    * Just the columns the decision needs — no profile assembly.
    *
-   * Matches the REGISTERED ClinWell slug first, then our own. The
-   * contract is ambiguous here and it matters: Appendix B calls the
-   * pushed slug "the TLS slug", while §7 says clinicSlug is the same
-   * string as practice.slug and for Dr Moholkar that is "dkc" — which
-   * is not this site's slug for that listing. Matching either way is
-   * tolerant of both readings, so whichever Synthiq meant, the nightly
-   * push finds the practice instead of reporting unknown_practice for
-   * the only practice in the system.
+   * Matches OUR slug, because that is what the nightly push carries.
+   * Sahil confirmed `practice.slug` is the TLS slug in both directions,
+   * and that ClinWell's own clinic slug ("dkc") never travels in the
+   * badge batch — the two are joined on their side by the workspace
+   * row.
    *
-   * Ordered so a registered match wins if both somehow exist.
+   * An earlier version also matched the clinic slug. That was tolerance
+   * for a contract ambiguity which has since been resolved, and it
+   * carried a real hazard: if one clinic's ClinWell slug ever equalled
+   * another practice's TLS slug, a push would have applied a badge to
+   * the wrong listing.
    */
   async forSlug(slug) {
-    const columns = {
-      id: t.specialists.id,
-      slug: t.specialists.slug,
-      fullName: t.specialists.fullName,
-      clinwellSlug: t.specialists.clinwellSlug,
-      clinwellWorkspaceId: t.specialists.clinwellWorkspaceId,
-      clinwellLive: t.specialists.clinwellLive,
-      clinwellLiveAt: t.specialists.clinwellLiveAt,
-      clinwellStatus: t.specialists.clinwellStatus,
-      clinwellStatusAt: t.specialists.clinwellStatusAt,
-      clinwellBadgeExpiresAt: t.specialists.clinwellBadgeExpiresAt,
-    };
-
-    const [registered] = await db()
-      .select(columns)
+    const [row] = await db()
+      .select({
+        id: t.specialists.id,
+        slug: t.specialists.slug,
+        fullName: t.specialists.fullName,
+        clinwellClinicSlug: t.specialists.clinwellClinicSlug,
+        clinwellWorkspaceId: t.specialists.clinwellWorkspaceId,
+        clinwellLive: t.specialists.clinwellLive,
+        clinwellLiveAt: t.specialists.clinwellLiveAt,
+        clinwellStatus: t.specialists.clinwellStatus,
+        clinwellStatusAt: t.specialists.clinwellStatusAt,
+        clinwellBadgeExpiresAt: t.specialists.clinwellBadgeExpiresAt,
+      })
       .from(t.specialists)
-      .where(eq(t.specialists.clinwellSlug, slug))
+      .where(eq(t.specialists.slug, slug))
       .limit(1);
-    if (registered) return registered;
-
-    const [own] = await db().select(columns).from(t.specialists).where(eq(t.specialists.slug, slug)).limit(1);
-    return own ?? null;
+    return row ?? null;
   },
 
   /**

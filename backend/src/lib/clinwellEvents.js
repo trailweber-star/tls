@@ -170,7 +170,10 @@ function base(eventId, event, occurredAt, slug) {
  * enough that somebody would otherwise add them "for completeness".
  */
 export function activated({ eventId, occurredAt, specialist, plan }) {
-  const envelope = base(eventId, EVENTS.ACTIVATED, occurredAt, specialist?.clinwellSlug ?? specialist?.slug);
+  /* Always OUR slug. ClinWell's own clinic slug ("dkc") belongs to the
+     embed URL alone and must never be sent here — they join the two on
+     their side by the workspace row. */
+  const envelope = base(eventId, EVENTS.ACTIVATED, occurredAt, specialist?.slug);
   const problems = [];
 
   const practice = {
