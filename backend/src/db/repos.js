@@ -1421,3 +1421,76 @@ export const clinwellForwarding = {
     return row ?? null;
   },
 };
+
+/* ============================================ organisation applications */
+
+/**
+ * Hospitals, clinics, pharmacies and care homes asking to be quoted.
+ *
+ * Deliberately not the leads repo. A patient enquiry and a hospital
+ * asking for a price share nothing but arriving through a form:
+ * different fields, different lifecycle, different reader, different
+ * retention. Sharing one table would mean a nullable column per
+ * difference and a status enum meaning two things at once.
+ */
+export const organisationApplications = {
+  async create(input) {
+    const [row] = await db()
+      .insert(t.organisationApplications)
+      .values({ ...input, id: input.id ?? newId("org") })
+      .returning();
+    return row;
+  },
+
+  async findById(id) {
+    const [row] = await db()
+      .select()
+      .from(t.organisationApplications)
+      .where(eq(t.organisationApplications.id, id))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /**
+   * The queue. Unanswered first and oldest first within that, because
+   * that is the order a person should work through them in — an
+   * organisation that applied on Monday should not wait behind one that
+   * applied this morning.
+   */
+  async all({ status = null, limit = 200 } = {}) {
+    const base = db().select().from(t.organisationApplications);
+    const rows = status
+      ? await base
+          .where(eq(t.organisationApplications.status, status))
+          .orderBy(asc(t.organisationApplications.createdAt))
+          .limit(limit)
+      : await base.orderBy(asc(t.organisationApplications.createdAt)).limit(limit);
+    return rows;
+  },
+
+  /** Everything this organisation has ever sent, by contact address. */
+  async byEmail(email) {
+    return db()
+      .select()
+      .from(t.organisationApplications)
+      .where(eq(t.organisationApplications.contactEmail, String(email ?? "").toLowerCase()))
+      .orderBy(desc(t.organisationApplications.createdAt));
+  },
+
+  async update(id, patch) {
+    const [row] = await db()
+      .update(t.organisationApplications)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(t.organisationApplications.id, id))
+      .returning();
+    return row ?? null;
+  },
+
+  /** Counts per status, for the queue's tabs. */
+  async counts() {
+    const rows = await db()
+      .select({ status: t.organisationApplications.status })
+      .from(t.organisationApplications);
+    return rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
+  },
+};

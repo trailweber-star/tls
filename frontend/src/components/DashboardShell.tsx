@@ -27,7 +27,7 @@ import {
   UserRound,
   Users,
   X,
-} from "lucide-react";
+  Building2,} from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { initials } from "./dashboard/ui";
 import { NotificationBell } from "./dashboard/NotificationBell";
@@ -67,6 +67,10 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/claims", label: "Claims", icon: UserCheck },
   { to: "/admin/messages", label: "Messages", icon: Mail },
   { to: "/admin/articles", label: "Articles", icon: BookOpen },
+  /* Organisations sit next to Members rather than under Billing: the
+     work is reading an application and agreeing a figure, which is
+     account work, not accounting. */
+  { to: "/admin/organisations", label: "Organisations", icon: Building2 },
   { to: "/admin/audit", label: "Activity log", icon: ScrollText },
 ];
 

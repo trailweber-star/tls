@@ -34,6 +34,14 @@ import express from "express";
 import { deleteImage, uploadConfig, uploadImage, uploadVideo } from "../controllers/uploads.controller.js";
 import { MAX_UPLOAD_BYTES, MAX_VIDEO_BYTES } from "../lib/storage.js";
 import { createLead } from "../controllers/leads.controller.js";
+import {
+  applyAsOrganisation,
+  createOrganisationPaymentLink,
+  getOrganisationApplication,
+  listOrganisationApplications,
+  quoteOrganisation,
+  setOrganisationStatus,
+} from "../controllers/organisations.controller.js";
 import { demoCredentials, login, me, register } from "../controllers/auth.controller.js";
 import {
   getOverview,
@@ -199,6 +207,12 @@ router.post("/facilities/:slug/reviews", createFacilityReview);
 
 router.post("/leads", createLead);
 
+/* ------------------------------------------------------- organisations
+   Hospitals, clinics, pharmacies and care homes are priced on how many
+   clinicians they want covered, so there is no figure to publish and no
+   self-serve checkout. They apply, we quote, they pay a link. */
+router.post("/organisations/apply", applyAsOrganisation);
+
 /* ------------------------------------------------------------ contact
    Public. Stored, raised in the admin bell and emailed to support with
    reply-to set to the sender. */
@@ -308,6 +322,17 @@ router.post("/admin/reviews/:id/moderate", requireAuth, requireRole("admin"), mo
 /* The ClinWell outbox. A dead event means a practice's clinical access
    is out of step with what they are paying for, and nothing on this
    side of the integration looks wrong — so it needs a screen. */
+router.get("/admin/organisations", requireAuth, requireRole("admin"), listOrganisationApplications);
+router.get("/admin/organisations/:id", requireAuth, requireRole("admin"), getOrganisationApplication);
+router.post("/admin/organisations/:id/quote", requireAuth, requireRole("admin"), quoteOrganisation);
+router.post("/admin/organisations/:id/status", requireAuth, requireRole("admin"), setOrganisationStatus);
+router.post(
+  "/admin/organisations/:id/payment-link",
+  requireAuth,
+  requireRole("admin"),
+  createOrganisationPaymentLink
+);
+
 router.get("/admin/clinwell", requireAuth, requireRole("admin"), getClinwellOutbox);
 router.post("/admin/clinwell/events/:id/requeue", requireAuth, requireRole("admin"), requeueClinwellEvent);
 

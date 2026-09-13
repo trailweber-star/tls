@@ -15,6 +15,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { money, plansApi } from "../lib/plansApi";
+import { OrganisationEnquiry } from "../components/OrganisationEnquiry";
 import type { BillingInterval, Plan, PlanCatalogue, PlanId } from "../lib/plansApi";
 import { useAuth } from "../lib/auth";
 import { HEADER_HEIGHT } from "../components/Header";
@@ -41,6 +42,14 @@ const PLAN_ICON: Record<PlanId, React.ComponentType<{ className?: string; stroke
 export default function Pricing() {
   const { account, specialist } = useAuth();
   const [interval, setInterval] = useState<BillingInterval>("yearly");
+  /* Individuals see three prices. Organisations see none, because a
+     hospital covering sixty consultants and a two-partner clinic are
+     not the same subscription — so the whole price half of this page is
+     replaced by the application form rather than annotated with "from".
+     Showing a figure an organisation cannot actually buy at is worse
+     than showing no figure. */
+  const [audience, setAudience] = useState<"individual" | "organisation">("individual");
+  const isOrg = audience === "organisation";
   const [data, setData] = useState<PlanCatalogue | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,26 +106,45 @@ export default function Pricing() {
           <div className="max-w-[620px]">
             <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-teal-300">Pricing &amp; Plans</p>
             <h1 className="mt-3 font-display text-[38px] font-bold leading-[1.08] sm:text-[52px]">
-              Choose the Right Tier
-              <br />
-              to Grow Your <span className="text-teal-300">Practice</span>
+              {isOrg ? (
+                <>
+                  Pricing Built Around
+                  <br />
+                  Your <span className="text-teal-300">Clinicians</span>
+                </>
+              ) : (
+                <>
+                  Choose the Right Tier
+                  <br />
+                  to Grow Your <span className="text-teal-300">Practice</span>
+                </>
+              )}
             </h1>
             <p className="mt-4 max-w-[46ch] text-[14.5px] leading-relaxed text-white/70">
-              Start with a free directory presence or unlock top search priority, verified badge, and full ClinWell.ai
-              EMR Suite access.
+              {isOrg
+                ? "Hospitals, clinics, pharmacies and care homes are priced on how many clinicians they cover, so we quote rather than publish. Tell us what you need and we will come back with a figure."
+                : "Start with a free directory presence or unlock top search priority, verified badge, and full ClinWell.ai EMR Suite access."}
             </p>
 
-            <div className="mt-7 flex flex-wrap items-center gap-4">
-              <IntervalToggle value={interval} onChange={setInterval} />
-              {bestSaving && bestSaving.pct > 0 && (
-                <p className="text-[12.5px] font-semibold text-teal-300">
-                  <span className="underline decoration-teal-400/50 decoration-2 underline-offset-4">
-                    Save {bestSaving.pct}%
-                  </span>{" "}
-                  <span className="text-white/55">
-                    — up to {money(bestSaving.minor)} a year against monthly billing
-                  </span>
-                </p>
+            <div className="mt-7 space-y-4">
+              <AudienceToggle value={audience} onChange={setAudience} />
+              {/* The interval toggle and the saving line are both
+                  statements about published prices, so neither belongs
+                  on the organisation side. */}
+              {!isOrg && (
+                <div className="flex flex-wrap items-center gap-4">
+                  <IntervalToggle value={interval} onChange={setInterval} />
+                  {bestSaving && bestSaving.pct > 0 && (
+                    <p className="text-[12.5px] font-semibold text-teal-300">
+                      <span className="underline decoration-teal-400/50 decoration-2 underline-offset-4">
+                        Save {bestSaving.pct}%
+                      </span>{" "}
+                      <span className="text-white/55">
+                        — up to {money(bestSaving.minor)} a year against monthly billing
+                      </span>
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -130,7 +158,17 @@ export default function Pricing() {
         </div>
       </section>
 
+      {/* ================================== organisation application */}
+      {isOrg && (
+        <section className="bg-paper">
+          <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
+            <OrganisationEnquiry />
+          </div>
+        </section>
+      )}
+
       {/* ============================================== plan cards */}
+      {!isOrg && (
       <section className="bg-paper">
         <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
           {error && (
@@ -160,8 +198,12 @@ export default function Pricing() {
           )}
         </div>
       </section>
+      )}
 
-      {/* ========================================= comparison table */}
+      {/* ========================================= comparison table
+          Shown to organisations too: the features are identical, and
+          "what do we actually get" is the next question after "how
+          much". Its price row is the one thing that changes. */}
       {data && (
         <section className="bg-paper-muted">
           <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
@@ -183,8 +225,11 @@ export default function Pricing() {
         </section>
       )}
 
-      {/* ================================================ ROI + FAQ */}
-      {data && (
+      {/* ================================================ ROI + FAQ
+          Both are written around the published prices — the ROI maths
+          divides by them and the FAQ quotes them — so neither is true
+          for an organisation on a negotiated figure. */}
+      {data && !isOrg && (
         <section className="bg-paper">
           <div className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[1.05fr_1fr]">
             <RoiPanel />
@@ -196,6 +241,50 @@ export default function Pricing() {
       {/* ============================================ closing band */}
       <ClosingBand />
     </main>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Who is asking
+ *
+ * Sized and placed to be found, because the cost of missing it is
+ * asymmetric: an individual who lands on the organisation side sees a
+ * form and immediately switches back, while an organisation that never
+ * finds this toggle reads three prices that do not apply to them and
+ * leaves believing the site is too small for a hospital.
+ * ------------------------------------------------------------------ */
+function AudienceToggle({
+  value,
+  onChange,
+}: {
+  value: "individual" | "organisation";
+  onChange: (next: "individual" | "organisation") => void;
+}) {
+  const options = [
+    { key: "individual" as const, label: "I'm an individual clinician", short: "Individual" },
+    { key: "organisation" as const, label: "We're an organisation", short: "Organisation" },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Who is asking"
+      className="inline-flex flex-wrap gap-1 rounded-full bg-white/10 p-1 ring-1 ring-white/15"
+    >
+      {options.map((option) => (
+        <button
+          key={option.key}
+          role="tab"
+          aria-selected={value === option.key}
+          onClick={() => onChange(option.key)}
+          className={`rounded-full px-4 py-2 text-[12.5px] font-bold transition ${
+            value === option.key ? "bg-white text-navy-950" : "text-white/70 hover:text-white"
+          }`}
+        >
+          <span className="hidden sm:inline">{option.label}</span>
+          <span className="sm:hidden">{option.short}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 

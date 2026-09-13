@@ -34,6 +34,7 @@ import AdminMembers from "./pages/admin/AdminMembers";
 import AdminAudit from "./pages/admin/AdminAudit";
 import AdminMessages from "./pages/admin/AdminMessages";
 import AdminArticles from "./pages/admin/AdminArticles";
+import AdminOrganisations from "./pages/admin/AdminOrganisations";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { BarChart3, CalendarDays, MessageSquare, Settings } from "lucide-react";
 
@@ -206,6 +207,7 @@ export default function App() {
               page showing the same table. */}
           <Route path="claims" element={<Navigate to="/admin/verifications?tab=claims" replace />} />
           <Route path="articles" element={<AdminArticles />} />
+          <Route path="organisations" element={<AdminOrganisations />} />
           <Route path="specialists" element={<AdminSpecialists />} />
           <Route path="reviews" element={<ReviewModeration />} />
           <Route path="audit" element={<AdminAudit />} />

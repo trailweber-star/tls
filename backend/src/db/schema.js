@@ -168,9 +168,28 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   // has to look, because a lost cancellation means a practice keeps
   // clinical software it stopped paying for.
   "clinwell_event_failed",
+  // An organisation has asked to be quoted. Nobody else is going to
+  // notice a row in a table.
+  "org_application",
 ]);
 
 export const claimStatusEnum = pgEnum("claim_status", ["pending", "approved", "rejected"]);
+
+/* Where an organisation's application has got to. Kept separate from
+   lead_status: a hospital asking to be quoted and a patient asking for
+   an appointment share nothing but the word "enquiry". */
+export const orgApplicationStatusEnum = pgEnum("org_application_status", [
+  "new",
+  "reviewing",
+  // A figure has been agreed and sent; the quoted* columns are filled.
+  "quoted",
+  "won",
+  // Went elsewhere or went quiet. Kept, not deleted — a hospital that
+  // said no in March is the warmest lead in September.
+  "lost",
+  // We declined them, which is a different fact from them declining us.
+  "declined",
+]);
 
 export const contactTopicEnum = pgEnum("contact_topic", ["patient", "practitioner", "partnership", "other"]);
 export const contactStatusEnum = pgEnum("contact_status", ["new", "read", "answered", "closed"]);
@@ -1433,6 +1452,82 @@ export const clinwellBatches = pgTable(
     practiceCount: integer("practice_count"),
   },
   (table) => [index("clinwell_batches_received_idx").on(table.receivedAt)]
+);
+
+/* ------------------------------------------------------------------ *
+ * Organisation applications
+ *
+ * An individual clinician sees a price and pays it. A hospital cannot:
+ * its price depends on how many doctors it wants covered, so there is
+ * no figure to publish and a conversation has to happen before any
+ * money does. This table is the front door for that conversation.
+ *
+ * The quoted figure lives here rather than only on an order, because
+ * the agreement exists before the order does and usually before the
+ * account does. When it is accepted it becomes an order through the
+ * ordinary checkout, so activation, VAT, renewal reminders and the
+ * ClinWell events all behave exactly as they do for a self-serve
+ * subscription. One payment path, not two.
+ * ------------------------------------------------------------------ */
+export const organisationApplications = pgTable(
+  "organisation_applications",
+  {
+    id: id(),
+
+    organisationName: text("organisation_name").notNull(),
+    /* The same vocabulary the facilities table uses, so a won
+       application becomes a facility without a translation step. */
+    organisationType: facilityTypeEnum("organisation_type").notNull(),
+    websiteUrl: text("website_url"),
+
+    contactName: text("contact_name").notNull(),
+    contactRole: text("contact_role"),
+    contactEmail: text("contact_email").notNull(),
+    contactPhone: text("contact_phone"),
+
+    /* The pricing input, and deliberately nullable: an organisation
+       that has not counted yet should still be able to ask. Refusing
+       the form over a number they have to go and look up is how an
+       enquiry is lost. */
+    doctorCount: integer("doctor_count"),
+    siteCount: integer("site_count"),
+    /* What they typed, not our taxonomy. Forcing a match would drop
+       any specialty we have not catalogued. */
+    specialties: text("specialties").array().notNull().default([]),
+    needsClinwell: boolean("needs_clinwell").notNull().default(false),
+    notes: text("notes"),
+
+    /* ------------------------------------------------------ the quote */
+    quotedNetMinor: integer("quoted_net_minor"),
+    quotedCurrency: text("quoted_currency").notNull().default("GBP"),
+    quotedInterval: planIntervalEnum("quoted_interval"),
+    /* An organisation still gets a tier; only the price is negotiated,
+       so entitlements stay unambiguous once they pay. */
+    quotedPlan: planIdEnum("quoted_plan"),
+    quotedAt: timestamp("quoted_at", { withTimezone: true }),
+    quotedByUserId: text("quoted_by_user_id").references(() => users.id),
+    /* What was agreed, in words: "12 doctors, 2 sites, ClinWell for 4".
+       The figure on its own is not a record of the agreement. */
+    quoteNote: text("quote_note"),
+    orderId: text("order_id"),
+
+    status: orgApplicationStatusEnum("status").notNull().default("new"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedByUserId: text("decided_by_user_id").references(() => users.id),
+
+    /* Same reasoning as users.signupIp: an application from an
+       unexpected country is the most useful single signal that it is
+       not what it says it is. */
+    sourceIp: text("source_ip"),
+    sourceCountry: text("source_country"),
+
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("org_applications_status_idx").on(table.status, table.createdAt),
+    index("org_applications_email_idx").on(table.contactEmail),
+  ]
 );
 
 export const clinwellEventsRelations = relations(clinwellEvents, ({ one }) => ({

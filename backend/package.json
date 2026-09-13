@@ -21,7 +21,8 @@
     "articles:demo": "node scripts/seed-articles.mjs",
     "push:test": "node scripts/push-test.mjs",
     "articles:test": "node scripts/articles-workflow-test.mjs",
-    "clinwell:test": "node scripts/clinwell-test.mjs"
+    "clinwell:test": "node scripts/clinwell-test.mjs",
+    "organisations:test": "node scripts/organisations-test.mjs"
   },
   "keywords": [],
   "author": "",

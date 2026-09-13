@@ -35,6 +35,8 @@ export const NOTIFICATION_TYPES = {
   RENEWAL_DUE: "renewal_due",
   // An outbound ClinWell event exhausted its retry schedule.
   CLINWELL_EVENT_FAILED: "clinwell_event_failed",
+  // A hospital, clinic, pharmacy or care home has asked to be quoted.
+  ORG_APPLICATION: "org_application",
 };
 
 /** Which notifications count as work an admin still has to do. */
@@ -53,6 +55,9 @@ const ACTIONABLE = new Set([
   // practice keeps clinical software it stopped paying for, and only a
   // person can decide whether to re-send it or fix the data first.
   NOTIFICATION_TYPES.CLINWELL_EVENT_FAILED,
+  // An organisation waiting on a quote is work, and the most expensive
+  // kind to leave sitting: they are asking to give us money.
+  NOTIFICATION_TYPES.ORG_APPLICATION,
 ]);
 
 function normalise(row) {

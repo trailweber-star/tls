@@ -196,18 +196,62 @@ export function addInterval(from, interval) {
  *   { status: "unconfigured" } — no provider; the order is recorded and
  *                                waiting, and the UI says so honestly
  */
-export async function createCheckout({ specialist, planId, interval, successUrl, cancelUrl }) {
+/**
+ * A quote for a figure somebody agreed, rather than one from the
+ * catalogue.
+ *
+ * Organisations are priced on how many doctors they want covered, so
+ * there is no published price to look up — but everything downstream of
+ * the order (VAT, activation, renewal reminders, the ClinWell events)
+ * only ever reads the order's own numbers. So an agreed figure becomes
+ * an ordinary order and the rest of the system never learns the
+ * difference. That is the whole reason this is six lines and not a
+ * second payment path.
+ *
+ * VAT is computed here rather than accepted from the caller: a quote
+ * entered as a total would otherwise be charged as a net figure plus
+ * 20%, and nobody would notice until a hospital queried its invoice.
+ */
+export function quoteAmount({ netMinor, planId, interval = "yearly" }) {
+  const net = Math.round(Number(netMinor));
+  if (!Number.isFinite(net) || net <= 0) {
+    throw new Error("A quoted amount must be a positive number of pence.");
+  }
+  const vatMinor = Math.round(net * VAT_RATE);
+  return {
+    planId,
+    planName: getPlan(planId).name,
+    interval,
+    currency: CURRENCY,
+    netMinor: net,
+    vatMinor,
+    vatRate: VAT_RATE,
+    totalMinor: net + vatMinor,
+    periodEnd: addInterval(new Date(), interval).toISOString(),
+    /* Marks the order as negotiated, so an invoice or a report can tell
+       a quoted subscription from a self-serve one without inferring it
+       from the amount. */
+    quoted: true,
+  };
+}
+
+/**
+ * @param pricing  optional, from quoteAmount(): an agreed figure to
+ *                 charge instead of the catalogue price. Everything
+ *                 else about the order is identical.
+ */
+export async function createCheckout({ specialist, planId, interval, successUrl, cancelUrl, pricing = null }) {
   if (!isPaidPlan(planId)) {
     return { status: "free", order: null };
   }
 
-  const pricing = quote(planId, interval);
+  const agreed = pricing ?? quote(planId, interval);
   const order = await orderStore.create({
     id: `ord_${crypto.randomBytes(9).toString("hex")}`,
     specialistId: specialist.id,
     specialistName: specialist.fullName,
     email: specialist.contactEmail ?? null,
-    ...pricing,
+    ...agreed,
     status: "awaiting_payment",
     provider: provider?.name ?? "none",
     providerRef: null,
