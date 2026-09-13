@@ -147,7 +147,19 @@ export interface ClinWellStatus {
   reason?: string;
   requiredPlan?: PlanId;
   requiredPlanName?: string;
+  /* There is no SSO under contract v1.0.1 (§1, §6.1) — a practitioner
+     gets in through ClinWell's invitation email. This stays because the
+     provider seam can supply one, but the panel must not rely on it. */
   ssoUrl?: string | null;
+  /* pending_invite | active | suspended (§4.2). Null until a workspace
+     exists. There is no per-module status on ClinWell's side. */
+  status?: "pending_invite" | "active" | "suspended" | null;
+  updatedAt?: string | null;
+  /* The address the invitation went to, which becomes their login
+     identity — a different Google account is not recognised, so the
+     dashboard has to say which one to use (§6.1). */
+  invitationEmail?: string | null;
+  signInUrl?: string | null;
   modules?: { key: string; name: string; description: string; status: string; value: string | null }[];
 }
 

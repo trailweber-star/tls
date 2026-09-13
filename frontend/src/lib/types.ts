@@ -171,6 +171,14 @@ export interface SpecialistWithRelations {
       reviewReplies: boolean;
     };
   };
+
+  /* ClinWell (contract v1.0.1). Only these two cross to the public API:
+     the badge flag and, when it is live, the one embeddable URL (§7).
+     The workspace id, the registered slug and the internal status are
+     stripped server-side by profileGate. */
+  clinwellLive?: boolean;
+  clinwellEmbedUrl?: string | null;
+
   /** Owner/admin only: what is populated but withheld from patients. */
   planAdmin?: {
     selectedPlan: string;

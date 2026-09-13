@@ -1,6 +1,7 @@
 import { isDbConfigured } from "../config/db.js";
 import {
   adminAudit,
+  clinwellBadges,
   specialists as specialistRepo,
   users as userRepo,
 } from "../db/repos.js";
@@ -331,7 +332,114 @@ export async function getMember(req, res) {
   if (!member) return res.status(404).json({ error: "No such member" });
 
   const history = isDbConfigured() ? await adminAudit.recent({ subjectId: member.id, limit: 50 }) : [];
-  res.json({ member, history });
+  res.json({ member, history, clinwell: await clinwellStateFor(member) });
+}
+
+/* ------------------------------------------------------- ClinWell */
+
+/**
+ * The integration's state for one member, for the admin record.
+ *
+ * Read-only except the slug, and the slug is the only one an admin can
+ * meaningfully set: the workspace id is issued by ClinWell, the badge
+ * is pushed nightly, and the status is theirs to report. Showing them
+ * together is the point — "no workspace id, badge off, slug unset" is
+ * a diagnosis, whereas each of those facts alone is a puzzle.
+ */
+async function clinwellStateFor(member) {
+  const entitled = Boolean(entitlementsFor(member)?.features?.clinwell);
+
+  if (!isDbConfigured()) {
+    return { entitled, slug: null, effectiveSlug: member.slug ?? null, demo: true };
+  }
+
+  const row = member.slug ? await clinwellBadges.forSlug(member.slug).catch(() => null) : null;
+
+  /* Worked out once and reused, so the slug shown and the slug in the
+     embed URL cannot disagree — which they did, the first time this was
+     written with the fallback repeated in two places. */
+  const registered = row?.clinwellSlug ?? member.clinwellSlug ?? null;
+  const effectiveSlug = registered ?? member.slug ?? null;
+
+  return {
+    entitled,
+    /* What is registered on their side, if it differs from ours. */
+    slug: registered,
+    /* What we would actually send, so nobody has to work out the
+       fallback in their head. */
+    effectiveSlug,
+    workspaceId: row?.clinwellWorkspaceId ?? null,
+    live: Boolean(row?.clinwellLive),
+    status: row?.clinwellStatus ?? null,
+    statusAt: row?.clinwellStatusAt ?? null,
+    badgeExpiresAt: row?.clinwellBadgeExpiresAt ?? null,
+    /* The embed 404s until ClinWell switches the practice on, so this
+       is what the public site is allowed to render. */
+    embedUrl:
+      row?.clinwellLive && effectiveSlug
+        ? `https://app.clinwell.ai/book/${encodeURIComponent(effectiveSlug)}/enquiry`
+        : null,
+  };
+}
+
+/**
+ * PATCH /api/admin/members/:id/clinwell
+ *
+ * Sets the practice slug as registered on ClinWell's side, which is not
+ * always ours: Dr Moholkar's clinic is "dkc" there while its profile
+ * here has a longer name-based slug. §4.1 forbids normalising on either
+ * side, so this stores exactly what is typed and validates rather than
+ * tidies — a slug this endpoint "helpfully" lower-cased or hyphenated
+ * would be a slug ClinWell does not recognise, and the failure would
+ * arrive as a 400 on an event nobody is watching.
+ *
+ * Deliberately its own endpoint rather than a field on the annotate
+ * route: that one writes to the user account, this writes to the
+ * listing, and one of them is part of a contract with a third party.
+ */
+export async function updateMemberClinwell(req, res) {
+  const all = await loadMembers();
+  const member = all.find((m) => m.id === req.params.id || m.slug === req.params.id);
+  if (!member) return res.status(404).json({ error: "No such member" });
+  if (!isDbConfigured()) return res.status(503).json({ error: "Setting a ClinWell slug needs a database." });
+
+  if (req.body?.clinwellSlug === undefined) return res.status(400).json({ error: "Nothing to change." });
+
+  const raw = String(req.body.clinwellSlug ?? "").trim();
+
+  /* Empty clears it, which means "the same as our slug" — the right
+     default for a practice registered from scratch. */
+  let slug = null;
+  if (raw) {
+    if (raw.length > 100) return res.status(400).json({ error: "A ClinWell slug is at most 100 characters." });
+    if (!/^[a-z0-9-]+$/.test(raw)) {
+      return res.status(400).json({
+        error:
+          "A ClinWell slug is lower-case letters, digits and hyphens only. Enter it exactly as Synthiq registered it — it is not normalised on either side.",
+      });
+    }
+    slug = raw;
+  }
+
+  const updated = await specialistRepo.setClinwellSlug(member.id, slug).catch((err) => {
+    /* The unique index. Two listings pointing at one ClinWell practice
+       would send one practice's enquiries into another's workspace. */
+    if (String(err?.message ?? "").includes("clinwell_slug")) return { conflict: true };
+    throw err;
+  });
+  if (updated?.conflict) {
+    return res.status(409).json({ error: "Another listing is already registered with that ClinWell slug." });
+  }
+
+  await audit(req, {
+    action: "member.clinwell-slug",
+    subjectType: "member",
+    subjectId: member.id,
+    subjectLabel: member.fullName,
+    detail: { from: member.clinwellSlug ?? null, to: slug },
+  });
+
+  res.json({ ok: true, clinwell: await clinwellStateFor({ ...member, clinwellSlug: slug }) });
 }
 
 /* ------------------------------------------------------------- audit */

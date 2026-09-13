@@ -15,6 +15,7 @@
  *
  *   node scripts/clinwell-test.mjs
  */
+import "dotenv/config";
 import { spawn } from "node:child_process";
 import { createHmac } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -264,6 +265,7 @@ section("§4.1 — the retry ladder");
   check("signs with tls-signature outbound", /^t=\d+,v1=[0-9a-f]{64}$/.test(sentHeaders["tls-signature"]));
   check("echoes the event id as X-Request-Id", sentHeaders["x-request-id"] === "evt_1");
 
+  for (const key of ["CLINWELL_BASE_URL", "CLINWELL_WEBHOOK_SECRET"]) delete process.env[key];
   Object.assign(process.env, previous);
 }
 
@@ -372,6 +374,18 @@ section("§4.3 — enquiry forwarding, and the gate in front of it");
   process.env.CLINWELL_WEBHOOK_SECRET = "whsec_x";
   check("both, plus configuration, opens the gate", forwardingGate().allowed === true);
 
+  /* Restored by deletion, not by Object.assign: assigning the old
+     object back puts every previous key in place but leaves the ones
+     this block ADDED, and those then leak into the server spawned
+     below — which started with forwarding switched on the first time
+     this was written. */
+  const added = [
+    "CLINWELL_ENQUIRY_FORWARDING",
+    "CLINWELL_PROCESSOR_TERMS_REF",
+    "CLINWELL_BASE_URL",
+    "CLINWELL_WEBHOOK_SECRET",
+  ];
+
   const lead = {
     id: "lead_abc",
     patientName: "Jane Doe",
@@ -397,7 +411,9 @@ section("§4.3 — enquiry forwarding, and the gate in front of it");
   }
   check("refuses a lead with no email and no phone", unreachable);
 
+  for (const key of added) delete process.env[key];
   Object.assign(process.env, previous);
+  check("the gate is shut again afterwards", forwardingGate().allowed !== true, forwardingGate().reason);
 }
 
 /* ============================================================ HTTP */
@@ -582,6 +598,220 @@ const batch = (batchId, practices) => ({ batchId, generatedAt: new Date().toISOS
   check("nor the registered slug", !("clinwellSlug" in flat));
   check("nor the internal status or badge expiry", !("clinwellStatus" in flat) && !("clinwellBadgeExpiresAt" in flat));
   check("but the badge itself is public", "clinwellLive" in flat);
+}
+
+/* The sections below read and write through the repos directly, because
+   the permission column on an enquiry and the occurredAt of a requeued
+   event have no API to observe them through — and they are the two
+   things most worth asserting. */
+const { connectDB, isDbConfigured: dbConfigured } = await import("../src/config/db.js");
+if (dbConfigured()) await connectDB();
+
+section("the admin surface");
+
+const adminToken = await fetch(`${BASE}/auth/login`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ email: "admin@tls.test", password: "demo1234" }),
+})
+  .then((r) => r.json())
+  .then((d) => d?.token ?? null)
+  .catch(() => null);
+
+check("signed in as an administrator", Boolean(adminToken));
+
+async function asAdmin(method, path, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      "content-type": "application/json",
+      ...(adminToken ? { authorization: `Bearer ${adminToken}` } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  return { status: res.status, body: await res.json().catch(() => null) };
+}
+
+{
+  const anon = await fetch(`${BASE}/admin/clinwell`);
+  check("the outbox screen needs a session", anon.status === 401, String(anon.status));
+
+  const outbox = await asAdmin("GET", "/admin/clinwell");
+  check("an admin can read the outbox", outbox.status === 200, String(outbox.status));
+  check("it reports whether ClinWell is configured at all", "eventsConfigured" in (outbox.body?.state ?? {}));
+  check(
+    "it says WHY forwarding is off rather than just that it is",
+    typeof outbox.body?.state?.enquiryForwarding === "string" && outbox.body.state.enquiryForwarding !== "on",
+    String(outbox.body?.state?.enquiryForwarding)
+  );
+
+  /* An admin screen that showed a signing secret would be a signing
+     secret in a browser history and a screenshot. */
+  const serialised = JSON.stringify(outbox.body ?? {});
+  check("no secret value appears in the response", !/whsec|inbound_current|inbound_previous/.test(serialised));
+  check("only presence flags", serialised.includes("inboundSecretPresent"));
+}
+
+{
+  /* The slug an admin must be able to set, because without it nothing
+     can be registered as "dkc" and no staging test is possible. */
+  const target = await asAdmin("GET", `/admin/members/${encodeURIComponent(slug)}`);
+  check("the member record carries a ClinWell block", Boolean(target.body?.clinwell), String(target.status));
+  check(
+    "it shows the slug we would actually send",
+    typeof target.body?.clinwell?.effectiveSlug === "string",
+    JSON.stringify(target.body?.clinwell)?.slice(0, 120)
+  );
+
+  const bad = await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, {
+    clinwellSlug: "DKC Clinic",
+  });
+  check("a slug outside the contract's pattern is refused", bad.status === 400, String(bad.status));
+  check("and the refusal explains it is not normalised either side", /not normalised/i.test(bad.body?.error ?? ""));
+
+  const tooLong = await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, {
+    clinwellSlug: "a".repeat(101),
+  });
+  check("over 100 characters is refused", tooLong.status === 400, String(tooLong.status));
+
+  const set = await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, { clinwellSlug: "dkc" });
+  check("a valid slug is accepted", set.status === 200, String(set.status));
+  check("and is echoed back as the effective slug", set.body?.clinwell?.effectiveSlug === "dkc");
+
+  /* The bug this caught the first time: the slug shown and the slug in
+     the embed URL were worked out separately and disagreed. */
+  const embed = set.body?.clinwell?.embedUrl;
+  check(
+    "the embed URL uses the same slug it reports",
+    !embed || embed.includes("/book/dkc/enquiry"),
+    String(embed)
+  );
+
+  /* And the inbound push must find the practice by that registered
+     slug, which is the reading §7 implies. */
+  const byRegistered = await push(batch(`b-registered-${Date.now()}`, [{ slug: "dkc", workspaceId: WS, verified: true }]));
+  check(
+    "a nightly push naming the REGISTERED slug finds the practice",
+    byRegistered.body?.results?.[0]?.outcome !== "unknown_practice",
+    byRegistered.body?.results?.[0]?.outcome
+  );
+
+  const byOurs = await push(batch(`b-ours-${Date.now()}`, [{ slug, workspaceId: WS, verified: true }]));
+  check(
+    "and one naming OUR slug still finds it too",
+    byOurs.body?.results?.[0]?.outcome !== "unknown_practice",
+    byOurs.body?.results?.[0]?.outcome
+  );
+
+  await asAdmin("PATCH", `/admin/members/${encodeURIComponent(slug)}/clinwell`, { clinwellSlug: "" });
+}
+
+{
+  /* Requeue. The rule worth testing is that occurredAt survives: an
+     event resent with today's stamp could override a newer state. */
+  const { clinwellEvents } = await import("../src/db/repos.js");
+  const { paymentFailed: buildFailed } = await import("../src/lib/clinwellEvents.js");
+  const { specialists } = await import("../src/db/repos.js");
+
+  const practice = await specialists.findBySlug(slug);
+  /* Unique per run: the (specialist_id, occurred_at) index is exactly
+     the guarantee this integration relies on, so a fixed timestamp
+     makes the second run of this test collide with the first — which
+     is the index working, not a bug. */
+  const occurredAt = new Date(Math.floor(Date.now() / 1000) * 1000 - 30 * 24 * 3600_000);
+  const eventId = `evt_requeue_${Date.now()}`;
+
+  const row = await clinwellEvents.create({
+    eventId,
+    event: "payment.failed",
+    specialistId: practice.id,
+    practiceSlug: slug,
+    occurredAt,
+    payload: buildFailed({ eventId, occurredAt, slug, dueAt: occurredAt }),
+  });
+  await clinwellEvents.markDead(row.id, { status: 400, error: "bad payload", attempts: 1 });
+
+  const listed = await asAdmin("GET", "/admin/clinwell");
+  check(
+    "a dead event appears on the admin screen",
+    (listed.body?.dead ?? []).some((d) => d.eventId === eventId)
+  );
+  const shown = (listed.body?.dead ?? []).find((d) => d.eventId === eventId);
+  check("with the error that killed it", shown?.lastError === "bad payload", String(shown?.lastError));
+  check("and the payload, which for a 400 IS the diagnosis", Boolean(shown?.payload));
+
+  const missing = await asAdmin("POST", "/admin/clinwell/events/nope/requeue");
+  check("requeueing an unknown event is 404", missing.status === 404, String(missing.status));
+
+  /* Not configured on this test server, so requeue must refuse rather
+     than revive an event nothing will send. */
+  const refused = await asAdmin("POST", `/admin/clinwell/events/${row.id}/requeue`);
+  check(
+    "requeue refuses while ClinWell is unconfigured, instead of silently reviving",
+    refused.status === 409,
+    String(refused.status)
+  );
+
+  await clinwellEvents.revive(row.id);
+  const revived = await clinwellEvents.findById(row.id);
+  check("reviving clears the death", revived?.deadAt === null);
+  check("resets the attempt count", revived?.attempts === 0);
+  check(
+    "and KEEPS the original occurredAt, so a resend cannot look newer than it is",
+    new Date(revived.occurredAt).getTime() === occurredAt.getTime(),
+    String(revived?.occurredAt)
+  );
+}
+
+section("the backlog that must never be forwarded");
+{
+  /* The safeguard: on the day forwarding is switched on, every enquiry
+     already in the table was submitted under a privacy notice that said
+     nothing about ClinWell. None of them may be selected, ever. */
+  const { leads, clinwellForwarding, specialists } = await import("../src/db/repos.js");
+  const practice = await specialists.findBySlug(slug);
+
+  const old = await leads.create({
+    patientName: "Predates the gate",
+    email: "old@example.com",
+    specialistId: practice.id,
+    source: "website_enquiry",
+    clinwellForwardableAt: null,
+  });
+  const fresh = await leads.create({
+    patientName: "Created after the gate opened",
+    email: "new@example.com",
+    specialistId: practice.id,
+    source: "website_enquiry",
+    clinwellForwardableAt: new Date(),
+  });
+
+  const due = await clinwellForwarding.due({ limit: 200 });
+  const ids = due.map((d) => d.id);
+  check("an enquiry stamped forwardable is queued", ids.includes(fresh.id));
+  check("one that predates the gate is NEVER queued", !ids.includes(old.id));
+  check(
+    "every queued enquiry carries the permission",
+    due.every((d) => d.clinwellForwardableAt !== null)
+  );
+
+  /* Cleared for forwarding, but three days old — a queue that stalled
+     over a weekend must not deliver the weekend's enquiries in one
+     burst on Monday, to a practice that has already answered them. */
+  const ancient = await leads.create({
+    patientName: "Forwardable but stale",
+    email: "stale@example.com",
+    specialistId: practice.id,
+    source: "website_enquiry",
+    clinwellForwardableAt: new Date(Date.now() - 3 * 24 * 3600_000),
+    createdAt: new Date(Date.now() - 3 * 24 * 3600_000),
+  });
+  const capped = await clinwellForwarding.due({ limit: 200 });
+  check(
+    "and an enquiry older than the 48-hour cap is left alone",
+    !capped.map((c) => c.id).includes(ancient.id)
+  );
+  check("while a fresh one is still queued", capped.map((c) => c.id).includes(fresh.id));
 }
 
 stop();

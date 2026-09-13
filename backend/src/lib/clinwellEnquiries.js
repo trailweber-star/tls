@@ -181,3 +181,89 @@ export async function forwardEnquiry({ lead, workspaceId }, { fetchImpl = fetch 
     error: payload?.error ?? `http ${res.status}`,
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * The sweep
+ *
+ * Forwarding is retried rather than attempted once, because their
+ * documented 500 ("processing in progress, retry shortly") happens in
+ * normal operation and an enquiry is a patient trying to reach a
+ * clinician. Losing one to a transient collision is not acceptable.
+ *
+ * Attempts are capped: four tries over roughly ten minutes, then the
+ * row is left visibly unsent with the error on it. That is deliberately
+ * shorter than the subscription-event ladder — a subscription event is
+ * still correct twelve hours later, whereas an enquiry a practice has
+ * already answered by email is not worth delivering to a second inbox
+ * half a day after the patient wrote in.
+ * ------------------------------------------------------------------ */
+
+/** Roughly 30 s, 2 min, 5 min, 10 min. */
+export const FORWARD_BACKOFF_MS = [30_000, 120_000, 300_000, 600_000];
+
+/**
+ * Forward one saved lead. Returns the outcome; never throws.
+ *
+ * Pass the specialist so the workspace id comes from the practice the
+ * enquiry was about, never from a default — sending a patient's details
+ * into the wrong practice's workspace is the worst thing this code
+ * could do.
+ */
+export async function forwardSavedLead(lead, specialist, { fetchImpl = fetch } = {}) {
+  const workspaceId = specialist?.clinwellWorkspaceId ?? null;
+  if (!workspaceId) return { forwarded: false, reason: "no-workspace" };
+  return forwardEnquiry({ lead, workspaceId }, { fetchImpl });
+}
+
+/**
+ * Drain the forwarding queue. Exported so it can be run on demand and
+ * in tests.
+ */
+export async function sweepEnquiryForwarding({ fetchImpl = fetch, limit = 25 } = {}) {
+  const gate = forwardingGate();
+  if (!gate.allowed) return { forwarded: 0, retrying: 0, abandoned: 0, skipped: gate.reason };
+
+  const { isDbConfigured } = await import("../config/db.js");
+  if (!isDbConfigured()) return { forwarded: 0, retrying: 0, abandoned: 0, skipped: "demo-mode" };
+
+  const { clinwellForwarding: repo, specialists: specialistRepo } = await import("../db/repos.js");
+  const due = await repo.due({ limit });
+
+  let forwarded = 0;
+  let retrying = 0;
+  let abandoned = 0;
+
+  for (const lead of due) {
+    const specialist = lead.specialistId ? await specialistRepo.findById(lead.specialistId).catch(() => null) : null;
+    const result = await forwardSavedLead(lead, specialist, { fetchImpl });
+    const attempts = (lead.clinwellAttempts ?? 0) + 1;
+
+    if (result.forwarded) {
+      await repo.markForwarded(lead.id, { leadId: result.leadId, attempts });
+      forwarded += 1;
+      continue;
+    }
+
+    /* Nothing about waiting fixes a missing workspace or a rejected
+       payload, and nothing about waiting fixes a shut gate either. */
+    const hopeless = !result.retryable || attempts > FORWARD_BACKOFF_MS.length;
+    if (hopeless) {
+      await repo.giveUp(lead.id, { attempts, error: result.error ?? result.reason });
+      abandoned += 1;
+      continue;
+    }
+
+    const waitMs = result.waitMs ?? FORWARD_BACKOFF_MS[attempts - 1];
+    await repo.scheduleRetry(lead.id, {
+      attempts,
+      nextAttemptAt: new Date(Date.now() + waitMs),
+      error: result.error ?? result.reason,
+    });
+    retrying += 1;
+  }
+
+  if (forwarded || abandoned) {
+    console.log(`[clinwell] enquiries: ${forwarded} forwarded, ${retrying} retrying, ${abandoned} abandoned`);
+  }
+  return { forwarded, retrying, abandoned };
+}

@@ -10,6 +10,7 @@ import { entitlementsFor } from "./plans.js";
 import { buildEnquiryEmail, sendMail } from "./mailer.js";
 import { NOTIFICATION_TYPES, notify, notifyAdmins } from "./notifications.js";
 import { expireStaleBadges } from "../controllers/clinwellStatus.controller.js";
+import { sweepEnquiryForwarding } from "./clinwellEnquiries.js";
 
 /* ------------------------------------------------------------------ *
  * Overdue-approval sweep
@@ -356,6 +357,9 @@ async function runSweep() {
      so a ClinWell outage cannot leave "Runs on ClinWell" on the public
      site indefinitely. */
   await expireStaleBadges().catch((e) => console.error("[reminders] badge expiry failed:", e?.message ?? e));
+  /* Enquiries ClinWell was busy for when they arrived. A no-op while
+     the forwarding gate is shut, which is its state today. */
+  await sweepEnquiryForwarding().catch((e) => console.error("[reminders] enquiry forwarding failed:", e?.message ?? e));
 }
 
 export function stopReminderSweep() {

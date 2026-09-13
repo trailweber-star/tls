@@ -3,6 +3,7 @@ import { isDbConfigured } from "../config/db.js";
 import { leads as leadRepo, specialists as specialistRepo } from "../db/repos.js";
 import { specialists as mockSpecialists } from "../data/mock.js";
 import { buildEnquiryEmail, sendMail } from "../lib/mailer.js";
+import { FORWARD_BACKOFF_MS, forwardSavedLead, forwardingGate } from "../lib/clinwellEnquiries.js";
 import { demoLeads } from "../data/leads-store.js";
 import { entitlementsFor } from "../lib/plans.js";
 
@@ -76,7 +77,19 @@ export async function createLead(req, res) {
     const specialist = await findSpecialist(parsed.data.specialistId);
     const held = await isOverCap(specialist);
 
-    await leadRepo.create({
+    /* Whether this enquiry may EVER be forwarded to ClinWell is decided
+       here, at creation, and written onto the row (§4.3).
+
+       Not at forwarding time, and not by comparing dates later. On the
+       day forwarding is switched on there will be a backlog of
+       enquiries in this table submitted under a privacy notice that
+       said nothing about ClinWell, and a date comparison got wrong once
+       would disclose all of them retrospectively in a single sweep. A
+       permission stamped at creation cannot do that: rows that predate
+       the gate have no value in the column and are unselectable. */
+    const forwardable = forwardingGate().allowed ? new Date() : null;
+
+    const lead = await leadRepo.create({
       patientName: parsed.data.patientName,
       email: parsed.data.email || null,
       phone: parsed.data.phone || null,
@@ -86,6 +99,7 @@ export async function createLead(req, res) {
       facilityId: parsed.data.facilityId || null,
       source: "website_enquiry",
       held,
+      clinwellForwardableAt: forwardable,
     });
 
     // The lead is saved first: it is the record of record. Email is a
@@ -95,6 +109,29 @@ export async function createLead(req, res) {
     const delivery = held
       ? { sent: false, reason: "held-monthly-cap" }
       : await notifySpecialist(specialist, parsed.data);
+
+    /* One attempt now so the practice sees it in ClinWell while the
+       patient is still on the page; the sweep owns every retry after
+       that. Deliberately not awaited — the patient's confirmation must
+       not wait on a third party, and the lead is already saved. */
+    if (forwardable && specialist?.clinwellWorkspaceId) {
+      forwardSavedLead(lead, specialist)
+        .then(async (result) => {
+          const { clinwellForwarding } = await import("../db/repos.js");
+          if (result.forwarded) {
+            await clinwellForwarding.markForwarded(lead.id, { leadId: result.leadId, attempts: 1 });
+          } else if (result.retryable) {
+            await clinwellForwarding.scheduleRetry(lead.id, {
+              attempts: 1,
+              nextAttemptAt: new Date(Date.now() + (result.waitMs ?? FORWARD_BACKOFF_MS[0])),
+              error: result.error ?? result.reason,
+            });
+          } else {
+            await clinwellForwarding.giveUp(lead.id, { attempts: 1, error: result.error ?? result.reason });
+          }
+        })
+        .catch((err) => console.error("[clinwell] first enquiry attempt failed:", err?.message ?? err));
+    }
 
     res.json({ ok: true, delivery });
   } catch (err) {

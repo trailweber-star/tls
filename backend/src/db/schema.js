@@ -944,12 +944,35 @@ export const leads = pgTable(
     respondedAt: timestamp("responded_at", { withTimezone: true }),
 
     source: text("source").notNull().default("website_enquiry"),
+
+    /* ------------------------------- forwarding to ClinWell (§4.3)
+       forwardableAt is the important one, and it is a permission rather
+       than a timestamp. It is set at creation ONLY when the forwarding
+       gate was already open; null means this enquiry must never be
+       forwarded, and that is every row that exists today.
+
+       The reason is the day the gate opens. There will be a backlog of
+       enquiries in this table submitted by patients under a privacy
+       notice that said nothing about ClinWell, and one sweep would
+       disclose all of them retrospectively in a few seconds. A column
+       set at creation cannot do that, whereas a date comparison could
+       be got wrong once. */
+    clinwellForwardableAt: timestamp("clinwell_forwardable_at", { withTimezone: true }),
+    clinwellForwardedAt: timestamp("clinwell_forwarded_at", { withTimezone: true }),
+    clinwellAttempts: integer("clinwell_attempts").notNull().default(0),
+    clinwellNextAttemptAt: timestamp("clinwell_next_attempt_at", { withTimezone: true }),
+    clinwellLastError: text("clinwell_last_error"),
+    // ClinWell's own id for the lead, so a duplicate is recognised
+    // rather than re-posted.
+    clinwellLeadId: text("clinwell_lead_id"),
+
     createdAt: createdAt(),
   },
   (t) => [
     index("leads_specialist_idx").on(t.specialistId, t.createdAt),
     index("leads_status_idx").on(t.status),
     index("leads_held_idx").on(t.held),
+    index("leads_clinwell_pending_idx").on(t.clinwellNextAttemptAt),
   ]
 );
 

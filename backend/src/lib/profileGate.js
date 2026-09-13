@@ -145,6 +145,21 @@ export function gateProfile(profile, source, viewer = "public") {
 
   out.plan = planBlock(ent, source);
 
+  /* §7: the one ClinWell URL that may be embedded on this site, and
+     only while the badge is live.
+     
+     Derived here rather than in the frontend because the slug it needs
+     (clinwellSlug, which is not always our own) is stripped from public
+     responses two lines above — and because the gate belongs next to
+     the badge it depends on. The URL 404s until ClinWell switches the
+     practice on, so a stale badge must not leave a patient looking at
+     a broken enquiry form. */
+  const clinwellSlug = source?.clinwellSlug ?? source?.slug ?? null;
+  out.clinwellEmbedUrl =
+    source?.clinwellLive && clinwellSlug
+      ? `https://app.clinwell.ai/book/${encodeURIComponent(clinwellSlug)}/enquiry`
+      : null;
+
   if (privileged) {
     out.planAdmin = {
       selectedPlan: ent.selectedPlan,

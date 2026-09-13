@@ -204,8 +204,31 @@ the column was added.
 | Enquiry forwarding + the gate | `backend/src/lib/clinwellEnquiries.js` |
 | Real client for §4.2 reads | `backend/src/lib/clinwellProvider.js` |
 | §6.2 renewal reminders | `sweepRenewalReminders()` in `backend/src/lib/reminders.js` |
-| Schema | `backend/drizzle/0007_clinwell_integration.sql` |
-| 120 checks | `backend/scripts/clinwell-test.mjs` — `npm run clinwell:test` |
+| Enquiry forwarding, wired into lead creation | `backend/src/controllers/leads.controller.js` |
+| Admin: the ClinWell slug + integration state | `updateMemberClinwell` in `backend/src/controllers/members.controller.js` |
+| Admin: events that died, and requeue | `backend/src/controllers/clinwellAdmin.controller.js` |
+| The dashboard panel, incl. §6.1 sign-in copy | `frontend/src/components/dashboard/ClinWellPanel.tsx` |
+| "Runs on ClinWell" badge + §7 embed | `frontend/src/pages/SpecialistProfile.tsx` |
+| Schema | `backend/drizzle/0007_clinwell_integration.sql`, `0008_clinwell_enquiry_forwarding.sql` |
+| 151 checks | `backend/scripts/clinwell-test.mjs` — `npm run clinwell:test` |
+
+## The backlog that must never be forwarded
+
+On the day enquiry forwarding is switched on, this table will already
+hold enquiries submitted by patients under a privacy notice that said
+nothing about ClinWell. Forwarding them would be a retrospective
+disclosure nobody consented to, and it would happen in one sweep, in
+seconds.
+
+So permission is stamped on the enquiry **at creation**, in
+`leads.clinwellForwardableAt`, and only when the gate is already open.
+Null means never — which is every row that exists today. The sweep
+cannot select them however it is called, and a second guard caps age at
+48 hours so a queue that stalls over a weekend does not deliver the
+weekend's enquiries in one burst on Monday. Both are asserted by tests.
+
+A date comparison at send time would have done the same job until
+somebody got the comparison wrong once.
 
 ## Not built, deliberately
 
@@ -217,9 +240,16 @@ the column was added.
 - **§4.4 availability** — specified and read-only, but nothing in the
   product surfaces indicative slots yet, and booking happens on
   ClinWell's own pages (§7).
-- **§6.1 onboarding copy** — the two things the contract requires us to
-  tell a practitioner (sign in with the same email the invitation went
-  to; ClinWell may require two-step verification) are not yet anywhere
-  in the dashboard. This is a writing job, not a building one, and it
-  matters: a practitioner who signs in with a different Google account
-  is not recognised.
+
+## Found while building
+
+Three bugs that were not in the brief:
+
+- `clinwellWorkspaceId` had been on public profile responses since the
+  column was added, because the serialiser spreads the row. Now stripped
+  with the four new internal columns.
+- The badge lookup selected `specialists.slug` only, so this file's own
+  claim to "match an inbound push against either slug" was not actually
+  implemented. It now matches the registered slug first, then ours.
+- The admin ClinWell block worked out the slug and the embed URL
+  separately and they disagreed once the registered slug was set.

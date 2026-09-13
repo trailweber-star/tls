@@ -218,6 +218,26 @@ export default function SpecialistProfile() {
                 listings, the person has not been near the site, and a
                 patient deserves to know that before they read it as an
                 endorsement. */}
+            {/* Runs on ClinWell.
+
+                The wording is fixed by the contract (§5: "Badge copy on
+                TLS should say 'Runs on ClinWell', nothing stronger") and
+                it sits deliberately apart from TLS Verified. The two say
+                different things: one is a software subscription, the
+                other is a person having checked a licence against a
+                regulator's register. Anything implying ClinWell vouches
+                for the clinician would be a claim neither company has
+                made.
+
+                Shown only when the nightly push last confirmed it
+                within 72 hours — see the badge expiry in
+                clinwellStatus.controller.js. */}
+            {specialist.clinwellLive && (
+              <span className="glass-chip inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-white/70">
+                <Stethoscope className="h-3.5 w-3.5" strokeWidth={2.5} />
+                Runs on ClinWell
+              </span>
+            )}
             {showsVerifiedBadge ? (
               <span className="glass-chip inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-teal-300">
                 <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -690,7 +710,21 @@ export default function SpecialistProfile() {
         title={`Enquire about ${specialist.fullName}`}
         description={`Your message goes straight to ${specialist.fullName}'s team. No account needed.`}
       >
-        <EnquiryForm specialistId={specialist.id} recipientName={specialist.fullName} />
+        {/* §7: where the practice runs on ClinWell and the integration
+            has been switched on, the enquiry goes to their own booking
+            widget in an iframe rather than to our form — that way the
+            enquiry lands in the system the practice actually works in.
+
+            Gated on clinwellLive, and that gate is load-bearing: the
+            URL returns 404 until ClinWell switches the practice on, and
+            a patient trying to reach a doctor is the last person who
+            should meet a 404. Falls back to our own form for everybody
+            else, which is still every practice today. */}
+        {specialist.clinwellLive && specialist.clinwellEmbedUrl ? (
+          <ClinWellEnquiryEmbed url={specialist.clinwellEmbedUrl} name={specialist.fullName} />
+        ) : (
+          <EnquiryForm specialistId={specialist.id} recipientName={specialist.fullName} />
+        )}
       </Dialog>
     </main>
   );
@@ -1344,5 +1378,37 @@ function PrimaryAction({
       Send enquiry
       <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
     </button>
+  );
+}
+
+/* -------------------------------------------------------------------- *
+ * The ClinWell enquiry widget (§7)
+ *
+ * Only this one page of ClinWell may be framed — "Nothing else on
+ * ClinWell may be framed; the paid booking flow opens in its own tab" —
+ * so this component embeds exactly that URL and nothing navigable.
+ *
+ * The sandbox is the part worth reading. An iframe on a healthcare page
+ * that collects a patient's name, email and symptoms should not also be
+ * able to navigate the parent window or reach our storage, so it gets
+ * only what a form needs: scripts, forms, its own origin, and popups
+ * that cannot inherit this page's privileges. allow-top-navigation is
+ * deliberately absent.
+ * -------------------------------------------------------------------- */
+function ClinWellEnquiryEmbed({ url, name }: { url: string; name: string }) {
+  return (
+    <div className="space-y-3">
+      <iframe
+        src={url}
+        title={`Enquire about ${name} on ClinWell`}
+        className="h-[32rem] w-full rounded-xl border border-ink/10 bg-white"
+        sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        loading="lazy"
+      />
+      <p className="text-[11.5px] leading-relaxed text-ink-faint">
+        This enquiry form is provided by ClinWell, the clinical system {name}'s practice uses, so your message reaches
+        their team directly. Booking and payment, if you go on to book, happen on ClinWell's own pages.
+      </p>
+    </div>
   );
 }

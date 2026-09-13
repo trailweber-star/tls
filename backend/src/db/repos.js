@@ -322,6 +322,21 @@ export const specialists = {
     return full ?? null;
   },
 
+  /**
+   * The practice slug as registered on ClinWell's side. One column, on
+   * purpose: it is the only ClinWell value a person ever sets by hand,
+   * and it is part of a contract with a third party. Null means "the
+   * same as our slug".
+   */
+  async setClinwellSlug(id, slug) {
+    const [row] = await db()
+      .update(t.specialists)
+      .set({ clinwellSlug: slug })
+      .where(eq(t.specialists.id, id))
+      .returning({ id: t.specialists.id, clinwellSlug: t.specialists.clinwellSlug });
+    return row ?? null;
+  },
+
   async findById(id) {
     const rows = await db().select().from(t.specialists).where(eq(t.specialists.id, id)).limit(1);
     const [full] = await assembleSpecialists(rows);
@@ -1151,6 +1166,29 @@ export const clinwellEvents = {
     return row ?? null;
   },
 
+  /**
+   * Clear a death so the sweep picks it up again.
+   *
+   * occurredAt is deliberately untouched: ClinWell orders by it (§6.6),
+   * so restamping a requeued event with "now" would let a cancellation
+   * from last week override a resumption from Wednesday. Attempts reset
+   * to zero because the practice is getting a fresh schedule, not a
+   * sixth attempt at the old one.
+   */
+  async revive(id) {
+    const [row] = await db()
+      .update(t.clinwellEvents)
+      .set({ deadAt: null, attempts: 0, nextAttemptAt: new Date(), lastError: null, lastStatus: null })
+      .where(eq(t.clinwellEvents.id, id))
+      .returning();
+    return row ?? null;
+  },
+
+  async findById(id) {
+    const [row] = await db().select().from(t.clinwellEvents).where(eq(t.clinwellEvents.id, id)).limit(1);
+    return row ?? null;
+  },
+
   /** For the admin screen: what has died and needs a person. */
   async dead(limit = 50) {
     return db()
@@ -1232,24 +1270,43 @@ export const clinwellBatches = {
  * clinician's credibility on a healthcare directory.
  */
 export const clinwellBadges = {
-  /** Just the columns the decision needs — no profile assembly. */
+  /**
+   * Just the columns the decision needs — no profile assembly.
+   *
+   * Matches the REGISTERED ClinWell slug first, then our own. The
+   * contract is ambiguous here and it matters: Appendix B calls the
+   * pushed slug "the TLS slug", while §7 says clinicSlug is the same
+   * string as practice.slug and for Dr Moholkar that is "dkc" — which
+   * is not this site's slug for that listing. Matching either way is
+   * tolerant of both readings, so whichever Synthiq meant, the nightly
+   * push finds the practice instead of reporting unknown_practice for
+   * the only practice in the system.
+   *
+   * Ordered so a registered match wins if both somehow exist.
+   */
   async forSlug(slug) {
-    const [row] = await db()
-      .select({
-        id: t.specialists.id,
-        slug: t.specialists.slug,
-        fullName: t.specialists.fullName,
-        clinwellWorkspaceId: t.specialists.clinwellWorkspaceId,
-        clinwellLive: t.specialists.clinwellLive,
-        clinwellLiveAt: t.specialists.clinwellLiveAt,
-        clinwellStatus: t.specialists.clinwellStatus,
-        clinwellStatusAt: t.specialists.clinwellStatusAt,
-        clinwellBadgeExpiresAt: t.specialists.clinwellBadgeExpiresAt,
-      })
+    const columns = {
+      id: t.specialists.id,
+      slug: t.specialists.slug,
+      fullName: t.specialists.fullName,
+      clinwellSlug: t.specialists.clinwellSlug,
+      clinwellWorkspaceId: t.specialists.clinwellWorkspaceId,
+      clinwellLive: t.specialists.clinwellLive,
+      clinwellLiveAt: t.specialists.clinwellLiveAt,
+      clinwellStatus: t.specialists.clinwellStatus,
+      clinwellStatusAt: t.specialists.clinwellStatusAt,
+      clinwellBadgeExpiresAt: t.specialists.clinwellBadgeExpiresAt,
+    };
+
+    const [registered] = await db()
+      .select(columns)
       .from(t.specialists)
-      .where(eq(t.specialists.slug, slug))
+      .where(eq(t.specialists.clinwellSlug, slug))
       .limit(1);
-    return row ?? null;
+    if (registered) return registered;
+
+    const [own] = await db().select(columns).from(t.specialists).where(eq(t.specialists.slug, slug)).limit(1);
+    return own ?? null;
   },
 
   /**
@@ -1293,5 +1350,76 @@ export const clinwellBadges = {
           lt(t.specialists.clinwellBadgeExpiresAt, before)
         )
       );
+  },
+};
+
+/**
+ * Enquiry forwarding state (§4.3). Separate from the `leads` repo so
+ * the forwarding sweep cannot accidentally reach a patient's details
+ * through a general-purpose update.
+ */
+export const clinwellForwarding = {
+  /**
+   * Enquiries cleared for forwarding, not yet forwarded, due now.
+   *
+   * `forwardableAt is not null` is the permission check, and it is the
+   * whole safeguard: rows created before forwarding became lawful have
+   * no value there and can never be selected, however the sweep is
+   * called. Age is capped too, so a queue that went unnoticed for a
+   * fortnight does not suddenly deliver a fortnight of enquiries.
+   */
+  async due({ limit = 25, maxAgeMs = 48 * 3600_000 } = {}) {
+    const oldest = new Date(Date.now() - maxAgeMs);
+    return db()
+      .select()
+      .from(t.leads)
+      .where(
+        and(
+          sql`${t.leads.clinwellForwardableAt} is not null`,
+          sql`${t.leads.clinwellForwardedAt} is null`,
+          sql`(${t.leads.clinwellNextAttemptAt} is null or ${t.leads.clinwellNextAttemptAt} < now())`,
+          sql`${t.leads.createdAt} > ${oldest}`
+        )
+      )
+      .orderBy(asc(t.leads.createdAt))
+      .limit(limit);
+  },
+
+  async markForwarded(id, { leadId, attempts }) {
+    const [row] = await db()
+      .update(t.leads)
+      .set({
+        clinwellForwardedAt: new Date(),
+        clinwellLeadId: leadId ?? null,
+        clinwellAttempts: attempts,
+        clinwellNextAttemptAt: null,
+        clinwellLastError: null,
+      })
+      .where(eq(t.leads.id, id))
+      .returning({ id: t.leads.id });
+    return row ?? null;
+  },
+
+  async scheduleRetry(id, { attempts, nextAttemptAt, error }) {
+    const [row] = await db()
+      .update(t.leads)
+      .set({ clinwellAttempts: attempts, clinwellNextAttemptAt: nextAttemptAt, clinwellLastError: error ?? null })
+      .where(eq(t.leads.id, id))
+      .returning({ id: t.leads.id });
+    return row ?? null;
+  },
+
+  /**
+   * Stop trying. Recorded as an error with no next attempt rather than
+   * as forwarded, so it is visibly unsent instead of quietly counted as
+   * delivered.
+   */
+  async giveUp(id, { attempts, error }) {
+    const [row] = await db()
+      .update(t.leads)
+      .set({ clinwellAttempts: attempts, clinwellNextAttemptAt: null, clinwellLastError: error ?? null })
+      .where(eq(t.leads.id, id))
+      .returning({ id: t.leads.id });
+    return row ?? null;
   },
 };

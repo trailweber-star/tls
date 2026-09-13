@@ -432,7 +432,28 @@ export async function getClinWell(req, res) {
 
   const summary = await workspaceSummary({ workspaceId: specialist.clinwellWorkspaceId });
   const sso = await ssoUrl({ workspaceId: specialist.clinwellWorkspaceId, userId: String(req.user.id ?? req.user._id) });
-  res.json({ entitled: true, ...summary, ssoUrl: sso.url });
+
+  res.json({
+    entitled: true,
+    ...summary,
+    /* There is no SSO by design (§1, §6.1): a practitioner gets in
+       through the invitation email ClinWell sends, and TLS never
+       handles a ClinWell login. This stays in the response because the
+       seam can supply one, but the panel must not depend on it. */
+    ssoUrl: sso.url,
+
+    /* What the dashboard needs to tell the practitioner how to get in,
+       which is the thing the contract makes OUR job (§6.1).
+
+       The email matters more than it looks: the invitation becomes
+       their login identity, so a practitioner who signs in with a
+       different Google account is simply not recognised, with no
+       useful error. Telling them which address to use is the
+       difference between a working sign-in and a support ticket. */
+    workspaceId: specialist.clinwellWorkspaceId ?? null,
+    invitationEmail: specialist.email ?? null,
+    signInUrl: "https://app.clinwell.ai/",
+  });
 }
 
 /* ------------------------------------------------------------------ */

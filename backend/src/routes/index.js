@@ -60,6 +60,7 @@ import {
   startImpersonation,
   stopImpersonation,
   updateMemberAdminFields,
+  updateMemberClinwell,
 } from "../controllers/members.controller.js";
 import {
   getSystemStatus,
@@ -76,6 +77,7 @@ import {
   startCheckout,
 } from "../controllers/billing.controller.js";
 import { receivePracticeStatus } from "../controllers/clinwellStatus.controller.js";
+import { getClinwellOutbox, requeueClinwellEvent } from "../controllers/clinwellAdmin.controller.js";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -293,12 +295,22 @@ router.get("/admin/enquiries", requireAuth, requireRole("admin"), listAllEnquiri
 router.post("/admin/members/stop-impersonating", requireAuth, stopImpersonation);
 router.get("/admin/members/:id", requireAuth, requireRole("admin"), getMember);
 router.patch("/admin/members/:id", requireAuth, requireRole("admin"), updateMemberAdminFields);
+/* The ClinWell practice slug, on its own route because it writes to the
+   listing rather than the account and is part of a contract with a
+   third party — see the handler. */
+router.patch("/admin/members/:id/clinwell", requireAuth, requireRole("admin"), updateMemberClinwell);
 router.post("/admin/members/:id/impersonate", requireAuth, requireRole("admin"), startImpersonation);
 router.post("/admin/members/bulk", requireAuth, requireRole("admin"), bulkMembers);
 // Review moderation. Admin-only, both of them: nobody else can see the
 // queue, and nobody else can publish or reject.
 router.get("/admin/reviews", requireAuth, requireRole("admin"), listReviewsForModeration);
 router.post("/admin/reviews/:id/moderate", requireAuth, requireRole("admin"), moderateReview);
+/* The ClinWell outbox. A dead event means a practice's clinical access
+   is out of step with what they are paying for, and nothing on this
+   side of the integration looks wrong — so it needs a screen. */
+router.get("/admin/clinwell", requireAuth, requireRole("admin"), getClinwellOutbox);
+router.post("/admin/clinwell/events/:id/requeue", requireAuth, requireRole("admin"), requeueClinwellEvent);
+
 router.get("/admin/claims", requireAuth, requireRole("admin"), listClaims);
 router.get("/admin/claims/:id", requireAuth, requireRole("admin"), getClaim);
 router.post("/admin/claims/:id/decide", requireAuth, requireRole("admin"), decideClaim);
