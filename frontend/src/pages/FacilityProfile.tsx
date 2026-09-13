@@ -42,7 +42,8 @@ import {
   isOpenNow,
 } from "../lib/facilityFacets";
 import NotFound from "./NotFound";
-import { Seo, SITE_URL } from "../components/Seo";
+import { facilityJsonLd } from "../lib/structuredData";
+import { Seo } from "../components/Seo";
 import type { FacilityWithRelations, Review } from "../lib/types";
 
 const TAB_BAR_HEIGHT = 56;
@@ -159,36 +160,7 @@ export default function FacilityProfile() {
         description={seoDescription}
         path={`/facilities/${facility.slug}`}
         image={facility.photoUrl ?? undefined}
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": SCHEMA_TYPE[facility.facilityType] ?? "MedicalOrganization",
-          name: facility.name,
-          description: facility.about ?? facility.description ?? undefined,
-          image: facility.photoUrl ?? undefined,
-          url: `${SITE_URL}/facilities/${facility.slug}`,
-          telephone: facility.phone ?? undefined,
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: facility.address ?? undefined,
-            addressLocality: facility.city?.name ?? undefined,
-            postalCode: facility.postcode ?? undefined,
-            addressCountry: "GB",
-          },
-          geo:
-            facility.lat != null && facility.lng != null
-              ? { "@type": "GeoCoordinates", latitude: facility.lat, longitude: facility.lng }
-              : undefined,
-          aggregateRating:
-            facility.ratingCount > 0
-              ? {
-                  "@type": "AggregateRating",
-                  ratingValue: facility.ratingAvg,
-                  reviewCount: facility.ratingCount,
-                  bestRating: 5,
-                  worstRating: 1,
-                }
-              : undefined,
-        }}
+        jsonLd={facilityJsonLd(facility, SCHEMA_TYPE[facility.facilityType] ?? "MedicalOrganization")}
       />
 
       {/* ------------------------------------------------------------ Hero */}

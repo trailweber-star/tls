@@ -87,13 +87,34 @@ export function Seo({
       {jsonLd && (
         <script
           type="application/ld+json"
-          // Structured data is generated from our own page data, never
-          // from anything a user typed.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serialiseJsonLd(jsonLd) }}
         />
       )}
     </>
   );
+}
+
+
+/**
+ * JSON-LD, serialised so it cannot escape its own script tag.
+ *
+ * JSON.stringify does not escape "<". Structured data now carries
+ * member-supplied text — a bio, a website, a patient's review — and a
+ * bio containing "</script>" would close this block and let whatever
+ * followed it run. Escaping "<" as \u003c is still valid JSON, parses
+ * identically, and makes the sequence impossible to write.
+ *
+ * U+2028 and U+2029 are escaped for a different reason: both are legal
+ * inside a JSON string and both are line terminators to a JavaScript
+ * parser, which is a syntax error rather than a vulnerability, but a
+ * broken block is a block Google discards.
+ */
+function serialiseJsonLd(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }
 
 /** The organisation, described once and reused. */

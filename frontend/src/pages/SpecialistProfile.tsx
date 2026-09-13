@@ -32,7 +32,8 @@ import { heroPhotoFor } from "../lib/specialtyHeroes";
 import { HEADER_HEIGHT } from "../components/Header";
 import NotFound from "./NotFound";
 import type { Review, SpecialistWithRelations, Specialty } from "../lib/types";
-import { Seo, SITE_URL } from "../components/Seo";
+import { specialistJsonLd } from "../lib/structuredData";
+import { Seo } from "../components/Seo";
 
 /**
  * Tabs are computed per specialist rather than fixed: Gallery only
@@ -184,35 +185,7 @@ export default function SpecialistProfile() {
         description={seoDescription}
         path={`/specialists/${specialist.slug}`}
         image={specialist.photoUrl ?? undefined}
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "Physician",
-          name: specialist.fullName,
-          jobTitle: specialist.title ?? undefined,
-          medicalSpecialty: specialist.primarySpecialty?.name ?? undefined,
-          image: specialist.photoUrl ?? undefined,
-          url: `${SITE_URL}/specialists/${specialist.slug}`,
-          description: specialist.bio ?? undefined,
-          address: primaryLocation
-            ? {
-                "@type": "PostalAddress",
-                streetAddress: primaryLocation.address,
-                addressLocality: primaryLocation.city?.name ?? undefined,
-                postalCode: primaryLocation.postcode ?? undefined,
-                addressCountry: "GB",
-              }
-            : undefined,
-          aggregateRating:
-            specialist.ratingCount > 0
-              ? {
-                  "@type": "AggregateRating",
-                  ratingValue: specialist.ratingAvg,
-                  reviewCount: specialist.ratingCount,
-                  bestRating: 5,
-                  worstRating: 1,
-                }
-              : undefined,
-        }}
+        jsonLd={specialistJsonLd(specialist)}
       />
 
       {/* ---------------------------------------------------------------- Hero */}
