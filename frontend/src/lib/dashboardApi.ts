@@ -19,38 +19,85 @@ const TOKEN_KEY = "tls.auth.token";
  */
 const ADMIN_TOKEN_KEY = "tls.auth.adminToken";
 
-export function getToken(): string | null {
+/* ------------------------------------------------------------------ *
+ * Staying signed in
+ *
+ * "Remember me" is the difference between two stores, not a longer
+ * token: localStorage outlives the browser being closed, sessionStorage
+ * does not. The server's token expiry is unchanged either way — this
+ * only decides whether the browser still has it tomorrow morning.
+ *
+ * Both are read on the way in, so a session started before the choice
+ * existed keeps working, and every write clears the other store first:
+ * a token left behind in localStorage after somebody unticked the box
+ * is exactly the thing the box was meant to prevent.
+ * ------------------------------------------------------------------ */
+
+const REMEMBER_KEY = "tls.auth.remember";
+const EMAIL_KEY = "tls.auth.email";
+
+/** Session storage first: it is the more specific of the two. */
+function readEither(key: string): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return sessionStorage.getItem(key) ?? localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-export function setToken(token: string | null) {
+function writeEither(key: string, value: string | null, remember = isRemembered()) {
   try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+    if (value) (remember ? localStorage : sessionStorage).setItem(key, value);
   } catch {
     /* private browsing — the session simply won't persist across reloads */
   }
 }
 
-export function getAdminToken(): string | null {
+/** Ticked by default: signing in again every time is nobody's idea of a
+ *  feature, and this is a workspace people come back to daily. */
+export function isRemembered(): boolean {
   try {
-    return localStorage.getItem(ADMIN_TOKEN_KEY);
+    return localStorage.getItem(REMEMBER_KEY) !== "0";
   } catch {
-    return null;
+    return true;
   }
 }
 
-export function setAdminToken(token: string | null) {
+/** Remembers the choice, and the address — never the password. */
+export function setRemembered(remember: boolean, email?: string | null) {
   try {
-    if (token) localStorage.setItem(ADMIN_TOKEN_KEY, token);
-    else localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
+    if (remember && email) localStorage.setItem(EMAIL_KEY, email);
+    if (!remember) localStorage.removeItem(EMAIL_KEY);
   } catch {
     /* as above */
   }
+}
+
+export function rememberedEmail(): string {
+  try {
+    return isRemembered() ? (localStorage.getItem(EMAIL_KEY) ?? "") : "";
+  } catch {
+    return "";
+  }
+}
+
+export function getToken(): string | null {
+  return readEither(TOKEN_KEY);
+}
+
+export function setToken(token: string | null, remember?: boolean) {
+  writeEither(TOKEN_KEY, token, remember ?? isRemembered());
+}
+
+export function getAdminToken(): string | null {
+  return readEither(ADMIN_TOKEN_KEY);
+}
+
+export function setAdminToken(token: string | null) {
+  writeEither(ADMIN_TOKEN_KEY, token);
 }
 
 export class ApiError extends Error {

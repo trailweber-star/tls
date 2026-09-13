@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { ApiError, authApi } from "../lib/dashboardApi";
+import { ApiError, authApi, isRemembered, rememberedEmail } from "../lib/dashboardApi";
 import { AuthLayout, Field } from "../components/AuthLayout";
 
 export default function SignIn() {
@@ -13,7 +13,11 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demo, setDemo] = useState<{ email: string; role: string; password: string }[]>([]);
-  const [prefill, setPrefill] = useState({ email: "", password: "" });
+  const [prefill, setPrefill] = useState({ email: rememberedEmail(), password: "" });
+  /* The address is filled in from last time when the box was ticked;
+     the password never is. A browser's own password manager is the
+     right place for that, and this field is not it. */
+  const [remember, setRemember] = useState(isRemembered());
 
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
 
@@ -40,7 +44,7 @@ export default function SignIn() {
     setBusy(true);
     setError(null);
     try {
-      const user = await signIn(String(form.get("email")), String(form.get("password")));
+      const user = await signIn(String(form.get("email")), String(form.get("password")), remember);
       navigate(from ?? (user.role === "admin" ? "/admin" : "/dashboard"), { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
@@ -111,6 +115,23 @@ export default function SignIn() {
             </button>
           </div>
         </Field>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <label htmlFor="remember" className="flex cursor-pointer items-center gap-2.5 select-none">
+            <input
+              id="remember"
+              name="remember"
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-line text-teal-600 accent-teal-600 focus:ring-2 focus:ring-teal-500/30"
+            />
+            <span className="text-[13px] font-semibold text-ink">Keep me signed in</span>
+          </label>
+          <span className="text-[12.5px] text-ink-faint">
+            {remember ? "On this device" : "Until you close the browser"}
+          </span>
+        </div>
 
         <button
           type="submit"

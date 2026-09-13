@@ -42,9 +42,20 @@ export function safeUrl(value) {
   // the site wearing a relative URL's clothes.
   if (trimmed.startsWith("//")) return null;
 
+  /* People paste "www.clinic.co.uk" and "clinic.co.uk/about" far more
+     often than they paste a scheme, and refusing those taught nobody
+     anything — the field just said the address was wrong. Anything with
+     a scheme is left exactly as it is, so "javascript:" is still caught
+     by the protocol check below; only a bare host picks up https.  */
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(trimmed)
+    ? trimmed
+    : /^[\w-]+(\.[\w-]+)+(\/|$|[?#])/.test(trimmed)
+      ? `https://${trimmed}`
+      : trimmed;
+
   let url;
   try {
-    url = new URL(trimmed);
+    url = new URL(candidate);
   } catch {
     return null;
   }
@@ -69,10 +80,18 @@ export function urlField({ max = 500, message = "Use a full web address starting
     .transform((value) => safeUrl(value));
 }
 
-/** The same, for fields that are allowed to be empty or cleared. */
+/**
+ * The same, for fields that are allowed to be empty or cleared.
+ *
+ * The message is set on the union itself as well as on the inner field:
+ * zod reports a failed union with its own generic text, so without this
+ * a mistyped web address came back to the person as "Invalid input",
+ * which tells them neither what was wrong nor which box it was in.
+ */
 export function optionalUrlField(options) {
+  const message = options?.message ?? "Use a full web address starting http:// or https://";
   return z
-    .union([urlField(options), z.literal(""), z.null()])
+    .union([urlField(options), z.literal(""), z.null()], { error: message })
     .transform((value) => (value === "" ? null : value))
     .optional();
 }

@@ -6,6 +6,7 @@ import {
   EyeOff,
   FileText,
   Loader2,
+  MoreVertical,
   Pencil,
   Plus,
   Trash2,
@@ -304,45 +305,15 @@ export default function AdminArticles() {
                     <td className="px-5 py-4 text-[13px] text-ink-muted">{relativeTime(row.updatedAt)}</td>
                     <td className="px-5 py-4 text-[13px] tabular-nums text-ink-muted">{row.viewCount}</td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditor(row)}
-                          disabled={openingId === row.id || busyId === row.id || demo}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-[12.5px] font-bold text-ink transition hover:border-teal-300 hover:bg-teal-50 disabled:opacity-40"
-                        >
-                          {openingId === row.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.2} />
-                          ) : (
-                            <Pencil className="h-3.5 w-3.5" strokeWidth={2.2} />
-                          )}
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleStatus(row)}
-                          disabled={busyId === row.id || demo}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-[12.5px] font-bold text-ink transition hover:border-teal-300 hover:bg-teal-50 disabled:opacity-40"
-                        >
-                          {busyId === row.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.2} />
-                          ) : row.status === "published" ? (
-                            <EyeOff className="h-3.5 w-3.5" strokeWidth={2.2} />
-                          ) : (
-                            <Eye className="h-3.5 w-3.5" strokeWidth={2.2} />
-                          )}
-                          {row.status === "published" ? "Unpublish" : "Publish"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => remove(row)}
-                          disabled={busyId === row.id || demo}
-                          aria-label={`Delete ${row.title}`}
-                          title="Delete"
-                          className="rounded-full border border-line p-2 text-ink-faint transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger disabled:opacity-40"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
-                        </button>
+                      <div className="flex items-center justify-end">
+                        <RowMenu
+                          row={row}
+                          disabled={demo}
+                          busy={busyId === row.id || openingId === row.id}
+                          onEdit={() => openEditor(row)}
+                          onToggle={() => toggleStatus(row)}
+                          onDelete={() => remove(row)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -353,6 +324,140 @@ export default function AdminArticles() {
         )}
       </Panel>
     </DashboardShell>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Row actions
+ *
+ * Three buttons per row pushed the table past the width it had and left
+ * the title squeezed into a column too narrow to read. They live behind
+ * one menu instead: the row stays legible, and the actions are where
+ * everybody already looks for them.
+ * ------------------------------------------------------------------ */
+
+function RowMenu({
+  row,
+  disabled,
+  busy,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  row: AdminArticleRow;
+  disabled: boolean;
+  busy: boolean;
+  onEdit: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function away(e: MouseEvent) {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function key(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+
+  const item =
+    "flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[13px] font-semibold text-ink transition hover:bg-paper-tint disabled:cursor-not-allowed disabled:opacity-40";
+
+  return (
+    <div ref={wrap} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Actions for ${row.title}`}
+        className={`grid h-9 w-9 place-items-center rounded-full border transition disabled:opacity-40 ${
+          open ? "border-teal-300 bg-teal-50 text-teal-700" : "border-line text-ink-muted hover:bg-paper-tint"
+        }`}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.2} />
+        ) : (
+          <MoreVertical className="h-4 w-4" strokeWidth={2.2} />
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          /* Anchored to the right edge so it never runs off the table,
+             and above the rows below it. */
+          className="absolute right-0 z-20 mt-1.5 w-48 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-lg shadow-navy-950/10"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={disabled}
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+            className={item}
+          >
+            <Pencil className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={disabled}
+            onClick={() => {
+              setOpen(false);
+              onToggle();
+            }}
+            className={item}
+          >
+            {row.status === "published" ? (
+              <EyeOff className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+            ) : (
+              <Eye className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+            )}
+            {row.status === "published" ? "Unpublish" : "Publish"}
+          </button>
+          <a
+            role="menuitem"
+            href={`/blog/${row.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setOpen(false)}
+            className={item}
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.2} />
+            View on the site
+          </a>
+          <div className="my-1 border-t border-line-soft" />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={disabled}
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+            className={`${item} text-danger hover:bg-danger/5`}
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -549,7 +654,10 @@ function ArticleForm({
             </label>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* The cover gets a full row of its own. Squeezed into half the
+              width, the drop zone, the button and its hint stacked into
+              a column too narrow for any of them to read properly. */}
+          <div className="rounded-2xl border border-line-soft bg-paper-tint/40 p-4">
             {/* Uploaded rather than pasted. An article arrives as words,
                 not as a hosted image, and asking somebody to find a URL
                 for a picture sitting in their downloads folder is how
@@ -563,7 +671,7 @@ function ArticleForm({
               value={form.heroImageUrl ?? ""}
               onChange={(url) => set("heroImageUrl", url)}
             />
-            <div className="flex flex-col gap-4">
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
               <label className="block">
                 <span className="text-[12.5px] font-bold text-ink">Image description</span>
                 <input
@@ -578,14 +686,17 @@ function ArticleForm({
                 </span>
               </label>
               <label className="block">
-                <span className="text-[12.5px] font-bold text-ink">…or paste an image URL</span>
+                <span className="text-[12.5px] font-bold text-ink">…or paste an image address</span>
                 <input
-                  type="url"
+                  type="text"
                   value={form.heroImageUrl ?? ""}
                   onChange={(e) => set("heroImageUrl", e.target.value)}
-                  placeholder="https://…"
+                  placeholder="example.com/photo.jpg"
                   className={`mt-1.5 ${inputClass}`}
                 />
+                <span className="mt-1 block text-[12px] text-ink-faint">
+                  Only if the picture is already online somewhere.
+                </span>
               </label>
             </div>
           </div>

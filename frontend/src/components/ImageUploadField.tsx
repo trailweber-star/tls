@@ -19,6 +19,19 @@ import { deleteUpload, getUploadConfig, uploadImage } from "../lib/api";
  * around — nothing downstream had to change.
  * ------------------------------------------------------------------ */
 
+/** Used only until the server's own list arrives. */
+const DEFAULT_ACCEPT = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+
+/** "JPEG, PNG, WebP, GIF or AVIF" — from mime types, in the field's hint. */
+function typeNames(accept?: string[]): string {
+  const names = (accept ?? DEFAULT_ACCEPT)
+    .map((m) => m.split("/")[1]?.toUpperCase())
+    .filter(Boolean)
+    .map((n) => (n === "JPEG" ? "JPEG" : n === "WEBP" ? "WebP" : n));
+  if (names.length < 2) return names[0] ?? "images";
+  return `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
+}
+
 export function ImageUploadField({
   label,
   hint,
@@ -54,8 +67,15 @@ export function ImageUploadField({
 
   async function send(file: File) {
     setError(null);
-    if (limits && !limits.accept.includes(file.type)) {
-      setError("That needs to be a JPEG, PNG, WebP or GIF.");
+    /* A file the server would refuse is stopped here — except when the
+       browser gives no type at all, or gives HEIC: those are sent, so
+       the answer comes from the server, which knows why and can say so.
+       Judging a file by the type string the browser guessed is also why
+       a perfectly good .jpg saved by some tools used to be rejected
+       before it was ever sent. */
+    const heic = /heic|heif/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+    if (limits && file.type && !heic && !limits.accept.includes(file.type)) {
+      setError(`That needs to be a ${typeNames(limits.accept)}.`);
       return;
     }
     // Checked here as well as on the server, so a 6MB photo fails in a
@@ -144,7 +164,7 @@ export function ImageUploadField({
           </div>
 
           <p className="mt-2 text-[12px] text-ink-faint">
-            Drag one here, or choose a file. JPEG, PNG, WebP or GIF
+            Drag one here, or choose a file. {typeNames(limits?.accept)}
             {limits ? `, up to ${limits.maxMb}MB` : ""}.
           </p>
 
@@ -160,7 +180,16 @@ export function ImageUploadField({
           ref={inputRef}
           id={id}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          /* The list comes from the server rather than being written
+             here a second time — it went stale the moment AVIF was
+             added, and a type missing from this attribute is greyed out
+             in the file picker with no explanation at all.
+
+             HEIC is deliberately selectable even though the server
+             refuses it: an iPhone photo is the single most common thing
+             somebody tries to upload, and being told why it will not
+             work is far better than a file that cannot be clicked. */
+          accept={[...(limits?.accept ?? DEFAULT_ACCEPT), "image/heic", "image/heif", ".heic"].join(",")}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];

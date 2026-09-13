@@ -6,6 +6,7 @@ import {
   getToken,
   membersApi,
   setAdminToken,
+  setRemembered,
   setToken,
 } from "./dashboardApi";
 import type { Account, LinkedSpecialist } from "./dashboardApi";
@@ -30,7 +31,7 @@ interface AuthState {
   loading: boolean;
   /** Set when this session is an administrator wearing a member's account. */
   impersonation: Impersonation | null;
-  signIn: (email: string, password: string) => Promise<Account>;
+  signIn: (email: string, password: string, remember?: boolean) => Promise<Account>;
   signUp: (input: Parameters<typeof authApi.register>[0]) => Promise<Account>;
   signOut: () => void;
   refresh: () => Promise<void>;
@@ -124,12 +125,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, remember = true) => {
       const res = await authApi.login(email, password);
       // A fresh sign-in is never an impersonation; clear any stale parking.
       setAdminToken(null);
       setImpersonation(null);
-      setToken(res.token);
+      /* Recorded before the token is written: setToken reads the
+         preference to decide which store the token belongs in. */
+      setRemembered(remember, email);
+      setToken(res.token, remember);
       setAccount(res.user);
       const me = await authApi.me().catch(() => null);
       setSpecialist(me?.specialist ?? null);

@@ -187,9 +187,39 @@ export async function getArticle(req, res) {
 
 /* -------------------------------------------------------------- admin */
 
+/**
+ * What a field is called on the screen the person is looking at.
+ *
+ * A validation error that says "Invalid input" with no field named is
+ * the same as no error at all: the form has nine boxes and the person
+ * has no way to tell which one it means.
+ */
+const FIELD_LABELS = {
+  title: "Title",
+  body: "Body",
+  excerpt: "Summary",
+  tags: "Tags",
+  specialtySlug: "Specialty",
+  heroImageUrl: "Cover image",
+  heroImageAlt: "Image description",
+  authorName: "Author",
+  seoTitle: "SEO title",
+  seoDescription: "SEO description",
+  status: "Status",
+  format: "Format",
+};
+
+function firstProblem(error) {
+  const issue = error?.issues?.[0];
+  if (!issue) return "Check the fields.";
+  const key = issue.path?.[0];
+  const label = FIELD_LABELS[key] ?? (typeof key === "string" ? key : null);
+  return label ? `${label}: ${issue.message}` : issue.message;
+}
+
 const importSchema = z.object({
-  title: z.string().min(3).max(300),
-  body: z.string().min(1).max(400_000),
+  title: z.string().min(3, "needs at least three characters").max(300, "is too long — 300 characters at most"),
+  body: z.string().min(1, "cannot be empty").max(400_000, "is too long to store"),
   /** "auto" covers the usual case: Abun exports either, per article. */
   format: z.enum(["auto", "markdown", "html"]).default("auto"),
   slug: z.string().max(120).optional(),
@@ -198,7 +228,7 @@ const importSchema = z.object({
   heroImageAlt: z.string().max(300).optional(),
   authorName: z.string().max(160).optional(),
   specialtySlug: z.string().max(120).optional(),
-  tags: z.array(z.string().min(1).max(60)).max(8).optional(),
+  tags: z.array(z.string().min(1).max(60)).max(8, "cannot have more than eight").optional(),
   status: z.enum(["draft", "published"]).default("draft"),
   publishedAt: z.string().datetime().optional(),
   seoTitle: z.string().max(200).optional(),
@@ -219,7 +249,7 @@ const importSchema = z.object({
 export async function importArticle(req, res) {
   const parsed = importSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Check the fields." });
+    return res.status(400).json({ error: firstProblem(parsed.error) });
   }
   const input = parsed.data;
 
@@ -354,14 +384,14 @@ export async function getAdminArticle(req, res) {
 // PATCH /api/admin/articles/:id — publish, unpublish, retag, or edit
 const patchSchema = z.object({
   status: z.enum(["draft", "published"]).optional(),
-  title: z.string().min(3).max(300).optional(),
+  title: z.string().min(3, "needs at least three characters").max(300, "is too long — 300 characters at most").optional(),
   /* Editing the body goes through the same renderer and sanitiser as
      the import, because there must be exactly one way HTML gets into
      this table. */
   body: z.string().max(400_000).optional(),
   format: z.enum(["auto", "markdown", "html"]).optional(),
-  excerpt: z.string().max(600).optional(),
-  tags: z.array(z.string().min(1).max(60)).max(8).optional(),
+  excerpt: z.string().max(600, "is too long — 600 characters at most").optional(),
+  tags: z.array(z.string().min(1).max(60)).max(8, "cannot have more than eight").optional(),
   specialtySlug: z.string().max(120).nullable().optional(),
   heroImageUrl: optionalUrlField(),
   heroImageAlt: z.string().max(300).optional(),
@@ -374,7 +404,7 @@ export async function updateArticle(req, res) {
   if (!isDbConfigured()) return res.status(503).json({ error: "Needs a database." });
   const parsed = patchSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Check the fields." });
+    return res.status(400).json({ error: firstProblem(parsed.error) });
   }
   const existing = await articleRepo.findById(req.params.id);
   if (!existing) return res.status(404).json({ error: "No such article." });

@@ -96,7 +96,25 @@ const SIGNATURES = [
     mime: "image/gif",
     test: (b) => b.slice(0, 3).toString("ascii") === "GIF",
   },
+  /* AVIF shares HEIC's container: "ftyp" at offset 4, then a brand.
+     Only the avif brands are accepted — the heic ones are the same
+     shape of file and no browser will display them, which is handled
+     separately below with a message that says what to do about it. */
+  {
+    ext: "avif",
+    mime: "image/avif",
+    test: (b) => isIsoBmff(b) && ["avif", "avis"].includes(isoBrand(b)),
+  },
 ];
+
+const isIsoBmff = (b) => b.slice(4, 8).toString("ascii") === "ftyp";
+const isoBrand = (b) => b.slice(8, 12).toString("ascii").toLowerCase();
+
+/* An iPhone photo, straight off the phone or out of Photos. Chrome,
+   Firefox and Edge cannot display one, so storing it would produce a
+   listing with an invisible picture rather than a useful upload. */
+const HEIC_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "heif", "mif1", "msf1"]);
+const looksHeic = (b) => Buffer.isBuffer(b) && b.length > 12 && isIsoBmff(b) && HEIC_BRANDS.has(isoBrand(b));
 
 export const ACCEPTED_MIME = SIGNATURES.map((s) => s.mime);
 export const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_MB ?? 5) * 1024 * 1024;
@@ -168,7 +186,14 @@ export function sniffVideo(buffer) {
 export async function saveImage({ buffer, kind = "image", origin = "" }) {
   const sig = sniffImage(buffer);
   if (!sig) {
-    const err = new Error("That file is not a JPEG, PNG, WebP or GIF image.");
+    /* HEIC is the default on every iPhone, so "that is not an image" is
+       both wrong and useless — the file is an image, it is simply one
+       no browser can draw. Say what to do instead. */
+    const err = looksHeic(buffer)
+      ? new Error(
+          "That is an iPhone HEIC photo, which browsers cannot display. Open it in Preview and choose File ▸ Export As ▸ JPEG, or set Camera ▸ Formats to “Most Compatible” on the phone."
+        )
+      : new Error("That file is not a JPEG, PNG, WebP, GIF or AVIF image.");
     err.status = 415;
     throw err;
   }
