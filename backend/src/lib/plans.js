@@ -123,6 +123,10 @@ export const PLANS = [
     inheritsFrom: "premium",
     highlightsHeading: "All Premium features, PLUS:",
     highlights: [
+      {
+        label: "ClinWell licence — £1,200/yr direct, included through our partnership",
+        included: true,
+      },
       { label: "Full ClinWell.ai EMR Suite (Patient History)", included: true },
       { label: "AI Assistant (Instant Clinical SOAP Notes)", included: true },
       { label: "NHS RTT Breach Tracker & Wait Times", included: true },
@@ -251,7 +255,14 @@ const TABLE_ROWS = [
   { label: "Video Bio on Profile", key: "videoBio" },
   { label: "Direct Calendar & Booking Link Integration", key: "bookingLink" },
 
-  { group: "ClinWell EMR & AI Practice Suite (£1,200/yr Value)" },
+  /* The value is stated as a comparison rather than a bare number. On
+     its own "(£1,200/yr Value)" sat two inches from a £50 difference in
+     price and read as a mistake — or worse, as a made-up number, which
+     costs the reader's trust in every other figure on the page. Saying
+     where the £1,200 comes from turns the gap into the reason to buy.
+     It is also a price claim, so it has to be true: it is what ClinWell
+     charges for this suite standalone. */
+  { group: "ClinWell EMR & AI Practice Suite — £1,200/yr bought direct, included here" },
   { label: "ClinWell.ai EMR Suite Access", key: "clinwell" },
   { label: "AI Clinical Assistant (Instant SOAP Notes)", key: "clinwell" },
   { label: "NHS RTT Breach Tracker & Waiting Times", key: "clinwell" },
