@@ -874,6 +874,62 @@ export const notificationsApi = {
     post<{ ok: boolean; devices: number }>("/notifications/unsubscribe", { endpoint }),
 };
 
+/* ------------------------------------------------------- my articles *
+ * A member's own half of the article workflow. Separate from
+ * articlesApi, which is the administrator's.
+ * ------------------------------------------------------------------ */
+
+export interface MyArticle {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  status: ArticleStatus;
+  heroImageUrl: string | null;
+  tags: string[];
+  specialty: { slug: string; name: string } | null;
+  readingMinutes: number;
+  viewCount: number;
+  /** What an administrator said when sending it back. */
+  reviewNote: string | null;
+  submittedAt: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+  /** True when it was drafted for them and is waiting on them. */
+  writtenForYou: boolean;
+}
+
+export interface MyArticleDetail extends MyArticle {
+  body: string;
+  bodyFormat: "auto" | "markdown" | "html";
+  heroImageAlt: string | null;
+  specialtySlug: string | null;
+}
+
+export interface MyArticleInput {
+  title: string;
+  body: string;
+  format?: "auto" | "markdown" | "html";
+  excerpt?: string;
+  tags?: string[];
+  specialtySlug?: string | null;
+  heroImageUrl?: string;
+  heroImageAlt?: string;
+  /** True sends it for review in the same call as saving. */
+  submit?: boolean;
+}
+
+export const myArticlesApi = {
+  list: () =>
+    get<{ results: MyArticle[]; counts: { awaitingYou: number; inReview: number; published: number } }>(
+      "/dashboard/articles"
+    ),
+  get: (id: string) => get<{ article: MyArticleDetail }>(`/dashboard/articles/${id}`),
+  create: (body: MyArticleInput) => post<{ article: MyArticle }>("/dashboard/articles", body),
+  update: (id: string, body: MyArticleInput) =>
+    patch<{ article: MyArticle }>(`/dashboard/articles/${id}`, body),
+};
+
 /* -------------------------------------------------------------- claims */
 
 export interface ClaimEligibility {
@@ -959,19 +1015,30 @@ export const claimsApi = {
  * same `import` call and nothing on this screen changes.
  * ------------------------------------------------------------------ */
 
+export type ArticleStatus =
+  | "draft"
+  | "awaiting_author"
+  | "in_review"
+  | "changes_requested"
+  | "published";
+
 export interface AdminArticleRow {
   id: string;
   slug: string;
   title: string;
   excerpt: string | null;
-  status: "draft" | "published";
+  status: ArticleStatus;
   tags: string[];
   publishedAt: string | null;
+  submittedAt: string | null;
   updatedAt: string;
   source: string;
   readingMinutes: number;
   viewCount: number;
   heroImageUrl: string | null;
+  reviewNote: string | null;
+  /** Who the article is by, when it is by a member rather than by us. */
+  author: { id: string; slug: string; fullName: string; photoUrl: string | null } | null;
 }
 
 /** One article as the edit form needs it: the source that was typed,
@@ -1004,7 +1071,16 @@ export interface ArticleImportInput {
 }
 
 export const articlesApi = {
-  list: () => get<{ results: AdminArticleRow[]; demo: boolean }>("/admin/articles"),
+  list: (status?: string) =>
+    get<{ results: AdminArticleRow[]; counts: Record<string, number>; demo: boolean }>(
+      `/admin/articles${status ? `?status=${encodeURIComponent(status)}` : ""}`
+    ),
+  /** Hand a draft to the member it is about, for them to read and edit. */
+  assign: (id: string, specialistId: string, note?: string) =>
+    post<{ article: AdminArticleRow }>(`/admin/articles/${id}/assign`, { specialistId, note }),
+  /** The decision at the end of the queue. A note is required to send one back. */
+  review: (id: string, decision: "publish" | "changes", note?: string) =>
+    post<{ article: AdminArticleRow }>(`/admin/articles/${id}/review`, { decision, note }),
   import: (body: ArticleImportInput) =>
     post<{ article: { slug: string; title: string; status: string }; created: boolean }>(
       "/admin/articles/import",
@@ -1014,7 +1090,7 @@ export const articlesApi = {
   update: (
     id: string,
     body: Partial<{
-      status: "draft" | "published";
+      status: ArticleStatus;
       title: string;
       body: string;
       format: "auto" | "markdown" | "html";

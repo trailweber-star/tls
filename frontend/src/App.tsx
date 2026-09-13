@@ -24,6 +24,7 @@ import ProfileEditor from "./pages/dashboard/ProfileEditor";
 import Enquiries from "./pages/dashboard/Enquiries";
 import Reviews from "./pages/dashboard/Reviews";
 import ComingSoon from "./pages/dashboard/ComingSoon";
+import DashboardArticles from "./pages/dashboard/Articles";
 import Billing from "./pages/dashboard/Billing";
 import AdminOverview from "./pages/admin/AdminOverview";
 import Verifications from "./pages/admin/Verifications";
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="profile" element={<ProfileEditor />} />
           <Route path="enquiries" element={<Enquiries />} />
           <Route path="reviews" element={<Reviews />} />
+          <Route path="articles" element={<DashboardArticles />} />
           <Route
             path="appointments"
             element={

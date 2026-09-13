@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
-import { articles as articleRepo, taxonomy as taxonomyRepo } from "../db/repos.js";
+import {
+  articles as articleRepo,
+  specialists as specialistRepo,
+  taxonomy as taxonomyRepo,
+} from "../db/repos.js";
 import { specialties as mockSpecialties } from "../data/mock.js";
 import { demoArticles } from "../data/demo-articles.js";
 import {
@@ -427,14 +431,47 @@ async function uniqueSlug(base) {
   return `${root}-${Date.now()}`;
 }
 
-// GET /api/admin/articles — the workspace list, drafts included
-export async function listAllArticles(_req, res) {
+/**
+ * GET /api/admin/articles — the workspace list, every state included.
+ *
+ * Carries who each article is BY, which the list could previously not
+ * say at all: authorName was a free string and there was no link to a
+ * member. Now that members write these, "waiting on Dr Whitfield" and
+ * "waiting on us" are the two most important things this screen can
+ * tell somebody, and neither is visible without it.
+ */
+export async function listAllArticles(req, res) {
   if (!isDbConfigured()) {
-    return res.json({ results: demoRows().map((r) => ({ ...r, bodyHtml: undefined })), demo: true });
+    return res.json({
+      results: demoRows().map((r) => ({ ...r, bodyHtml: undefined })),
+      counts: { in_review: 0, awaiting_author: 0, changes_requested: 0, draft: 0, published: 0 },
+      demo: true,
+    });
   }
+
   const rows = await articleRepo.all();
+
+  /* One lookup for every author on the page rather than one per row. */
+  const authorIds = [...new Set(rows.map((r) => r.authorSpecialistId).filter(Boolean))];
+  const authors = new Map();
+  for (const id of authorIds) {
+    const s = await specialistRepo.findById(id).catch(() => null);
+    if (s) authors.set(id, { id: s.id, slug: s.slug, fullName: s.fullName, photoUrl: s.photoUrl ?? null });
+  }
+
+  const counts = rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
+  const wanted = String(req.query.status ?? "").trim();
+
   res.json({
-    results: rows.map((r) => ({ ...r, bodyHtml: undefined, bodySource: undefined })),
+    results: rows
+      .filter((r) => !wanted || r.status === wanted)
+      .map((r) => ({
+        ...r,
+        bodyHtml: undefined,
+        bodySource: undefined,
+        author: r.authorSpecialistId ? (authors.get(r.authorSpecialistId) ?? null) : null,
+      })),
+    counts,
     demo: false,
   });
 }
