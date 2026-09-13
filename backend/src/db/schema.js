@@ -800,6 +800,14 @@ export const articles = pgTable(
     excerpt: text("excerpt"),
     bodyHtml: text("body_html").notNull(),
 
+    /* What was actually typed or pasted, kept so the editor can hand it
+       back. body_html is what the site renders and the only thing the
+       public read path touches; this is never served to a visitor.
+       Null for rows imported before the column existed — the editor
+       falls back to the rendered HTML for those. */
+    bodySource: text("body_source"),
+    bodyFormat: text("body_format"),
+
     heroImageUrl: text("hero_image_url"),
     heroImageAlt: text("hero_image_alt"),
 

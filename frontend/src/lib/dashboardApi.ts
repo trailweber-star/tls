@@ -919,6 +919,18 @@ export interface AdminArticleRow {
   heroImageUrl: string | null;
 }
 
+/** One article as the edit form needs it: the source that was typed,
+ *  not the HTML it became. */
+export interface AdminArticleDetail extends AdminArticleRow {
+  body: string;
+  bodyFormat: "auto" | "markdown" | "html";
+  heroImageAlt: string | null;
+  authorName: string | null;
+  specialtySlug: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
 export interface ArticleImportInput {
   title: string;
   body: string;
@@ -943,15 +955,20 @@ export const articlesApi = {
       "/admin/articles/import",
       body
     ),
+  get: (id: string) => get<{ article: AdminArticleDetail }>(`/admin/articles/${id}`),
   update: (
     id: string,
     body: Partial<{
       status: "draft" | "published";
       title: string;
+      body: string;
+      format: "auto" | "markdown" | "html";
       excerpt: string;
       tags: string[];
       specialtySlug: string | null;
       heroImageUrl: string;
+      heroImageAlt: string;
+      authorName: string;
       seoTitle: string;
       seoDescription: string;
     }>

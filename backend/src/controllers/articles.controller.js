@@ -253,6 +253,10 @@ export async function importArticle(req, res) {
     title: input.title,
     excerpt: input.excerpt ?? excerptFrom(bodyHtml),
     bodyHtml,
+    // Kept so the editor can show what was written rather than what was
+    // rendered. Never served to the public.
+    bodySource: input.body,
+    bodyFormat: input.format,
     heroImageUrl: input.heroImageUrl ?? null,
     heroImageAlt: input.heroImageAlt ?? null,
     authorName: input.authorName ?? null,
@@ -298,17 +302,70 @@ export async function listAllArticles(_req, res) {
     return res.json({ results: demoRows().map((r) => ({ ...r, bodyHtml: undefined })), demo: true });
   }
   const rows = await articleRepo.all();
-  res.json({ results: rows.map((r) => ({ ...r, bodyHtml: undefined })), demo: false });
+  res.json({
+    results: rows.map((r) => ({ ...r, bodyHtml: undefined, bodySource: undefined })),
+    demo: false,
+  });
 }
 
-// PATCH /api/admin/articles/:id — publish, unpublish, retag
+/**
+ * GET /api/admin/articles/:id — one article, as the editor needs it.
+ *
+ * The list deliberately omits bodies; this is the call the Edit form
+ * makes when somebody actually opens one. It returns bodySource — what
+ * was typed — in preference to bodyHtml, so editing a pasted markdown
+ * article does not turn it into HTML the first time it is saved.
+ */
+export async function getAdminArticle(req, res) {
+  const id = String(req.params.id ?? "");
+
+  if (!isDbConfigured()) {
+    const row = demoRows().find((r) => r.id === id);
+    if (!row) return res.status(404).json({ error: "No such article." });
+    return res.json({ article: { ...row, body: row.bodyHtml, bodyFormat: "html", specialtySlug: null } });
+  }
+
+  const row = await articleRepo.findById(id);
+  if (!row) return res.status(404).json({ error: "No such article." });
+
+  const specialties = await loadSpecialties();
+  const specialty = row.specialtyId ? specialties.find((s) => s.id === row.specialtyId) : null;
+
+  /* A summary nobody wrote should come back empty, not as the derived
+     one with its ellipsis — otherwise the first edit quietly promotes a
+     truncated auto-excerpt into a hand-written one, and it stops
+     following the article from then on. */
+  const derived = excerptFrom(row.bodyHtml);
+
+  res.json({
+    article: {
+      ...row,
+      excerpt: row.excerpt === derived ? null : row.excerpt,
+      body: row.bodySource ?? row.bodyHtml,
+      // A row imported before body_source existed can only be edited as
+      // the HTML it became, and saying so keeps the markdown detector
+      // from second-guessing it.
+      bodyFormat: row.bodySource ? (row.bodyFormat ?? "auto") : "html",
+      specialtySlug: specialty?.slug ?? null,
+    },
+  });
+}
+
+// PATCH /api/admin/articles/:id — publish, unpublish, retag, or edit
 const patchSchema = z.object({
   status: z.enum(["draft", "published"]).optional(),
   title: z.string().min(3).max(300).optional(),
+  /* Editing the body goes through the same renderer and sanitiser as
+     the import, because there must be exactly one way HTML gets into
+     this table. */
+  body: z.string().max(400_000).optional(),
+  format: z.enum(["auto", "markdown", "html"]).optional(),
   excerpt: z.string().max(600).optional(),
   tags: z.array(z.string().min(1).max(60)).max(8).optional(),
   specialtySlug: z.string().max(120).nullable().optional(),
   heroImageUrl: optionalUrlField(),
+  heroImageAlt: z.string().max(300).optional(),
+  authorName: z.string().max(160).optional(),
   seoTitle: z.string().max(200).optional(),
   seoDescription: z.string().max(400).optional(),
 });
@@ -323,6 +380,37 @@ export async function updateArticle(req, res) {
   if (!existing) return res.status(404).json({ error: "No such article." });
 
   const patch = { ...parsed.data };
+  const { format } = patch;
+  delete patch.format;
+
+  if (typeof patch.body === "string") {
+    const source = patch.body;
+    delete patch.body;
+    if (!source.trim()) {
+      return res.status(400).json({ error: "An article needs a body." });
+    }
+    const bodyHtml = withHeadingIds(
+      renderArticleBody(source, { format: format === "markdown" ? "md" : (format ?? "auto") })
+    );
+    if (!toPlainText(bodyHtml)) {
+      return res.status(400).json({ error: "That body is empty once the markup is removed." });
+    }
+    patch.bodyHtml = bodyHtml;
+    patch.bodySource = source;
+    patch.bodyFormat = format ?? "auto";
+    patch.readingMinutes = readingMinutes(bodyHtml);
+  }
+
+  /* An empty summary means "work it out from the article", not "store an
+     empty summary" — otherwise clearing the field silently blanks every
+     card and meta description. */
+  if (patch.excerpt !== undefined && !patch.excerpt.trim()) {
+    patch.excerpt = excerptFrom(patch.bodyHtml ?? existing.bodyHtml);
+  }
+  for (const key of ["heroImageAlt", "authorName", "seoTitle", "seoDescription"]) {
+    if (patch[key] !== undefined && !String(patch[key]).trim()) patch[key] = null;
+  }
+
   if ("specialtySlug" in patch) {
     const specialties = await loadSpecialties();
     patch.specialtyId = patch.specialtySlug
@@ -334,7 +422,7 @@ export async function updateArticle(req, res) {
   if (patch.status === "published" && !existing.publishedAt) patch.publishedAt = new Date();
 
   const row = await articleRepo.update(existing.id, patch);
-  res.json({ article: { ...row, bodyHtml: undefined } });
+  res.json({ article: { ...row, bodyHtml: undefined, bodySource: undefined } });
 }
 
 // DELETE /api/admin/articles/:id
