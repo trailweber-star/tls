@@ -5,6 +5,7 @@ import {
   specialists as specialistRepo,
   taxonomy as taxonomyRepo,
 } from "../db/repos.js";
+import { normaliseOrigin } from "../lib/urls.js";
 import {
   mockFacilitiesWithRelations,
   mockSpecialistsWithRelations,
@@ -33,8 +34,17 @@ import {
 
 /** The public origin, from config or from the request that arrived. */
 function siteUrl(req) {
-  const configured = process.env.SITE_URL || process.env.PUBLIC_API_URL;
-  if (configured) return String(configured).replace(/\/+$/, "");
+  /* Validated, not trusted: Render's blueprint once filled SITE_URL
+     with the service name, which would have put "tls-preview/about" in
+     the sitemap — see normaliseOrigin in lib/urls.js. */
+  for (const candidate of [
+    process.env.SITE_URL,
+    process.env.PUBLIC_API_URL,
+    process.env.RENDER_EXTERNAL_URL,
+  ]) {
+    const origin = normaliseOrigin(candidate);
+    if (origin) return origin;
+  }
   const proto = req.headers["x-forwarded-proto"] ?? req.protocol ?? "https";
   return `${proto}://${req.headers.host}`;
 }

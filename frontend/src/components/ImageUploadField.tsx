@@ -87,10 +87,16 @@ export function ImageUploadField({
     setBusy(true);
     try {
       const saved = await uploadImage(file, kind);
+      /* The path is the fallback when the API's own idea of its public
+         address is wrong: assetUrl resolves "/uploads/…" against the
+         API origin this browser is actually talking to, which cannot be
+         misconfigured. A relative URL here is what put broken images on
+         the preview deployment. */
+      const stored = /^https?:\/\//i.test(saved.url) ? saved.url : (saved.path ?? saved.url);
       // Replacing a photo removes the one it replaced, so a profile
       // edited ten times does not leave ten orphans on disk.
       if (value) void deleteUpload(value).catch(() => {});
-      onChange(saved.url);
+      onChange(stored);
     } catch (err) {
       setError(err instanceof Error ? err.message : "That upload did not go through. Try again.");
     } finally {

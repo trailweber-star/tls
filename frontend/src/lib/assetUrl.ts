@@ -38,8 +38,19 @@ export const API_ORIGIN = (() => {
  * which is unambiguously ours.
  */
 export function assetUrl<T extends string | null | undefined>(url: T): T {
-  if (typeof url !== "string" || !url.startsWith("/uploads/")) return url;
-  return (API_ORIGIN + url) as T;
+  if (typeof url !== "string") return url;
+  if (url.startsWith("/uploads/")) return (API_ORIGIN + url) as T;
+
+  /* Rows written while the API had a misconfigured public origin hold
+     "tls-preview/uploads/photo.jpg" — a service name where a host
+     should be, which a browser resolves against whatever page it is on
+     and 404s. The API no longer produces these (see normaliseOrigin in
+     backend/src/lib/urls.js), and this repairs the ones already stored
+     so nobody has to re-upload a photo. */
+  const stray = /^[a-z0-9-]+(\/[a-z0-9-]+)*(\/(uploads|images|videos)\/[\w./-]+)$/i.exec(url);
+  if (stray) return (API_ORIGIN + stray[2]) as T;
+
+  return url;
 }
 
 /**

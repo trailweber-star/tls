@@ -360,7 +360,7 @@ export function getUploadConfig(): Promise<UploadConfig> {
 export async function uploadImage(
   file: File,
   kind = "image"
-): Promise<{ url: string; bytes: number; contentType: string; provider: string }> {
+): Promise<{ url: string; path?: string; bytes: number; contentType: string; provider: string }> {
   const res = await fetch(`${API_URL}/uploads/image?kind=${encodeURIComponent(kind)}`, {
     method: "POST",
     headers: { "content-type": file.type || "application/octet-stream", ...authHeaders() },

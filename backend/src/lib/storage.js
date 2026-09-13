@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { normaliseOrigin } from "./urls.js";
 
 /* ------------------------------------------------------------------ *
  * Image storage, behind a boundary
@@ -57,11 +58,25 @@ export function setStorageProvider(impl) {
  * configuration.
  * ------------------------------------------------------------------ */
 export function publicOriginFrom(req) {
-  const configured = process.env.PUBLIC_API_URL || process.env.API_PUBLIC_URL;
-  if (configured) return String(configured).replace(/\/+$/, "").replace(/\/api$/, "");
+  /* Each candidate is validated rather than trusted — see
+     normaliseOrigin in lib/urls.js. A configured value that is not a
+     real origin (Render's blueprint filled this with the service NAME,
+     which made every uploaded photo a broken relative path) is skipped
+     rather than published. */
+  for (const candidate of [
+    process.env.PUBLIC_API_URL,
+    process.env.API_PUBLIC_URL,
+    // Set automatically on Render, and always the real public address.
+    process.env.RENDER_EXTERNAL_URL,
+  ]) {
+    const origin = normaliseOrigin(candidate);
+    if (origin) return origin;
+  }
+
   if (!req) return "";
   // Behind a proxy Express fills these from X-Forwarded-* when
-  // "trust proxy" is set, which server.js does.
+  // "trust proxy" is set, which server.js does. On a single-origin
+  // deployment this is the correct answer anyway.
   const host = req.get?.("host");
   return host ? `${req.protocol}://${host}` : "";
 }

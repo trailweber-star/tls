@@ -82,18 +82,23 @@ services:
       - key: SEED_ADMIN_PASSWORD
         sync: false
 
-      # Where the site is reachable. Render fills this with the service's
-      # own URL, which is what email links and uploaded-photo URLs use.
-      - key: SITE_URL
-        fromService:
-          name: tls-preview
-          type: web
-          property: host
-      - key: PUBLIC_API_URL
-        fromService:
-          name: tls-preview
-          type: web
-          property: host
+      # Where the site is reachable — used by email links, the sitemap
+      # and every uploaded-photo URL.
+      #
+      # Deliberately NOT set here. These were filled from
+      # `fromService: property: host`, which returns the service NAME:
+      # PUBLIC_API_URL became "tls-preview", and every photo uploaded on
+      # this deployment came back as "tls-preview/uploads/photo.jpg" — a
+      # relative path that resolves against whatever page the browser is
+      # on and 404s. Broken images on every profile, and a validation
+      # error the moment anyone saved a form holding one.
+      #
+      # Render sets RENDER_EXTERNAL_URL on every web service, and it is
+      # the real public address including the scheme. The API reads it
+      # (see lib/storage.js) and falls back to the host the request
+      # arrived on, which on a single-origin deployment is correct
+      # anyway. Set PUBLIC_API_URL by hand only if the API is ever
+      # served from a different domain than the site.
 
       # Email stays in log-only mode on a preview: nothing is sent to a
       # real clinician by accident. Add a provider key and MAIL_ALLOWLIST

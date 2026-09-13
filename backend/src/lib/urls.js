@@ -66,6 +66,41 @@ export function safeUrl(value) {
 }
 
 /**
+ * An origin we are willing to build public URLs on top of.
+ *
+ * This exists because of a real outage on the preview deployment. The
+ * blueprint filled PUBLIC_API_URL from Render's `property: host`, which
+ * is a service NAME — "tls-preview" — not a URL. Every uploaded photo
+ * then came back as "tls-preview/uploads/photo.jpg": a relative path,
+ * broken in every <img> on the site, and rejected by the URL check the
+ * moment anyone tried to save a form containing one.
+ *
+ * So a configured value is checked rather than trusted. A bare host
+ * picks up https; anything that does not resolve to a real host is
+ * refused, and the caller falls back to the host the request actually
+ * arrived on — which is correct on every deployment there is.
+ */
+export function normaliseOrigin(value) {
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/api$/, "");
+  if (!raw) return "";
+
+  try {
+    const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+    if (!ALLOWED_PROTOCOLS.has(url.protocol)) return "";
+    const host = url.hostname;
+    // "tls-preview" is a service name. A public origin has a dot in it,
+    // or is a loopback address somebody is developing against.
+    const usable = host.includes(".") || host === "localhost" || host === "[::1]";
+    return usable ? url.origin : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
  * A zod field for a member-supplied URL.
  *
  * Refuses rather than silently dropping, so the person editing their
