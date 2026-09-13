@@ -16,7 +16,8 @@
     "check:gallery": "node scripts/gallery.mjs",
     "check:members": "node scripts/members.mjs",
     "check:legal": "node scripts/legal.mjs",
-    "check:preview": "node scripts/preview.mjs"
+    "check:preview": "node scripts/preview.mjs",
+    "predev": "node scripts/check-api.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.43.0",
