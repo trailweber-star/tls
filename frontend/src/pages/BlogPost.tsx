@@ -161,26 +161,49 @@ export default function BlogPost() {
         ]}
       />
 
-      {/* ==================================================== hero */}
+      {/* ==================================================== hero
+          The cover is the hero. It used to sit at a fifth opacity behind
+          the title — atmosphere, not a picture — with the real image
+          printed again underneath, which showed the same photograph
+          twice and made the top of every article a navy slab.
+
+          So it is one image now, at full strength, with the title
+          sitting in the dense end of a gradient rather than on top of
+          whatever happens to be in the photo. The picture is tall enough
+          to be a picture, and the wash is what keeps the words legible
+          over a bright one. */}
       <section
-        className="relative overflow-hidden bg-navy-950 text-white"
+        className={`relative overflow-hidden bg-navy-950 text-white ${
+          article.heroImageUrl ? "flex min-h-[430px] items-end sm:min-h-[520px]" : ""
+        }`}
         style={{ marginTop: -HEADER_HEIGHT, paddingTop: HEADER_HEIGHT }}
       >
         {article.heroImageUrl && (
           <>
             <img
               src={article.heroImageUrl}
-              alt=""
+              alt={article.heroImageAlt ?? ""}
+              /* Biased above centre: a cover is usually a person, and a
+                 centred crop of a portrait takes their head off. */
+              className="absolute inset-0 h-full w-full object-cover object-[center_28%]"
+            />
+            {/* Dense at the bottom, where every word is; clear at the
+                top, where the photograph is. */}
+            <div
               aria-hidden
-              className="absolute inset-0 h-full w-full object-cover opacity-[0.18]"
+              className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/85 to-navy-950/25"
             />
             <div
               aria-hidden
-              className="absolute inset-0 bg-gradient-to-b from-navy-950/85 via-navy-950/90 to-navy-950"
+              className="absolute inset-0 bg-gradient-to-r from-navy-950/75 via-navy-950/25 to-transparent"
             />
           </>
         )}
-        <div className="relative mx-auto w-full max-w-[760px] px-5 py-12 sm:px-8 sm:py-16">
+        <div
+          className={`relative mx-auto w-full max-w-[760px] px-5 sm:px-8 ${
+            article.heroImageUrl ? "pb-10 pt-16 sm:pb-14 sm:pt-24" : "py-12 sm:py-16"
+          }`}
+        >
           <Link
             to="/blog"
             className="inline-flex items-center gap-2 text-[13px] font-bold text-teal-300 transition hover:text-teal-200"
@@ -212,27 +235,6 @@ export default function BlogPost() {
           </p>
         </div>
       </section>
-
-      {/* ==================================================== cover
-          The hero only washes this image behind the title at a quarter
-          opacity, which is atmosphere rather than a picture. An article
-          about a knee replacement should show the thing it is about, so
-          the cover is printed properly here, pulled up to straddle the
-          navy band and the page. */}
-      {article.heroImageUrl && (
-        <figure className="mx-auto -mt-8 w-full max-w-[900px] px-5 sm:-mt-12 sm:px-8">
-          <img
-            src={article.heroImageUrl}
-            alt={article.heroImageAlt ?? ""}
-            className="aspect-[16/9] w-full rounded-2xl object-cover shadow-[0_30px_60px_-30px_rgba(6,22,38,0.55)] ring-1 ring-black/5"
-          />
-          {article.heroImageAlt && (
-            <figcaption className="mt-3 text-center text-[12.5px] text-ink-faint">
-              {article.heroImageAlt}
-            </figcaption>
-          )}
-        </figure>
-      )}
 
       {/* ================================================== the body */}
       <article className="mx-auto w-full max-w-[760px] px-5 py-10 sm:px-8 sm:py-14">
