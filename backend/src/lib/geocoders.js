@@ -78,6 +78,72 @@ export function postcodesIoGeocoder() {
   };
 }
 
+/* ------------------------------------------------------------------ *
+ * Bulk lookups
+ *
+ * The geocoder above answers one query at a time, because that is what
+ * a search box does. Backfilling a table is the other shape: a hundred
+ * postcodes at once, and a hundred separate requests would be both slow
+ * and rude to a free service. postcodes.io takes a POST of up to a
+ * hundred, so scripts/geotag.mjs uses these two instead.
+ *
+ * They return the administrative fields as well as the coordinates,
+ * because a town called Stanmore exists in Shropshire, Hampshire,
+ * Berkshire AND Greater London, and only the postcode's own district
+ * says which one a listing means.
+ * ------------------------------------------------------------------ */
+
+/** Up to 100 postcodes in one request. Unknown codes come back as null. */
+export async function bulkPostcodes(codes) {
+  const out = new Map();
+  for (let i = 0; i < codes.length; i += 100) {
+    const chunk = codes.slice(i, i + 100);
+    const res = await fetch("https://api.postcodes.io/postcodes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postcodes: chunk }),
+    });
+    if (!res.ok) throw new Error(`postcodes.io answered ${res.status}`);
+    const data = await res.json();
+    for (const row of data.result ?? []) {
+      out.set(
+        row.query,
+        row.result
+          ? {
+              postcode: row.result.postcode,
+              lat: row.result.latitude,
+              lng: row.result.longitude,
+              district: row.result.admin_district ?? null,
+              county: row.result.admin_county ?? null,
+              region: row.result.region ?? null,
+              ward: row.result.admin_ward ?? null,
+              town: row.result.post_town ?? null,
+            }
+          : null
+      );
+    }
+  }
+  return out;
+}
+
+/** Every place of that name, so the caller can pick the right one. */
+export async function lookupPlaces(name, limit = 10) {
+  const res = await fetch(
+    `https://api.postcodes.io/places?q=${encodeURIComponent(name)}&limit=${limit}`
+  );
+  if (!res.ok) throw new Error(`postcodes.io answered ${res.status}`);
+  const data = await res.json();
+  return (data.result ?? []).map((p) => ({
+    name: p.name_1,
+    type: p.local_type ?? null,
+    county: p.county_unitary ?? null,
+    district: p.district_borough ?? null,
+    region: p.region ?? null,
+    lat: p.latitude,
+    lng: p.longitude,
+  }));
+}
+
 /** Google Geocoding — anywhere, any address, needs a key. */
 export function googleGeocoder(apiKey) {
   return async (query) => {

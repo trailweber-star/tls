@@ -1,0 +1,331 @@
+{
+  "$comment": "Postcode centroids and place centroids from postcodes.io (Ordnance Survey / ONS open data, Open Government Licence v3). Written by scripts/geotag.mjs; safe to delete — it will be refetched. `places` keeps EVERY town of a given name, because which one a listing means is decided from its postcodes, not from this file.",
+  "source": "https://api.postcodes.io",
+  "postcodes": {
+    "B152TQ": {
+      "postcode": "B15 2TQ",
+      "lat": 52.452669,
+      "lng": -1.941076,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153ED": {
+      "postcode": "B15 3ED",
+      "lat": 52.471036,
+      "lng": -1.926551,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B312AP": {
+      "postcode": "B31 2AP",
+      "lat": 52.420088,
+      "lng": -1.96116,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Northfield",
+      "town": null
+    },
+    "B32QD": {
+      "postcode": "B3 2QD",
+      "lat": 52.482099,
+      "lng": -1.897805,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B57UG": {
+      "postcode": "B5 7UG",
+      "lat": 52.456444,
+      "lng": -1.911418,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B601LY": {
+      "postcode": "B60 1LY",
+      "lat": 52.333897,
+      "lng": -2.00193,
+      "district": "Bromsgrove",
+      "county": "Worcestershire",
+      "region": "West Midlands",
+      "ward": "Tardebigge",
+      "town": null
+    },
+    "B602JL": {
+      "postcode": "B60 2JL",
+      "lat": 52.332821,
+      "lng": -2.057843,
+      "district": "Bromsgrove",
+      "county": "Worcestershire",
+      "region": "West Midlands",
+      "ward": "Bromsgrove Central",
+      "town": null
+    },
+    "B632AH": {
+      "postcode": "B63 2AH",
+      "lat": 52.457666,
+      "lng": -2.076683,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Belle Vale",
+      "town": null
+    },
+    "B912PP": {
+      "postcode": "B91 2PP",
+      "lat": 52.421597,
+      "lng": -1.760763,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B913QG": {
+      "postcode": "B91 3QG",
+      "lat": 52.414289,
+      "lng": -1.784753,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Alphege",
+      "town": null
+    },
+    "CV22LQ": {
+      "postcode": "CV2 2LQ",
+      "lat": 52.423385,
+      "lng": -1.438162,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Henley",
+      "town": null
+    },
+    "EC1Y2BJ": null,
+    "HA74LP": {
+      "postcode": "HA7 4LP",
+      "lat": 51.632569,
+      "lng": -0.310412,
+      "district": "Harrow",
+      "county": null,
+      "region": "London",
+      "ward": "Stanmore",
+      "town": null
+    },
+    "LS15JF": {
+      "postcode": "LS1 5JF",
+      "lat": 53.799042,
+      "lng": -1.546673,
+      "district": "Leeds",
+      "county": null,
+      "region": "Yorkshire and The Humber",
+      "ward": "Little London & Woodhouse",
+      "town": null
+    },
+    "M33JE": {
+      "postcode": "M3 3JE",
+      "lat": 53.479095,
+      "lng": -2.251982,
+      "district": "Manchester",
+      "county": null,
+      "region": "North West",
+      "ward": "Deansgate",
+      "town": null
+    },
+    "SW194DD": {
+      "postcode": "SW19 4DD",
+      "lat": 51.420713,
+      "lng": -0.209674,
+      "district": "Merton",
+      "county": null,
+      "region": "London",
+      "ward": "Hillside",
+      "town": null
+    },
+    "WR53YB": {
+      "postcode": "WR5 3YB",
+      "lat": 52.181095,
+      "lng": -2.216243,
+      "district": "Worcester",
+      "county": "Worcestershire",
+      "region": "West Midlands",
+      "ward": "Battenhall",
+      "town": null
+    },
+    "WR98DN": {
+      "postcode": "WR9 8DN",
+      "lat": 52.265573,
+      "lng": -2.150888,
+      "district": "Wychavon",
+      "county": "Worcestershire",
+      "region": "West Midlands",
+      "ward": "Droitwich East",
+      "town": null
+    },
+    "WV68LE": {
+      "postcode": "WV6 8LE",
+      "lat": 52.593476,
+      "lng": -2.171532,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Wightwick",
+      "town": null
+    }
+  },
+  "places": {
+    "bromsgrove": [
+      {
+        "name": "Bromsgrove",
+        "type": "Town",
+        "county": "Worcestershire",
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.335234109974074,
+        "lng": -2.0592757507711275
+      }
+    ],
+    "coventry": [
+      {
+        "name": "Coventry",
+        "type": "City",
+        "county": null,
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.40770706485726,
+        "lng": -1.5068569124762743
+      }
+    ],
+    "droitwich spa": [
+      {
+        "name": "Droitwich Spa",
+        "type": "Town",
+        "county": "Worcestershire",
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.268091773384654,
+        "lng": -2.1457018178859815
+      }
+    ],
+    "edgbaston": [
+      {
+        "name": "Edgbaston",
+        "type": "Suburban Area",
+        "county": null,
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.45768232578763,
+        "lng": -1.9296840348923086
+      }
+    ],
+    "halesowen": [
+      {
+        "name": "Halesowen",
+        "type": "Town",
+        "county": null,
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.45340801351115,
+        "lng": -2.060906516007886
+      }
+    ],
+    "stanmore": [
+      {
+        "name": "Stanmore",
+        "type": "Village",
+        "county": "Shropshire",
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.533815992341395,
+        "lng": -2.381674173455401
+      },
+      {
+        "name": "Stanmore",
+        "type": "Suburban Area",
+        "county": "Hampshire",
+        "district": null,
+        "region": "South East",
+        "lat": 51.05347132301558,
+        "lng": -1.3373786841053565
+      },
+      {
+        "name": "Stanmore",
+        "type": "Hamlet",
+        "county": "West Berkshire",
+        "district": null,
+        "region": "South East",
+        "lat": 51.507660580013955,
+        "lng": -1.3181487130910272
+      },
+      {
+        "name": "Stanmore",
+        "type": "Other Settlement",
+        "county": "Greater London",
+        "district": null,
+        "region": "London",
+        "lat": 51.617632359051115,
+        "lng": -0.31125000298877126
+      },
+      {
+        "name": "Little Stanmore",
+        "type": "Suburban Area",
+        "county": "Greater London",
+        "district": null,
+        "region": "London",
+        "lat": 51.60343081727256,
+        "lng": -0.2831562360045704
+      }
+    ],
+    "wolverhampton": [
+      {
+        "name": "Wolverhampton",
+        "type": "City",
+        "county": null,
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.586204982833706,
+        "lng": -2.129915574249577
+      }
+    ],
+    "worcester": [
+      {
+        "name": "Worcester",
+        "type": "City",
+        "county": "Worcestershire",
+        "district": null,
+        "region": "West Midlands",
+        "lat": 52.19293201493012,
+        "lng": -2.2210879244106057
+      },
+      {
+        "name": "Worcester Park",
+        "type": "Village",
+        "county": "Surrey",
+        "district": null,
+        "region": "South East",
+        "lat": 51.37502983141923,
+        "lng": -0.24889666932739535
+      },
+      {
+        "name": "Worcester Park",
+        "type": "Suburban Area",
+        "county": "Greater London",
+        "district": null,
+        "region": "London",
+        "lat": 51.38080389205846,
+        "lng": -0.24594598011987395
+      }
+    ]
+  }
+}
