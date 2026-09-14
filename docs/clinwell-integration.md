@@ -250,7 +250,7 @@ the column was added.
 | Admin: events that died, and requeue | `backend/src/controllers/clinwellAdmin.controller.js` |
 | The dashboard panel, incl. §6.1 sign-in copy | `frontend/src/components/dashboard/ClinWellPanel.tsx` |
 | "Runs on ClinWell" badge + §7 embed | `frontend/src/pages/SpecialistProfile.tsx` |
-| Schema | `backend/drizzle/0007_clinwell_integration.sql`, `0008_clinwell_enquiry_forwarding.sql` |
+| Schema | `0007_clinwell_integration.sql`, `0008_clinwell_enquiry_forwarding.sql`, `0009_clinwell_clinic_slug.sql` |
 | 162 checks | `backend/scripts/clinwell-test.mjs` — `npm run clinwell:test` |
 
 ## The backlog that must never be forwarded
@@ -290,7 +290,11 @@ Three bugs that were not in the brief:
   column was added, because the serialiser spreads the row. Now stripped
   with the four new internal columns.
 - The badge lookup selected `specialists.slug` only, so this file's own
-  claim to "match an inbound push against either slug" was not actually
-  implemented. It now matches the registered slug first, then ours.
+  claim to match an inbound push against either slug was not actually
+  implemented. It was fixed to match both — and then, once Sahil settled
+  that the push carries the TLS slug, narrowed again to match ours
+  alone. Matching both had a hazard of its own: if one clinic's ClinWell
+  slug ever equalled another practice's TLS slug, a push would have
+  badged the wrong listing.
 - The admin ClinWell block worked out the slug and the embed URL
   separately and they disagreed once the registered slug was set.
