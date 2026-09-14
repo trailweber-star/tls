@@ -7,6 +7,7 @@ import {
   ExternalLink,
   LogIn,
   MoreHorizontal,
+  MoreVertical,
   RefreshCw,
   Star,
   Users,
@@ -18,7 +19,14 @@ import { MemberFilters, FILTER_KEYS } from "../../components/admin/MemberFilters
 import { MemberDrawer } from "../../components/admin/MemberDrawer";
 import { MemberAvatar, StatusChip } from "../../components/admin/memberChrome";
 import { membersApi } from "../../lib/dashboardApi";
-import type { BulkAction, MemberQuery, MemberRow, MembersResponse } from "../../lib/dashboardApi";
+import type {
+  BulkAction,
+  LocationOption,
+  MemberQuery,
+  MemberRow,
+  MembersResponse,
+  SpecialtyOption,
+} from "../../lib/dashboardApi";
 import { useAuth } from "../../lib/auth";
 
 /* ------------------------------------------------------------------ *
@@ -66,7 +74,17 @@ const BULK: {
   label: string;
   needsNote?: boolean;
   needsTag?: boolean;
+  /* Two pickers rather than a free-text box: a category typed by hand is
+     a category that quietly matches nothing. */
+  needsSpecialty?: "category" | "subcategory";
+  needsLocation?: boolean;
   tone?: "danger";
+  /* Kept out of the row of buttons and put behind the kebab. The bar had
+     nine buttons before these five existed; fourteen is not a toolbar,
+     it is a wall. What stays out front is what changes a listing's
+     STATE — approve, hold, suspend — because that is the work the queue
+     is for. Filing and labelling go in the menu. */
+  inMenu?: boolean;
   blurb: string;
 }[] = [
   { action: "approve", label: "Approve listing", blurb: "Their profile becomes publicly visible and marked verified." },
@@ -97,8 +115,64 @@ const BULK: {
     blurb: "They can no longer sign in. Administrator accounts are skipped.",
   },
   { action: "reactivate-account", label: "Reactivate account", blurb: "Restores their ability to sign in." },
-  { action: "tag", label: "Add a tag", needsTag: true, blurb: "Tags are internal and never shown publicly." },
-  { action: "untag", label: "Remove a tag", needsTag: true, blurb: "Takes the tag off every selected member." },
+  { action: "tag", label: "Add a tag", needsTag: true, inMenu: true, blurb: "Tags are internal and never shown publicly." },
+  {
+    action: "untag",
+    label: "Remove a tag",
+    needsTag: true,
+    inMenu: true,
+    blurb: "Takes the tag off every selected member.",
+  },
+  {
+    action: "set-category",
+    label: "Set main category",
+    needsSpecialty: "category",
+    inMenu: true,
+    blurb:
+      "Replaces the main category on every selected listing, and adds it to their tags — a hero that says one thing while the tags say another is worse than either.",
+  },
+  {
+    action: "add-subcategory",
+    label: "Add a subcategory",
+    needsSpecialty: "subcategory",
+    inMenu: true,
+    blurb: "Adds one more category to every selected listing. Nothing they already have is removed.",
+  },
+  {
+    action: "remove-subcategory",
+    label: "Remove a subcategory",
+    needsSpecialty: "subcategory",
+    inMenu: true,
+    blurb:
+      "Takes one category off every selected listing. A listing whose main category this is will be skipped rather than left pointing at nothing.",
+  },
+  {
+    action: "add-location",
+    label: "Add a location",
+    needsLocation: true,
+    inMenu: true,
+    blurb: "Attaches a clinic address to every selected listing, alongside any they already have.",
+  },
+  {
+    action: "remove-location",
+    label: "Remove a location",
+    needsLocation: true,
+    inMenu: true,
+    blurb: "Detaches that address from every selected listing.",
+  },
+];
+
+/* What the kebab holds, in two groups.
+   Grouped rather than listed flat because "Add a tag" and "Set main
+   category" do very different things to a selection, and a menu of
+   seven undifferentiated verbs is read by nobody. */
+const MENU_GROUPS: { title: string; actions: BulkAction[] }[] = [
+  {
+    title: "Category",
+    actions: ["set-category", "add-subcategory", "remove-subcategory"],
+  },
+  { title: "Location", actions: ["add-location", "remove-location"] },
+  { title: "Tags", actions: ["tag", "untag"] },
 ];
 
 export default function AdminMembers() {
@@ -112,6 +186,18 @@ export default function AdminMembers() {
   const [error, setError] = useState<string | null>(null);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  /* The kebab, and what its two pickers need. */
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [options, setOptions] = useState<{
+    specialties: SpecialtyOption[];
+    locations: LocationOption[];
+    note?: string;
+  } | null>(null);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [specialtySlug, setSpecialtySlug] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [pickerQuery, setPickerQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -220,13 +306,59 @@ export default function AdminMembers() {
     });
   }
 
+  /* ---------------------------------------------------- the pickers
+
+     Filtered here rather than on the server: the whole tree is a few
+     hundred rows and already in the browser, so a keystroke should not
+     be a round trip. Capped at forty — a list longer than a screen is
+     not a list anybody reads, and the count below it says so. */
+  const PICKER_LIMIT = 40;
+  const { pickerResults, pickerTotal } = useMemo(() => {
+    if (!options) return { pickerResults: [] as (SpecialtyOption | LocationOption)[], pickerTotal: 0 };
+    const q = pickerQuery.trim().toLowerCase();
+
+    if (pending?.needsLocation) {
+      const all = options.locations.filter((row) =>
+        !q ||
+        [row.clinicName, row.cityName, row.address, row.postcode]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q))
+      );
+      return { pickerResults: all.slice(0, PICKER_LIMIT), pickerTotal: all.length };
+    }
+
+    /* "Set main category" offers the whole tree, not just the top: a
+       consultant's main category here is "Knee Replacement", which is
+       three levels down. Depth is shown as the path under each name
+       rather than used to hide anything. */
+    const all = options.specialties.filter(
+      (row) => !q || row.name.toLowerCase().includes(q) || row.parents.join(" ").toLowerCase().includes(q)
+    );
+    return { pickerResults: all.slice(0, PICKER_LIMIT), pickerTotal: all.length };
+  }, [options, pickerQuery, pending]);
+
   /* ------------------------------------------------- bulk actions */
 
   function openBulk(spec: (typeof BULK)[number]) {
     setPending(spec);
     setNote("");
     setTag("");
+    setSpecialtySlug("");
+    setLocationId("");
+    setPickerQuery("");
     setActionError(null);
+    setMenuOpen(false);
+    /* The tree and the location list are fetched the first time one of
+       the pickers is actually opened — five hundred specialties is not
+       something to load on a screen where most visits never touch them. */
+    if ((spec.needsSpecialty || spec.needsLocation) && !options && !loadingOptions) {
+      setLoadingOptions(true);
+      membersApi
+        .bulkEditOptions()
+        .then(setOptions)
+        .catch(() => setActionError("Could not load the list to pick from."))
+        .finally(() => setLoadingOptions(false));
+    }
   }
 
   async function runBulk() {
@@ -239,6 +371,8 @@ export default function AdminMembers() {
         ids: [...selected],
         note: note.trim() || undefined,
         tag: tag.trim() || undefined,
+        specialtySlug: specialtySlug || undefined,
+        locationId: locationId || undefined,
       });
       setPending(null);
       setSelected(new Set());
@@ -425,8 +559,8 @@ export default function AdminMembers() {
           >
             Clear
           </button>
-          <div className="ml-auto flex flex-wrap gap-2">
-            {BULK.map((spec) => (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {BULK.filter((spec) => !spec.inMenu).map((spec) => (
               <button
                 key={spec.action}
                 type="button"
@@ -440,6 +574,61 @@ export default function AdminMembers() {
                 {spec.label}
               </button>
             ))}
+
+            {/* Everything that files or labels rather than decides.
+                A kebab because the alternative was fourteen buttons. */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-label="More actions"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                className={`grid h-8 w-8 place-items-center rounded-full transition ${
+                  menuOpen ? "bg-ink text-white" : "bg-paper-tint text-ink-muted hover:bg-line-soft hover:text-ink"
+                }`}
+              >
+                <MoreVertical className="h-4 w-4" strokeWidth={2.4} />
+              </button>
+
+              {menuOpen && (
+                <>
+                  {/* Catches the click that closes it, including on the
+                      table underneath — a menu that only closes when you
+                      hit its own button is a menu in the way. */}
+                  <button
+                    type="button"
+                    aria-hidden
+                    tabIndex={-1}
+                    onClick={() => setMenuOpen(false)}
+                    className="fixed inset-0 z-40 cursor-default"
+                  />
+                  <div
+                    role="menu"
+                    className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-line"
+                  >
+                    {MENU_GROUPS.map((group) => (
+                      <div key={group.title} className="py-1">
+                        <p className="px-4 py-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-faint">
+                          {group.title}
+                        </p>
+                        {BULK.filter((spec) => group.actions.includes(spec.action)).map((spec) => (
+                          <button
+                            key={spec.action}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => openBulk(spec)}
+                            className="block w-full px-4 py-2 text-left text-[13px] font-semibold text-ink transition hover:bg-paper-tint"
+                          >
+                            {spec.label}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -708,6 +897,80 @@ export default function AdminMembers() {
         description={pending?.blurb}
       >
         <div className="space-y-4">
+          {/* ------------------------------------------- the pickers
+              A search box over a flat list, not an expanding tree. The
+              person filing twelve listings types "knee" and wants every
+              match at once, and the path under each name is what tells
+              them which of four similarly-named nodes they are choosing. */}
+          {(pending?.needsSpecialty || pending?.needsLocation) && (
+            <div>
+              <span className="mb-1 block text-[12px] font-bold text-ink">
+                {pending.needsLocation ? "Location" : pending.needsSpecialty === "category" ? "Main category" : "Category"}
+              </span>
+
+              {loadingOptions && <p className="text-[12.5px] text-ink-faint">Loading…</p>}
+              {options?.note && <p className="text-[12.5px] text-ink-muted">{options.note}</p>}
+
+              {options && !options.note && (
+                <>
+                  <input
+                    value={pickerQuery}
+                    onChange={(e) => setPickerQuery(e.target.value)}
+                    autoFocus
+                    placeholder={pending.needsLocation ? "Search hospitals and clinics" : "Search categories"}
+                    className="w-full rounded-xl border border-line-soft bg-paper px-3 py-2 text-[13px] outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  />
+
+                  <div className="mt-2 max-h-56 overflow-y-auto rounded-xl ring-1 ring-line-soft">
+                    {pickerResults.length === 0 ? (
+                      <p className="px-3 py-3 text-[12.5px] text-ink-faint">Nothing matches that.</p>
+                    ) : (
+                      <ul className="divide-y divide-line-soft">
+                        {pickerResults.map((row) => {
+                          const chosen =
+                            "slug" in row ? specialtySlug === row.slug : locationId === row.id;
+                          return (
+                            <li key={"slug" in row ? row.slug : row.id}>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  "slug" in row ? setSpecialtySlug(row.slug) : setLocationId(row.id)
+                                }
+                                className={`block w-full px-3 py-2 text-left transition ${
+                                  chosen ? "bg-teal-50" : "hover:bg-paper-tint"
+                                }`}
+                              >
+                                <span className="block text-[13px] font-bold text-ink">
+                                  {"slug" in row ? row.name : (row.clinicName ?? "Unnamed clinic")}
+                                </span>
+                                <span className="block text-[11.5px] text-ink-faint">
+                                  {"slug" in row
+                                    ? row.parents.length
+                                      ? row.parents.join(" › ")
+                                      : "Top level"
+                                    : [row.address, row.cityName, row.postcode].filter(Boolean).join(" · ")}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* The count matters: "showing 40 of 312" is the
+                      difference between "nothing else matches" and
+                      "keep typing". */}
+                  {pickerTotal > pickerResults.length && (
+                    <p className="mt-1 text-[11.5px] text-ink-faint">
+                      Showing {pickerResults.length} of {pickerTotal} — keep typing to narrow it.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {pending?.needsTag && (
             <label className="block">
               <span className="mb-1 block text-[12px] font-bold text-ink">Tag</span>
@@ -755,7 +1018,13 @@ export default function AdminMembers() {
             <button
               type="button"
               onClick={runBulk}
-              disabled={running || (pending?.needsNote && !note.trim()) || (pending?.needsTag && !tag.trim())}
+              disabled={
+                running ||
+                (pending?.needsNote && !note.trim()) ||
+                (pending?.needsTag && !tag.trim()) ||
+                (Boolean(pending?.needsSpecialty) && !specialtySlug) ||
+                (Boolean(pending?.needsLocation) && !locationId)
+              }
               className={`rounded-full px-4 py-2 text-[12.5px] font-bold text-white transition disabled:opacity-40 ${
                 pending?.tone === "danger" ? "bg-danger hover:brightness-110" : "bg-teal-600 hover:bg-teal-700"
               }`}

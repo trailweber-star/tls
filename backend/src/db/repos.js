@@ -397,6 +397,53 @@ export const specialists = {
   },
 
   /** Replace a specialist's taxonomy links wholesale. */
+  /* ------------------------------------------------ one link at a time
+
+     setLinks below REPLACES a listing's links, which is what a profile
+     editor wants: the form holds the whole set. These four are for the
+     admin's bulk actions, which add or remove a single tag across many
+     listings at once — there, replacing would mean one click emptying
+     twelve profiles of everything the click did not mention.
+
+     onConflictDoNothing rather than a read-then-write: adding a specialty
+     a listing already has should be a no-op, not a duplicate-key error
+     halfway through a batch. */
+  async addSpecialty(specialistId, specialtyId) {
+    await db()
+      .insert(t.specialistSpecialties)
+      .values({ specialistId, specialtyId })
+      .onConflictDoNothing();
+  },
+
+  async removeSpecialty(specialistId, specialtyId) {
+    await db()
+      .delete(t.specialistSpecialties)
+      .where(
+        and(
+          eq(t.specialistSpecialties.specialistId, specialistId),
+          eq(t.specialistSpecialties.specialtyId, specialtyId)
+        )
+      );
+  },
+
+  async addLocation(specialistId, clinicLocationId) {
+    await db()
+      .insert(t.specialistClinicLocations)
+      .values({ specialistId, clinicLocationId })
+      .onConflictDoNothing();
+  },
+
+  async removeLocation(specialistId, clinicLocationId) {
+    await db()
+      .delete(t.specialistClinicLocations)
+      .where(
+        and(
+          eq(t.specialistClinicLocations.specialistId, specialistId),
+          eq(t.specialistClinicLocations.clinicLocationId, clinicLocationId)
+        )
+      );
+  },
+
   async setLinks(id, { specialtyIds, conditionIds, treatmentIds, locationIds }) {
     await db().transaction(async (tx) => {
       if (specialtyIds) {
@@ -536,6 +583,34 @@ export const clinicLocations = {
   async findById(id) {
     const [row] = await db().select().from(t.clinicLocations).where(eq(t.clinicLocations.id, id)).limit(1);
     return row ?? null;
+  },
+
+  /**
+   * Every location, named the way a person would recognise it, for the
+   * admin's location picker.
+   *
+   * Locations a specialist owns privately (ownedBySpecialistId) are left
+   * out: those are one consultant's own consulting address, not a place
+   * another listing should be filed at.
+   */
+  async listForPicker() {
+    const rows = await db()
+      .select({
+        id: t.clinicLocations.id,
+        address: t.clinicLocations.address,
+        postcode: t.clinicLocations.postcode,
+        clinicName: t.clinics.name,
+        cityName: t.cities.name,
+        ownedBy: t.clinicLocations.ownedBySpecialistId,
+      })
+      .from(t.clinicLocations)
+      .leftJoin(t.clinics, eq(t.clinics.id, t.clinicLocations.clinicId))
+      .leftJoin(t.cities, eq(t.cities.id, t.clinicLocations.cityId));
+
+    return rows
+      .filter((r) => !r.ownedBy)
+      .map(({ ownedBy, ...r }) => r)
+      .sort((a, b) => String(a.clinicName ?? "").localeCompare(String(b.clinicName ?? "")));
   },
 };
 

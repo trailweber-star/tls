@@ -783,7 +783,29 @@ export type BulkAction =
   | "deactivate-account"
   | "reactivate-account"
   | "tag"
-  | "untag";
+  | "untag"
+  | "set-category"
+  | "add-subcategory"
+  | "remove-subcategory"
+  | "add-location"
+  | "remove-location";
+
+/** One row of the specialty picker: the name, and where it sits in the tree. */
+export interface SpecialtyOption {
+  slug: string;
+  name: string;
+  /** Ancestors, outermost first — "Orthopaedics", "Knee". */
+  parents: string[];
+  depth: number;
+}
+
+export interface LocationOption {
+  id: string;
+  clinicName: string | null;
+  cityName: string | null;
+  address: string | null;
+  postcode: string | null;
+}
 
 export interface BulkResult {
   ok: boolean;
@@ -810,8 +832,21 @@ export const membersApi = {
   get: (id: string) => get<{ member: MemberRow; history: AuditEntry[] }>(`/admin/members/${id}`),
   annotate: (id: string, body: { adminNotes?: string | null; tags?: string[] }) =>
     patch<{ ok: boolean }>(`/admin/members/${id}`, body),
-  bulk: (body: { action: BulkAction; ids: string[]; note?: string; tag?: string }) =>
-    post<BulkResult>("/admin/members/bulk", body),
+  bulk: (body: {
+    action: BulkAction;
+    ids: string[];
+    note?: string;
+    tag?: string;
+    specialtySlug?: string;
+    locationId?: string;
+  }) => post<BulkResult>("/admin/members/bulk", body),
+
+  /* The specialty tree and every clinic location, for the bulk editor's
+     two pickers. Fetched once, the first time the menu is opened. */
+  bulkEditOptions: () =>
+    get<{ specialties: SpecialtyOption[]; locations: LocationOption[]; note?: string }>(
+      "/admin/taxonomy-options"
+    ),
   impersonate: (id: string, reason?: string) =>
     post<{
       ok: boolean;

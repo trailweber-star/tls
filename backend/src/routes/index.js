@@ -92,6 +92,7 @@ import {
   stopImpersonation,
   updateMemberAdminFields,
   updateMemberClinwell,
+  bulkEditOptions,
 } from "../controllers/members.controller.js";
 import {
   getSystemStatus,
@@ -376,6 +377,10 @@ router.patch("/admin/members/:id", requireAuth, requireRole("admin"), updateMemb
    third party — see the handler. */
 router.patch("/admin/members/:id/clinwell", requireAuth, requireRole("admin"), updateMemberClinwell);
 router.post("/admin/members/:id/impersonate", requireAuth, requireRole("admin"), startImpersonation);
+/* What the bulk editor offers to pick from — the specialty tree and
+   every clinic location, so a category or a place can be set across a
+   selection without opening each listing. */
+router.get("/admin/taxonomy-options", requireAuth, requireRole("admin"), bulkEditOptions);
 router.post("/admin/members/bulk", requireAuth, requireRole("admin"), bulkMembers);
 // Review moderation. Admin-only, both of them: nobody else can see the
 // queue, and nobody else can publish or reject.

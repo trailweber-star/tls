@@ -1,8 +1,10 @@
 import { isDbConfigured } from "../config/db.js";
 import {
   adminAudit,
+  clinicLocations as clinicLocationRepo,
   clinwellBadges,
   specialists as specialistRepo,
+  taxonomy as taxonomyRepo,
   users as userRepo,
 } from "../db/repos.js";
 import { demoAccounts } from "../data/accounts.js";
@@ -618,6 +620,30 @@ const BULK_ACTIONS = {
   "reactivate-account": { kind: "account", set: { active: true }, label: "Account reactivated" },
   tag: { kind: "tag", label: "Tagged" },
   untag: { kind: "untag", label: "Tag removed" },
+
+  /* ------------------------------------------------- taxonomy and place
+
+     The three that exist because filing a listing correctly is the most
+     common thing anybody does to a batch of them, and the old way was to
+     sign in as each member in turn and edit their profile — twelve
+     support sessions to put twelve podiatrists under Podiatry.
+
+     ADD, not replace, for the last four. A bulk edit that overwrote each
+     member's existing specialties with the one just picked would be a
+     single click that quietly emptied twelve profiles, and the person
+     clicking would have no way to know until somebody complained their
+     listing had lost half its tags. Only `set-category` replaces, and
+     only one field: the primary specialty is by definition a single
+     value.
+
+     Removing is offered alongside adding for the same reason it is
+     offered on tags — a bulk action nobody can undo in bulk is a bulk
+     action people are right to be afraid of. */
+  "set-category": { kind: "category", label: "Category set", needsSpecialty: true },
+  "add-subcategory": { kind: "subcategory", add: true, label: "Subcategory added", needsSpecialty: true },
+  "remove-subcategory": { kind: "subcategory", add: false, label: "Subcategory removed", needsSpecialty: true },
+  "add-location": { kind: "location", add: true, label: "Location added", needsLocation: true },
+  "remove-location": { kind: "location", add: false, label: "Location removed", needsLocation: true },
 };
 
 // POST /api/admin/members/bulk  { action, ids: [], note?, tag? }
@@ -650,6 +676,29 @@ export async function bulkMembers(req, res) {
   const tag = String(req.body?.tag ?? "").trim().slice(0, 40);
   if ((spec.kind === "tag" || spec.kind === "untag") && !tag) {
     return res.status(400).json({ error: "Name the tag." });
+  }
+
+  /* The specialty and the location are resolved ONCE, before the loop,
+     and a bad id stops everything. Resolving inside the loop would make
+     a typo'd slug a partial write: some members changed, some not, and
+     no way to tell which from the response. */
+  let specialty = null;
+  if (spec.needsSpecialty) {
+    const slug = String(req.body?.specialtySlug ?? "").trim();
+    if (!slug) return res.status(400).json({ error: "Choose a category." });
+    specialty = await taxonomyRepo.specialtyBySlug(slug);
+    if (!specialty) return res.status(404).json({ error: `No specialty with the slug "${slug}".` });
+  }
+
+  let location = null;
+  if (spec.needsLocation) {
+    const locationId = String(req.body?.locationId ?? "").trim();
+    if (!locationId) return res.status(400).json({ error: "Choose a location." });
+    if (!isDbConfigured()) {
+      return res.status(503).json({ error: "Editing locations in bulk needs a database." });
+    }
+    location = await clinicLocationRepo.findById(locationId);
+    if (!location) return res.status(404).json({ error: "No such location." });
   }
 
   const all = await loadMembers();
@@ -695,6 +744,37 @@ export async function bulkMembers(req, res) {
         const tags = [...current];
         if (isDbConfigured()) await userRepo.update(member.userId, { tags });
         else demoAccounts.update(member.userId, { tags });
+      } else if (spec.kind === "category") {
+        if (!isDbConfigured()) throw new Error("needs a database");
+        /* Set as the primary AND added to the list. A primary specialty
+           that is not among the listing's specialties is a profile whose
+           hero says one thing and whose search tags say another. */
+        await specialistRepo.update(member.id, { primarySpecialtyId: specialty.id });
+        await specialistRepo.addSpecialty(member.id, specialty.id);
+      } else if (spec.kind === "subcategory") {
+        if (!isDbConfigured()) throw new Error("needs a database");
+        if (spec.add) {
+          await specialistRepo.addSpecialty(member.id, specialty.id);
+        } else {
+          /* Refused rather than silently done: removing the primary from
+             the list would leave the hero pointing at a specialty the
+             listing no longer claims.
+
+             Compared on the SLUG. The member rows this list works with
+             carry `specialtySlug`, not the id — an earlier version of
+             this guard compared `member.primarySpecialtyId`, a field
+             that is not on them, so it was always false and the refusal
+             never fired once. */
+          if (member.specialtySlug === specialty.slug) {
+            skipped.push({ id, name: member.fullName, reason: "that is their main category — set a different one first" });
+            continue;
+          }
+          await specialistRepo.removeSpecialty(member.id, specialty.id);
+        }
+      } else if (spec.kind === "location") {
+        if (!isDbConfigured()) throw new Error("needs a database");
+        if (spec.add) await specialistRepo.addLocation(member.id, location.id);
+        else await specialistRepo.removeLocation(member.id, location.id);
       }
 
       done.push({ id, name: member.fullName });
@@ -703,7 +783,14 @@ export async function bulkMembers(req, res) {
         subjectType: "member",
         subjectId: member.id,
         subjectLabel: `${member.fullName} <${member.email ?? "no email"}>`,
-        detail: { note, tag: tag || undefined, from: member.verificationStatus, to: spec.to },
+        detail: {
+          note,
+          tag: tag || undefined,
+          specialty: specialty ? { slug: specialty.slug, name: specialty.name } : undefined,
+          location: location ? { id: location.id, postcode: location.postcode } : undefined,
+          from: member.verificationStatus,
+          to: spec.to,
+        },
       });
     } catch (err) {
       skipped.push({ id, name: member.fullName, reason: err.message ?? "failed" });
@@ -843,4 +930,58 @@ export async function updateMemberAdminFields(req, res) {
   });
 
   res.json({ ok: true });
+}
+
+/* ------------------------------------------------------------------ *
+ * What the bulk editor offers to choose from
+ *
+ * Two small lists the members screen needs before it can ask "file these
+ * twelve under what?" — the whole specialty tree, and every clinic
+ * location. Admin-only, and read-only.
+ * ------------------------------------------------------------------ */
+
+// GET /api/admin/taxonomy-options
+export async function bulkEditOptions(req, res) {
+  if (!isDbConfigured()) {
+    return res.json({
+      specialties: [],
+      locations: [],
+      note: "Editing categories and locations in bulk needs a database.",
+    });
+  }
+
+  const [specialties, locations] = await Promise.all([
+    taxonomyRepo.specialties(),
+    clinicLocationRepo.listForPicker(),
+  ]);
+
+  /* Sent as a flat list with the parent named on each row rather than as
+     a tree. The picker is a search box, not an expander: somebody
+     filing twelve listings types "knee" and wants every match at once,
+     and "Knee Replacement — Orthopaedics › Knee" tells them which of the
+     four similarly-named ones they are picking. */
+  const byId = new Map(specialties.map((s) => [s.id, s]));
+  const path = (row) => {
+    const parts = [];
+    let cursor = row.parentId ? byId.get(row.parentId) : null;
+    let guard = 0;
+    while (cursor && guard < 8) {
+      parts.unshift(cursor.name);
+      cursor = cursor.parentId ? byId.get(cursor.parentId) : null;
+      guard += 1;
+    }
+    return parts;
+  };
+
+  res.json({
+    specialties: specialties.map((row) => ({
+      slug: row.slug,
+      name: row.name,
+      parents: path(row),
+      /* Depth is what separates a category from a subcategory here.
+         The interface uses it to say which of the two a pick would be. */
+      depth: path(row).length,
+    })),
+    locations,
+  });
 }
