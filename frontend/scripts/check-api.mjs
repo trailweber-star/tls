@@ -22,6 +22,19 @@
  * ------------------------------------------------------------------ */
 import net from "node:net";
 
+/* Started by the root launcher, which is starting the API alongside
+   this at the same moment — so there is nothing useful to say and about
+   a second in which the answer would be wrong anyway.
+
+   This is the whole reason the guard cannot simply probe and warn. Both
+   halves start together; vite is ready long before the API has bound
+   its port; so the check ran, found nothing listening, and advised
+   running `cd .. && npm run dev` to somebody who had just run exactly
+   that. A warning that fires on the correct command is worse than no
+   warning at all, because it trains people to ignore the one case it
+   was written for. */
+if (process.env.TLS_DEV_LAUNCHER === "1") process.exit(0);
+
 /* Whatever VITE_API_URL points at, or the local default the API uses.
    A developer pointing at a deployed API should not be warned about
    localhost. */

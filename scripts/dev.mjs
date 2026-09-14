@@ -97,15 +97,46 @@ if (!url) {
 
 const children = [];
 
+/* Vite picks its own port when 5173 is busy, and the only thing that
+   knows which it settled on is vite. Watched for rather than assumed,
+   because a banner that says 5173 while the site is on 5175 sends
+   somebody to a page that is not there — which is precisely the class
+   of confusion this script exists to remove. */
+let sitePort = null;
+function noticeSiteUrl(line) {
+  const match = /https?:\/\/localhost:(\d+)/.exec(line);
+  if (!match || sitePort) return;
+  sitePort = match[1];
+  console.log("");
+  say(c.ok, "dev", `site on http://localhost:${sitePort}  ·  API on :4000  ·  Ctrl-C stops both`);
+  if (sitePort !== "5173") {
+    say(c.dim, "dev", "(5173 was busy — something else is still running on it)");
+  }
+  console.log("");
+}
+
 function start(label, colour, args) {
-  const child = spawn("npm", args, { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn("npm", args, {
+    cwd: root,
+    stdio: ["ignore", "pipe", "pipe"],
+    /* Tells frontend/scripts/check-api.mjs that the API is being started
+       right now, alongside it, so it should hold its tongue. Without
+       this it probes port 4000 before the API has bound, decides the API
+       is missing, and advises running the very command that is running
+       it. */
+    env: { ...process.env, TLS_DEV_LAUNCHER: "1" },
+  });
   const relay = (stream) => {
     let buffer = "";
     stream.on("data", (chunk) => {
       buffer += chunk.toString();
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
-      for (const line of lines) if (line.trim()) say(colour, label, line);
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (label === "web") noticeSiteUrl(line);
+        say(colour, label, line);
+      }
     });
   };
   relay(child.stdout);
@@ -140,4 +171,6 @@ process.on("SIGTERM", () => stop(0));
 console.log("");
 start("api", c.api, ["run", "dev:api"]);
 start("web", c.web, ["run", "dev:web"]);
-console.log(`${c.dim}      API on :4000 · site on :5173 · Ctrl-C stops both${c.off}\n`);
+/* The real addresses are printed by noticeSiteUrl once vite says which
+   port it actually got. Nothing is claimed before then. */
+console.log(`${c.dim}      starting both halves…${c.off}\n`);
