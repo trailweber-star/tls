@@ -8,7 +8,7 @@ import {
 import { demoAccounts } from "../data/accounts.js";
 import { mockSpecialistsWithRelations, specialists as mockSpecialists } from "../data/mock.js";
 import { entitlementsFor } from "../lib/plans.js";
-import { createToken } from "../lib/auth.js";
+import { issueSession, revokeSession } from "../lib/sessions.js";
 import { clientIp } from "../lib/requestIp.js";
 
 /* ------------------------------------------------------------------ *
@@ -539,15 +539,14 @@ export async function startImpersonation(req, res) {
      administrator — and every request made with this token carries it,
      so the session can be refused at admin routes and labelled in the
      interface without the browser being trusted to admit anything. */
-  const token = createToken(
-    {
-      sub: account.id,
-      role: account.role,
-      act: req.user.id,
-      actName: req.user.fullName,
-    },
-    IMPERSONATION_TTL_SECONDS
-  );
+  /* The session row carries the actor too, so the MEMBER's own device
+     list shows this for what it is — "support session, opened by Jane
+     Okafor" — rather than as an unexplained sign-in they cannot place.
+     Somebody whose account was entered deserves to be able to see it. */
+  const { token } = await issueSession(req, account, {
+    actorId: req.user.id,
+    ttlSeconds: IMPERSONATION_TTL_SECONDS,
+  });
 
   res.json({
     ok: true,
@@ -585,9 +584,15 @@ export async function stopImpersonation(req, res) {
     });
   }
 
+  /* The borrowed session ends here rather than being left to lapse:
+     handing it back and leaving it live would put a working token for
+     somebody else's account in the browser's history for half an hour. */
+  if (req.session?.id) await revokeSession(req.session.id, "support session ended");
+
+  const returned = await issueSession(req, actor);
   res.json({
     ok: true,
-    token: createToken({ sub: actor.id, role: actor.role }),
+    token: returned.token,
     account: { id: actor.id, fullName: actor.fullName, email: actor.email, role: actor.role },
   });
 }

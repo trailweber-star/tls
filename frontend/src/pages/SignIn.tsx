@@ -6,7 +6,7 @@ import { ApiError, authApi, isRemembered, rememberedEmail } from "../lib/dashboa
 import { AuthLayout, Field } from "../components/AuthLayout";
 
 export default function SignIn() {
-  const { signIn, account, loading } = useAuth();
+  const { signIn, completeSignIn, account, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +18,10 @@ export default function SignIn() {
      the password never is. A browser's own password manager is the
      right place for that, and this field is not it. */
   const [remember, setRemember] = useState(isRemembered());
+  /* Set when the password was accepted and a code is wanted as well.
+     Its presence is what swaps the form over. */
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState("");
 
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
 
@@ -44,13 +48,135 @@ export default function SignIn() {
     setBusy(true);
     setError(null);
     try {
-      const user = await signIn(String(form.get("email")), String(form.get("password")), remember);
-      navigate(from ?? (user.role === "admin" ? "/admin" : "/dashboard"), { replace: true });
+      const result = await signIn(String(form.get("email")), String(form.get("password")), remember);
+      if (result.account) {
+        navigate(from ?? (result.account.role === "admin" ? "/admin" : "/dashboard"), { replace: true });
+        return;
+      }
+      /* The password was right and a code is needed too. Not an error,
+         and not a different page — the form is replaced in place, so
+         nothing about the browser's back button or a password manager's
+         save prompt gets confused by a navigation in the middle of
+         signing in. */
+      setChallenge(result.challenge);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!challenge) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { account: signedIn, usedRecoveryCode, recoveryCodesRemaining } = await completeSignIn(
+        challenge,
+        code,
+        remember
+      );
+      navigate(from ?? (signedIn.role === "admin" ? "/admin" : "/dashboard"), {
+        replace: true,
+        /* Carried through so the dashboard can say it once, at the
+           moment it is true. Somebody who has just spent a recovery
+           code is somebody whose phone may well be gone. */
+        state: usedRecoveryCode ? { recoveryCodeUsed: recoveryCodesRemaining } : undefined,
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        /* The challenge ran out. Back to the password, because there is
+           nothing left to complete. */
+        setChallenge(null);
+        setCode("");
+        setError("That took too long. Enter your password again.");
+      } else {
+        setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* ------------------------------------------------ the second step
+     A separate render rather than fields hidden inside the first form.
+     The password is done; showing it greyed out beside a code box
+     invites somebody to retype it, and a browser's password manager
+     behaves better when the form it saved has gone. */
+  if (challenge) {
+    return (
+      <AuthLayout
+        title="Enter your code"
+        subtitle="Your password was right. Now the six digits from your authenticator app."
+        aside={{
+          heading: "Why the second step",
+          body: "A password can be guessed, reused, or typed into a page that only looked like ours. A code from your own phone can't be any of those.",
+        }}
+        footer={
+          <button
+            type="button"
+            onClick={() => {
+              setChallenge(null);
+              setCode("");
+              setError(null);
+            }}
+            className="font-bold text-teal-700 hover:underline"
+          >
+            Back to sign in
+          </button>
+        }
+      >
+        <form onSubmit={handleCode} className="space-y-4" noValidate>
+          {error && (
+            <p
+              role="alert"
+              className="rounded-xl bg-danger/10 px-4 py-3 text-[13px] font-semibold text-danger ring-1 ring-danger/20"
+            >
+              {error}
+            </p>
+          )}
+
+          <Field label="Six-digit code" htmlFor="code">
+            <input
+              id="code"
+              name="code"
+              type="text"
+              required
+              autoFocus
+              /* inputMode rather than type="number": a numeric keypad on
+                 a phone, without the spinner arrows and scroll-wheel
+                 behaviour of a number input. autoComplete tells iOS and
+                 Android to offer the code straight from the SMS or
+                 keychain where they have it. */
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={14}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full rounded-xl border border-line bg-white px-4 py-3 text-center font-mono text-[20px] tracking-[0.3em] outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+            />
+          </Field>
+
+          <button
+            type="submit"
+            disabled={busy || code.trim().length < 6}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-teal-600 px-6 py-3.5 text-[14px] font-bold text-white transition hover:bg-teal-700 disabled:opacity-60"
+          >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {busy ? "Checking…" : "Sign in"}
+          </button>
+
+          {/* Named here rather than hidden behind "having trouble?" —
+              somebody reading this screen has already lost their phone
+              or they would have typed the code by now. */}
+          <p className="rounded-xl bg-paper-tint px-4 py-3 text-[12.5px] leading-relaxed text-ink-muted">
+            Lost the phone with your authenticator on it? Type one of your recovery codes in the box
+            instead. Each one works once.
+          </p>
+        </form>
+      </AuthLayout>
+    );
   }
 
   return (

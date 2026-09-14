@@ -12,6 +12,7 @@ import { buildEnquiryEmail, sendMail } from "./mailer.js";
 import { NOTIFICATION_TYPES, notify, notifyAdmins } from "./notifications.js";
 import { expireStaleBadges } from "../controllers/clinwellStatus.controller.js";
 import { sweepEnquiryForwarding } from "./clinwellEnquiries.js";
+import { purgeExpiredSessions } from "./sessions.js";
 
 /* ------------------------------------------------------------------ *
  * Overdue-approval sweep
@@ -369,6 +370,9 @@ async function runSweep() {
   await purgeSpentResetTokens().catch((e) =>
     console.error("[reminders] reset token purge failed:", e?.message ?? e)
   );
+  await purgeOldSessions().catch((e) =>
+    console.error("[reminders] session purge failed:", e?.message ?? e)
+  );
 }
 
 /**
@@ -381,6 +385,20 @@ async function purgeSpentResetTokens() {
   if (!isDbConfigured()) return 0;
   const gone = await passwordResets.purgeExpired(new Date(Date.now() - 24 * 60 * 60 * 1000));
   if (gone > 0) console.log(`[reminders] purged ${gone} expired reset token(s)`);
+  return gone;
+}
+
+/**
+ * Session rows whose tokens expired a month ago.
+ *
+ * Kept for a month rather than deleted the moment they lapse, because
+ * "was anything signed in from somewhere odd last week?" is a question
+ * worth being able to answer after the fact. Beyond that the row is a
+ * record of a device somebody used once, which is not ours to keep.
+ */
+async function purgeOldSessions() {
+  const gone = await purgeExpiredSessions(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  if (gone > 0) console.log(`[reminders] purged ${gone} expired session row(s)`);
   return gone;
 }
 

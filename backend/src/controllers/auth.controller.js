@@ -12,7 +12,9 @@ import {
   addDemoSpecialist,
   regulatorIdFromNumber,
 } from "../data/mock.js";
-import { createToken, hashPassword, verifyPassword } from "../lib/auth.js";
+import { hashPassword, verifyPassword } from "../lib/auth.js";
+import { issueSession } from "../lib/sessions.js";
+import { challengeFor, needsSecondFactor } from "./mfa.controller.js";
 import { requestOrigin } from "../lib/requestIp.js";
 import { entitlementsFor, getPlan, isPaidPlan } from "../lib/plans.js";
 import { NOTIFICATION_TYPES, notifyAdmins } from "../lib/notifications.js";
@@ -141,10 +143,8 @@ export async function register(req, res) {
     });
     await announceApplication({ specialist, plan, planInterval });
 
-    return res.status(201).json({
-      token: createToken({ sub: user.id, role: user.role }),
-      user: publicUser(user),
-    });
+    const demoSession = await issueSession(req, user);
+    return res.status(201).json({ token: demoSession.token, user: publicUser(user) });
   }
 
   const existing = await userRepo.findByEmail(email);
@@ -215,10 +215,18 @@ export async function register(req, res) {
     planInterval,
   });
 
-  res.status(201).json({ token: createToken({ sub: user.id, role: user.role }), user: publicUser(user) });
+  const opened = await issueSession(req, user);
+  res.status(201).json({ token: opened.token, user: publicUser(user) });
 }
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
+
+/* What the browser gets when the password was right and a second factor
+   is switched on. No token, and the shape is different enough from a
+   successful sign-in that a client cannot mistake one for the other. */
+function secondFactorNeeded(user) {
+  return { mfaRequired: true, challenge: challengeFor(user) };
+}
 
 // POST /api/auth/login
 export async function login(req, res) {
@@ -238,11 +246,20 @@ export async function login(req, res) {
       lastLoginIp: originDemo.ip,
       lastLoginCountry: originDemo.country,
     });
-    return res.json({ token: createToken({ sub: user.id, role: user.role }), user: publicUser(user) });
+    if (needsSecondFactor(user)) return res.json(secondFactorNeeded(user));
+    const demoOpened = await issueSession(req, user);
+    return res.json({ token: demoOpened.token, user: publicUser(user) });
   }
 
   const user = await userRepo.findByEmail(email);
   if (!user || !user.active || !verifyPassword(password, user.passwordHash)) return invalid();
+
+  /* The password was right, and that is now only half of it.
+     Nothing is recorded as a sign-in yet and no session is opened —
+     what comes back is a challenge, which deliberately cannot be used
+     as a session token (see mfa.controller.js). */
+  if (needsSecondFactor(user)) return res.json(secondFactorNeeded(user));
+
   /* Recorded on every sign-in, not just the first: the admin members
      list shows where the most recent session came from, which is what
      catches a shared or stolen account rather than a dubious sign-up. */
@@ -253,7 +270,8 @@ export async function login(req, res) {
     lastLoginCountry: origin.country,
   });
   await attachSpecialistId(user);
-  res.json({ token: createToken({ sub: user.id, role: user.role }), user: publicUser(user) });
+  const session = await issueSession(req, user);
+  res.json({ token: session.token, user: publicUser(user) });
 }
 
 /**

@@ -21,6 +21,7 @@ import SignIn from "./pages/SignIn";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import ConfirmEmail from "./pages/ConfirmEmail";
 import AccountSecurity from "./pages/AccountSecurity";
 import DashboardOverview from "./pages/dashboard/Overview";
 import ProfileEditor from "./pages/dashboard/ProfileEditor";
@@ -113,6 +114,10 @@ export default function App() {
             on an account — see the pages themselves. */}
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Where an email-change link lands — including the cancel link,
+            which somebody clicks precisely when they may no longer be
+            able to sign in. */}
+        <Route path="/confirm-email" element={<ConfirmEmail />} />
         <Route path="/claim/:slug" element={<Claim />} />
 
         {/* ------------------------------------ specialist workspace */}

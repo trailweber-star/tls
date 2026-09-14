@@ -31,7 +31,19 @@ interface AuthState {
   loading: boolean;
   /** Set when this session is an administrator wearing a member's account. */
   impersonation: Impersonation | null;
-  signIn: (email: string, password: string, remember?: boolean) => Promise<Account>;
+  /**
+   * Resolves with the account, or with a challenge when the account has
+   * two-factor switched on and a code is needed as well. The caller has
+   * to handle both — which is the point of returning a union rather
+   * than throwing: a second step is not an error.
+   */
+  signIn: (email: string, password: string, remember?: boolean) => Promise<SignInResult>;
+  /** The second half of signing in: a TOTP code, or a recovery code. */
+  completeSignIn: (
+    challenge: string,
+    code: string,
+    remember?: boolean
+  ) => Promise<{ account: Account; usedRecoveryCode: boolean; recoveryCodesRemaining: number }>;
   signUp: (input: Parameters<typeof authApi.register>[0]) => Promise<Account>;
   signOut: () => void;
   refresh: () => Promise<void>;
@@ -51,6 +63,10 @@ interface AuthState {
   /** Hand the borrowed session back and return to the admin account. */
   stopImpersonation: () => Promise<Account>;
 }
+
+export type SignInResult =
+  | { account: Account; challenge?: undefined }
+  | { challenge: string; account?: undefined };
 
 const AuthContext = createContext<AuthState | null>(null);
 
@@ -135,22 +151,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
+  /* Shared by both halves of signing in, so the two cannot drift. */
+  const adoptLogin = useCallback(async (token: string, user: Account, remember: boolean, email: string) => {
+    // A fresh sign-in is never an impersonation; clear any stale parking.
+    setAdminToken(null);
+    setImpersonation(null);
+    /* Recorded before the token is written: setToken reads the
+       preference to decide which store the token belongs in. */
+    setRemembered(remember, email);
+    setToken(token, remember);
+    setAccount(user);
+    const me = await authApi.me().catch(() => null);
+    setSpecialist(me?.specialist ?? null);
+    return user;
+  }, []);
+
   const signIn = useCallback(
-    async (email: string, password: string, remember = true) => {
+    async (email: string, password: string, remember = true): Promise<SignInResult> => {
       const res = await authApi.login(email, password);
-      // A fresh sign-in is never an impersonation; clear any stale parking.
-      setAdminToken(null);
-      setImpersonation(null);
-      /* Recorded before the token is written: setToken reads the
-         preference to decide which store the token belongs in. */
-      setRemembered(remember, email);
-      setToken(res.token, remember);
-      setAccount(res.user);
-      const me = await authApi.me().catch(() => null);
-      setSpecialist(me?.specialist ?? null);
-      return res.user;
+      /* No token means the password was right and a code is needed too.
+         Nothing is stored yet — there is no session to store. */
+      if (res.mfaRequired) return { challenge: res.challenge };
+      return { account: await adoptLogin(res.token, res.user, remember, email) };
     },
-    []
+    [adoptLogin]
+  );
+
+  const completeSignIn = useCallback(
+    async (challenge: string, code: string, remember = true) => {
+      const res = await authApi.completeLogin(challenge, code);
+      const account = await adoptLogin(res.token, res.user, remember, res.user.email);
+      return {
+        account,
+        usedRecoveryCode: res.usedRecoveryCode,
+        recoveryCodesRemaining: res.recoveryCodesRemaining,
+      };
+    },
+    [adoptLogin]
   );
 
   const signUp = useCallback(async (input: Parameters<typeof authApi.register>[0]) => {
@@ -182,6 +219,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
+    /* Told to the server as well as forgotten here. Dropping the token
+       locally leaves the session live for a week, where it turns up in
+       the member's own device list as something they cannot account
+       for. Not awaited — signing out must not hang on the network, and
+       the token is gone from this browser either way. */
+    void authApi.logout().catch(() => null);
     setToken(null);
     setAdminToken(null);
     setAccount(null);
@@ -239,6 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       impersonation,
       signIn,
+      completeSignIn,
       signUp,
       signOut,
       refresh,
@@ -252,6 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       impersonation,
       signIn,
+      completeSignIn,
       signUp,
       signOut,
       refresh,

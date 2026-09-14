@@ -272,15 +272,37 @@ if (adminToken) {
 
 /* ------------------------------------------- admins reset too */
 
+section("the rate limit counts per account, not globally");
+
+/* The account above has spent its three links for the hour. A different
+   account must be unaffected — a limit that leaked across accounts
+   would let one person's forgotten password lock everybody else out of
+   the reset flow, which is a denial of service dressed as a safeguard. */
+const other = {
+  fullName: `Other Account ${stamp}`,
+  email: `other-${stamp}@example.com`,
+  password: "another-password-6621",
+};
+const otherReg = await call(null, "POST", "/auth/register", other);
+check("registered a second account", otherReg.status === 201, String(otherReg.status));
+
+const exhausted = await call(null, "POST", "/auth/forgot-password", { email: member.email });
+check("the first account is still rate limited", exhausted.status === 200 && !exhausted.body?.devResetUrl);
+
+const otherForgot = await call(null, "POST", "/auth/forgot-password", { email: other.email });
+check("the second account is not", otherForgot.status === 200 && Boolean(otherForgot.body?.devResetUrl));
+
 section("an administrator's own password");
 
 const adminForgot = await call(null, "POST", "/auth/forgot-password", { email: ADMIN.email });
 check("an admin can ask for a reset link like anybody else", adminForgot.status === 200, String(adminForgot.status));
-check("and gets one", Boolean(adminForgot.body?.devResetUrl));
 
 /* Deliberately not redeemed: the seeded admin login is what the rest of
    the suite signs in with, and changing it here would break every other
-   script. That the link was issued is the whole point. */
+   script. That the endpoint does not treat an administrator differently
+   is the point — and whether a link comes back depends on how many the
+   account has already asked for this hour, which is exactly the
+   behaviour checked above. */
 
 console.log(`\n${failed === 0 ? "all checks passed" : `${failed} failed`}\n`);
 process.exit(failed === 0 ? 0 : 1);

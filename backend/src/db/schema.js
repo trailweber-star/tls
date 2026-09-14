@@ -19,6 +19,7 @@
 import { randomBytes } from "node:crypto";
 import { relations } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   doublePrecision,
   foreignKey,
@@ -512,6 +513,24 @@ export const users = pgTable(
        correctly leaves their sessions standing. */
     passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
 
+    /* ------------------------------------------------- two-factor
+       The secret is encrypted at rest (AES-256-GCM, see lib/totp.js),
+       because a TOTP secret is a password equivalent and a table of
+       them in the clear turns one leaked backup into every account.
+
+       enabledAt is separate from the secret on purpose: an enrolment
+       somebody started and walked away from leaves a secret behind, and
+       that must not be allowed to lock them out of their own account.
+       Sign-in looks at enabledAt and nothing else.
+
+       lastStep is the replay guard. A code is good for a whole
+       thirty-second window — long enough for one read over a shoulder,
+       or typed into a phishing page and relayed — so the step it came
+       from is recorded and a code from that step or earlier is refused. */
+    totpSecret: text("totp_secret"),
+    totpEnabledAt: timestamp("totp_enabled_at", { withTimezone: true }),
+    totpLastStep: bigint("totp_last_step", { mode: "number" }),
+
     /* ------------------------------------------------- where from
        An admin looking at a list of sign-ups is asking one question
        first: is this real? A dental practice in Salford whose account
@@ -570,6 +589,105 @@ export const passwordResetTokens = pgTable(
     uniqueIndex("password_reset_tokens_hash_idx").on(t.tokenHash),
     index("password_reset_tokens_user_idx").on(t.userId, t.createdAt),
   ]
+);
+
+/* ---------------------------------------------------------- sessions
+
+   A session used to be a signed token and nothing else — nothing on the
+   server knew it existed. That made two reasonable questions
+   unanswerable: which devices am I signed in on, and can I sign out
+   that one without signing out all of them.
+
+   Now every token carries a `sid` and every `sid` has a row here, and
+   the row is the authority: the auth middleware reads it on each
+   request, so revoking is immediate rather than a wait for expiry. The
+   cost is one indexed read per request; the alternative was a device
+   list that could only guess. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    /* The `sid` claim inside the token. */
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /* The administrator who opened this session while wearing the
+       member's account, so support sessions are recognisable in the
+       list instead of looking like a stranger signing in. */
+    actorUserId: text("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    /* Shown to a person so they can recognise their own devices. Never
+       trusted for anything — it is whatever the browser claimed. */
+    userAgent: text("user_agent"),
+    ip: text("ip"),
+    country: text("country"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    /* Set rather than deleting the row: "when was that signed out, and
+       did somebody do it or did it lapse?" stays answerable. */
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedReason: text("revoked_reason"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId, t.lastSeenAt)]
+);
+
+/* ----------------------------------------------------- email changes
+
+   Held here rather than on the account until BOTH addresses agree. The
+   usual one-sided design — confirm the new address only — fails in the
+   case that matters: somebody with a minute at an unlocked laptop
+   points the account at their own mailbox, and confirming it proves
+   only that the attacker owns the attacker's mailbox. The old address
+   has to approve, and the message that asks it also carries the link
+   that kills the request. */
+export const emailChangeRequests = pgTable(
+  "email_change_requests",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    newEmail: text("new_email").notNull(),
+    /* Kept even after the change applies: it is the only record of what
+       the address used to be. */
+    oldEmail: text("old_email").notNull(),
+
+    /* Hashes, never the tokens. */
+    newTokenHash: text("new_token_hash").notNull().unique(),
+    oldTokenHash: text("old_token_hash").notNull().unique(),
+    cancelTokenHash: text("cancel_token_hash").notNull().unique(),
+
+    newConfirmedAt: timestamp("new_confirmed_at", { withTimezone: true }),
+    oldConfirmedAt: timestamp("old_confirmed_at", { withTimezone: true }),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelledBy: text("cancelled_by"),
+
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    requestedIp: text("requested_ip"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("email_change_user_idx").on(t.userId, t.createdAt)]
+);
+
+/* --------------------------------------------------- recovery codes
+
+   The way back in when the phone with the authenticator on it is lost,
+   which is the single most common way two-factor goes wrong. Hashed,
+   because they are passwords that skip the second factor, and single
+   use. */
+export const mfaRecoveryCodes = pgTable(
+  "mfa_recovery_codes",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull().unique(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("mfa_recovery_user_idx").on(t.userId)]
 );
 
 export const specialists = pgTable(

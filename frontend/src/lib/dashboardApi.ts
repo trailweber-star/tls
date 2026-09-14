@@ -414,8 +414,28 @@ export interface VerificationDetail extends VerificationRow {
 /* ------------------------------------------------------------ auth */
 
 export const authApi = {
+  /* Two shapes come back, and they are deliberately different enough
+     that no caller can mistake one for the other: a session, or a
+     challenge saying a code is needed as well. */
   login: (email: string, password: string) =>
-    post<{ token: string; user: Account }>("/auth/login", { email, password }),
+    post<
+      | { token: string; user: Account; mfaRequired?: undefined }
+      | { mfaRequired: true; challenge: string; token?: undefined; user?: undefined }
+    >("/auth/login", { email, password }),
+
+  /** The second half, when two-factor is on. Takes a code or a recovery code. */
+  completeLogin: (challenge: string, code: string) =>
+    post<{
+      token: string;
+      user: Account;
+      usedRecoveryCode: boolean;
+      recoveryCodesRemaining: number;
+    }>("/auth/login/2fa", { challenge, code }),
+
+  /* Ends the session on the server rather than only forgetting the
+     token here — otherwise it lingers in the member's own device list
+     as something they cannot place. */
+  logout: () => post<{ ok: true }>("/auth/logout", {}),
   register: (input: {
     fullName: string;
     email: string;
@@ -462,6 +482,77 @@ export const authApi = {
       currentPassword,
       newPassword,
     }),
+};
+
+/* ---------------------------------------------------------- account */
+
+export interface DeviceSession {
+  id: string;
+  /** The one this browser is using. There is exactly one. */
+  current: boolean;
+  label: string;
+  browser: string | null;
+  platform: string | null;
+  ip: string | null;
+  country: string | null;
+  /** Opened by an administrator while signed in as this member. */
+  support: boolean;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+}
+
+export interface EmailChangeRequest {
+  id: string;
+  newEmail: string;
+  oldEmail: string;
+  newConfirmed: boolean;
+  oldConfirmed: boolean;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export const accountApi = {
+  sessions: () => get<{ results: DeviceSession[]; currentIsListed: boolean }>("/auth/sessions"),
+  endSession: (id: string) => del<{ ok: true; endedCurrent: boolean }>(`/auth/sessions/${id}`),
+  endOtherSessions: () => post<{ ok: true; ended: number }>("/auth/sessions/revoke-others", {}),
+
+  emailChange: () => get<{ request: EmailChangeRequest | null }>("/auth/email-change"),
+  /* devLinks only ever appears on a developer's own machine with no
+     mail provider configured — the flow needs two mailboxes to walk
+     otherwise. The server will not produce it on a deployed site. */
+  startEmailChange: (newEmail: string, currentPassword: string) =>
+    post<{
+      ok: true;
+      request: EmailChangeRequest;
+      devLinks?: { confirm: string; approve: string; cancel: string };
+    }>("/auth/email-change", { newEmail, currentPassword }),
+  cancelEmailChange: () => del<{ ok: true }>("/auth/email-change"),
+  confirmEmailChange: (token: string) =>
+    post<{
+      ok: true;
+      outcome: "applied" | "waiting" | "cancelled";
+      side?: "new" | "old";
+      waitingOn?: string;
+      newEmail?: string;
+    }>("/auth/email-change/confirm", { token }),
+
+  twoFactor: () =>
+    get<{
+      enabled: boolean;
+      enabledAt: string | null;
+      recoveryCodesRemaining: number;
+      setupStarted: boolean;
+    }>("/auth/2fa"),
+  startTwoFactor: (currentPassword: string) =>
+    post<{ secret: string; otpauthUri: string; qr: string }>("/auth/2fa/setup", { currentPassword }),
+  /* The recovery codes are readable exactly once, here. */
+  enableTwoFactor: (code: string) =>
+    post<{ ok: true; recoveryCodes: string[]; signedOutElsewhere: number }>("/auth/2fa/enable", { code }),
+  disableTwoFactor: (currentPassword: string, code: string) =>
+    post<{ ok: true; signedOutElsewhere: number }>("/auth/2fa/disable", { currentPassword, code }),
+  regenerateRecoveryCodes: (currentPassword: string) =>
+    post<{ ok: true; recoveryCodes: string[] }>("/auth/2fa/recovery-codes", { currentPassword }),
 };
 
 /* ------------------------------------------------------- dashboard */

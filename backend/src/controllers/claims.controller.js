@@ -7,7 +7,8 @@ import { claims as claimsTable } from "../db/schema.js";
 import { specialists as specialistRepo, users as userRepo } from "../db/repos.js";
 import { demoAccounts } from "../data/accounts.js";
 import { mockSpecialistsWithRelations, updateDemoSpecialist } from "../data/mock.js";
-import { createToken, hashPassword } from "../lib/auth.js";
+import { issueSession } from "../lib/sessions.js";
+import { hashPassword } from "../lib/auth.js";
 import { getPlan, isPaidPlan } from "../lib/plans.js";
 import { sendMail } from "../lib/mailer.js";
 import { NOTIFICATION_TYPES, notificationStore, notifyAdmins } from "../lib/notifications.js";
@@ -289,7 +290,7 @@ export async function submitClaim(req, res) {
     ok: true,
     claimId: claim.id,
     // Signed in immediately, but owning nothing yet.
-    token: createToken({ sub: userId, role: "specialist" }),
+    token: (await issueSession(req, { id: userId, role: "specialist" })).token,
     user: { id: userId, email: email.toLowerCase(), fullName, role: "specialist", specialistId: null },
   });
 }

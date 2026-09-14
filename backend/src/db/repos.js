@@ -16,7 +16,7 @@
  * place to fix it is here, behind these function signatures.
  * ------------------------------------------------------------------ */
 
-import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./client.js";
 import * as t from "./schema.js";
 import { newId } from "./schema.js";
@@ -1570,5 +1570,196 @@ export const passwordResets = {
       .where(lt(t.passwordResetTokens.expiresAt, before))
       .returning({ id: t.passwordResetTokens.id });
     return rows.length;
+  },
+};
+
+/* ========================================================= sessions */
+
+/**
+ * Live sessions.
+ *
+ * `find` is on the request path — it runs on every authenticated call —
+ * so it is a single primary-key read and nothing else. Everything that
+ * costs more (the list, the sweeps) is only ever reached from the
+ * account screen.
+ */
+export const sessions = {
+  async create({ userId, actorUserId = null, userAgent = null, ip = null, country = null, expiresAt }) {
+    const [row] = await db()
+      .insert(t.sessions)
+      .values({ id: newId("ses"), userId, actorUserId, userAgent, ip, country, expiresAt })
+      .returning();
+    return row ?? null;
+  },
+
+  async find(id) {
+    const [row] = await db().select().from(t.sessions).where(eq(t.sessions.id, id)).limit(1);
+    return row ?? null;
+  },
+
+  /** Written at most once a minute by the caller — see middleware/auth.js. */
+  async touch(id, { ip = null, country = null } = {}) {
+    await db()
+      .update(t.sessions)
+      .set({ lastSeenAt: new Date(), ...(ip ? { ip } : {}), ...(country ? { country } : {}) })
+      .where(eq(t.sessions.id, id));
+  },
+
+  /**
+   * What the account screen shows: everything still live, most recently
+   * used first. Expired rows are filtered rather than deleted, so the
+   * list never shows a session that cannot actually be used.
+   */
+  async liveFor(userId) {
+    return db()
+      .select()
+      .from(t.sessions)
+      .where(
+        and(
+          eq(t.sessions.userId, userId),
+          isNull(t.sessions.revokedAt),
+          gte(t.sessions.expiresAt, new Date())
+        )
+      )
+      .orderBy(desc(t.sessions.lastSeenAt));
+  },
+
+  /** Returns the row only if it was still live, so a double revoke is visible. */
+  async revoke(id, reason = "signed out") {
+    const [row] = await db()
+      .update(t.sessions)
+      .set({ revokedAt: new Date(), revokedReason: reason })
+      .where(and(eq(t.sessions.id, id), isNull(t.sessions.revokedAt)))
+      .returning();
+    return row ?? null;
+  },
+
+  /**
+   * Everything on this account except one — "sign out my other devices".
+   * Passing null for `exceptId` ends every session, which is what a
+   * password change and a two-factor change both do.
+   */
+  async revokeAllFor(userId, { exceptId = null, reason = "signed out elsewhere" } = {}) {
+    const where = [eq(t.sessions.userId, userId), isNull(t.sessions.revokedAt)];
+    if (exceptId) where.push(ne(t.sessions.id, exceptId));
+    const rows = await db()
+      .update(t.sessions)
+      .set({ revokedAt: new Date(), revokedReason: reason })
+      .where(and(...where))
+      .returning({ id: t.sessions.id });
+    return rows.length;
+  },
+
+  /** Housekeeping: rows for sessions that expired weeks ago. */
+  async purgeExpired(before = new Date()) {
+    const rows = await db()
+      .delete(t.sessions)
+      .where(lt(t.sessions.expiresAt, before))
+      .returning({ id: t.sessions.id });
+    return rows.length;
+  },
+};
+
+/* ==================================================== email changes */
+
+export const emailChanges = {
+  async create(input) {
+    const [row] = await db()
+      .insert(t.emailChangeRequests)
+      .values({ ...input, id: newId("ecr") })
+      .returning();
+    return row ?? null;
+  },
+
+  /** The one request in flight, if there is one. */
+  async openFor(userId) {
+    const [row] = await db()
+      .select()
+      .from(t.emailChangeRequests)
+      .where(
+        and(
+          eq(t.emailChangeRequests.userId, userId),
+          isNull(t.emailChangeRequests.appliedAt),
+          isNull(t.emailChangeRequests.cancelledAt)
+        )
+      )
+      .limit(1);
+    return row ?? null;
+  },
+
+  /**
+   * A link, whichever of the three it is. One query rather than three:
+   * the caller works out which side was clicked by comparing the hash
+   * against the row it gets back.
+   */
+  async findByAnyToken(hash) {
+    const [row] = await db()
+      .select()
+      .from(t.emailChangeRequests)
+      .where(
+        or(
+          eq(t.emailChangeRequests.newTokenHash, hash),
+          eq(t.emailChangeRequests.oldTokenHash, hash),
+          eq(t.emailChangeRequests.cancelTokenHash, hash)
+        )
+      )
+      .limit(1);
+    return row ?? null;
+  },
+
+  async update(id, patch) {
+    const [row] = await db()
+      .update(t.emailChangeRequests)
+      .set(patch)
+      .where(eq(t.emailChangeRequests.id, id))
+      .returning();
+    return row ?? null;
+  },
+};
+
+/* =================================================== recovery codes */
+
+export const recoveryCodes = {
+  /** Replaces the whole set: codes are issued ten at a time, never singly. */
+  async replaceAll(userId, hashes) {
+    await db().delete(t.mfaRecoveryCodes).where(eq(t.mfaRecoveryCodes.userId, userId));
+    if (hashes.length === 0) return [];
+    return db()
+      .insert(t.mfaRecoveryCodes)
+      .values(hashes.map((codeHash) => ({ id: newId("rcv"), userId, codeHash })))
+      .returning();
+  },
+
+  /**
+   * Spend one. The unused-only condition is what makes it single use
+   * under concurrency — two requests with the same code cannot both
+   * come back with a row.
+   */
+  async consume(userId, codeHash) {
+    const [row] = await db()
+      .update(t.mfaRecoveryCodes)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(t.mfaRecoveryCodes.userId, userId),
+          eq(t.mfaRecoveryCodes.codeHash, codeHash),
+          isNull(t.mfaRecoveryCodes.usedAt)
+        )
+      )
+      .returning();
+    return row ?? null;
+  },
+
+  /** How many are left, for the "you have 7 codes remaining" line. */
+  async remaining(userId) {
+    const [row] = await db()
+      .select({ count: sql`count(*)::int` })
+      .from(t.mfaRecoveryCodes)
+      .where(and(eq(t.mfaRecoveryCodes.userId, userId), isNull(t.mfaRecoveryCodes.usedAt)));
+    return row?.count ?? 0;
+  },
+
+  async clear(userId) {
+    await db().delete(t.mfaRecoveryCodes).where(eq(t.mfaRecoveryCodes.userId, userId));
   },
 };

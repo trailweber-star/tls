@@ -49,6 +49,24 @@ import {
   resetPassword,
 } from "../controllers/password.controller.js";
 import {
+  cancelEmailChange,
+  confirmEmailChange,
+  endOtherSessions,
+  endSession,
+  getEmailChange,
+  getSessions,
+  logout,
+  startEmailChange,
+} from "../controllers/account.controller.js";
+import {
+  disableTwoFactor,
+  enableTwoFactor,
+  finishLogin,
+  getTwoFactor,
+  regenerateRecoveryCodes,
+  startTwoFactor,
+} from "../controllers/mfa.controller.js";
+import {
   getOverview,
   getProfile,
   updateProfile,
@@ -280,6 +298,36 @@ router.get("/auth/demo-credentials", demoCredentials);
 router.post("/auth/forgot-password", forgotPassword);
 router.post("/auth/reset-password", resetPassword);
 router.post("/auth/change-password", requireAuth, changePassword);
+
+/* The second half of signing in, when two-factor is on. Unauthenticated
+   by necessity: the caller holds a challenge, not a session, and the
+   challenge is built so it cannot be used as one. */
+router.post("/auth/login/2fa", finishLogin);
+
+/* ----------------------------------------------------- the account
+   Where you are signed in, what address you sign in with, and whether
+   a code is needed as well as a password. All of it behind a session,
+   and the ones that matter behind the current password as well — a
+   session only proves a browser was left open. */
+router.post("/auth/logout", requireAuth, logout);
+
+router.get("/auth/sessions", requireAuth, getSessions);
+router.delete("/auth/sessions/:id", requireAuth, endSession);
+router.post("/auth/sessions/revoke-others", requireAuth, endOtherSessions);
+
+router.get("/auth/email-change", requireAuth, getEmailChange);
+router.post("/auth/email-change", requireAuth, startEmailChange);
+router.delete("/auth/email-change", requireAuth, cancelEmailChange);
+/* Open, because it is reached from a link in an email — including the
+   cancel link, which is the one somebody clicks precisely when they
+   cannot sign in. */
+router.post("/auth/email-change/confirm", confirmEmailChange);
+
+router.get("/auth/2fa", requireAuth, getTwoFactor);
+router.post("/auth/2fa/setup", requireAuth, startTwoFactor);
+router.post("/auth/2fa/enable", requireAuth, enableTwoFactor);
+router.post("/auth/2fa/disable", requireAuth, disableTwoFactor);
+router.post("/auth/2fa/recovery-codes", requireAuth, regenerateRecoveryCodes);
 
 /* ------------------------------------------------- specialist dashboard
    Every route reads the profile id from the session, never from the URL,

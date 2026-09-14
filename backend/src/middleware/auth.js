@@ -2,6 +2,7 @@ import { isDbConfigured } from "../config/db.js";
 import { attachSpecialistId, users as userRepo } from "../db/repos.js";
 import { demoAccounts } from "../data/accounts.js";
 import { verifyToken } from "../lib/auth.js";
+import { loadSession, touchSession } from "../lib/sessions.js";
 
 async function loadUser(id) {
   if (!isDbConfigured()) return demoAccounts.findById(id);
@@ -62,6 +63,31 @@ export async function requireAuth(req, res, next) {
       error: "Your password was changed. Sign in again.",
       code: "password_changed",
     });
+  }
+
+  /* ------------------------------------------------- the session row
+     Tokens minted since sessions became real carry a `sid`, and the row
+     behind it is the authority: revoking it ends the session on the
+     next request rather than whenever the token happens to expire.
+
+     A token with no `sid` is one issued before that existed. Those are
+     accepted as they are — throwing every signed-in member out on a
+     deploy would be a poor trade for a week of overlap — and they are
+     still ended by a password change, which is what the check above is
+     for. They simply do not appear in the device list, because there is
+     nothing to show. */
+  if (claims.sid) {
+    const session = await loadSession(claims.sid);
+    if (!session || session.userId !== String(user.id)) {
+      return res.status(401).json({
+        error: "That session has ended. Sign in again.",
+        code: "session_revoked",
+      });
+    }
+    req.session = session;
+    /* Fire and forget: the list says "active a few minutes ago", and no
+       request should wait on writing that down. */
+    void touchSession(req, claims.sid);
   }
 
   req.user = user;

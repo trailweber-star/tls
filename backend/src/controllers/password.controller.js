@@ -48,7 +48,8 @@ import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import { passwordResets as resetRepo, users as userRepo, attachSpecialistId } from "../db/repos.js";
 import { demoAccounts } from "../data/accounts.js";
-import { createToken, hashPassword, verifyPassword } from "../lib/auth.js";
+import { hashPassword, verifyPassword } from "../lib/auth.js";
+import { issueSession, revokeAllSessions } from "../lib/sessions.js";
 import { requestOrigin } from "../lib/requestIp.js";
 import { hasMailer, sendMail } from "../lib/mailer.js";
 import { publicUser } from "./auth.controller.js";
@@ -349,19 +350,22 @@ export async function resetPassword(req, res) {
      attacker asked for — dies here too. */
   await resets().burnAllFor(user.id);
 
-  /* Signed straight in, with a token minted after the change so it
-     survives the middleware's own check. They have just proved they
-     control the mailbox on the account; making them type the password
-     they set four seconds ago proves nothing further. */
+  /* Every session on the account, on every device, ends here. This is
+     the whole reason somebody resets a password they think another
+     person has, and the session rows are what make it a real ending
+     rather than a wait for tokens to expire. */
+  await revokeAllSessions(user.id, "password reset").catch(() => null);
+
+  /* Signed straight in, with a session opened after the change so it
+     survives both checks. They have just proved they control the
+     mailbox on the account; making them type the password they set four
+     seconds ago proves nothing further. */
   const fresh = await accountById(user.id);
   if (isDbConfigured() && fresh) await attachSpecialistId(fresh);
   const account = fresh ?? user;
+  const opened = await issueSession(req, account);
 
-  return res.json({
-    ok: true,
-    token: createToken({ sub: account.id, role: account.role }),
-    user: publicUser(account),
-  });
+  return res.json({ ok: true, token: opened.token, user: publicUser(account) });
 }
 
 /* ------------------------------------------- change a known password */
@@ -429,12 +433,11 @@ export async function changePassword(req, res) {
 
   /* Every other session on this account is now dead — that is the point
      of the exercise, and it is why the dashboard says so on screen. This
-     one is not: the token below is minted after the change, so the
+     one is not: the session below is opened after the change, so the
      person who just typed their password is not thrown out of the tab
      they typed it in. */
-  return res.json({
-    ok: true,
-    token: createToken({ sub: user.id, role: user.role }),
-    signedOutElsewhere: true,
-  });
+  await revokeAllSessions(user.id, "password changed").catch(() => null);
+  const opened = await issueSession(req, user);
+
+  return res.json({ ok: true, token: opened.token, signedOutElsewhere: true });
 }
