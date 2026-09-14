@@ -16,6 +16,32 @@ async function loadUser(id) {
   }
 }
 
+/* ------------------------------------------------------- stale sessions
+   Sessions here are signed tokens with no row on the server, so a
+   password change cannot revoke them by deleting anything. This is the
+   substitute: every token carries the second it was issued, and any
+   token older than the account's last password change is refused.
+
+   Without it a reset would be close to useless in the one case that
+   matters most. Somebody resets their password BECAUSE another person
+   has it; that person's session keeps working for the rest of the
+   week-long token life, reading the dashboard and changing the password
+   back. Changing the lock has to put the intruder outside.
+
+   The comparison is strictly older-than, at one-second resolution: a
+   token minted in the same second as the change — which is exactly what
+   the change endpoint hands back, so the member is not signed out of
+   the browser they just used — is kept. */
+function predatesPasswordChange(claims, user) {
+  const changedAt = user?.passwordChangedAt;
+  if (!changedAt) return false;
+  const changedAtSeconds = Math.floor(new Date(changedAt).getTime() / 1000);
+  if (!Number.isFinite(changedAtSeconds)) return false;
+  // A token with no issued-at cannot be shown to be current, so it is not.
+  if (typeof claims?.iat !== "number") return true;
+  return claims.iat < changedAtSeconds;
+}
+
 /**
  * Attaches req.user when a valid Bearer token is present, and rejects
  * otherwise. The token is only an identity claim — the account is loaded
@@ -30,6 +56,13 @@ export async function requireAuth(req, res, next) {
 
   const user = await loadUser(claims.sub);
   if (!user || user.active === false) return res.status(401).json({ error: "Sign in to continue" });
+
+  if (predatesPasswordChange(claims, user)) {
+    return res.status(401).json({
+      error: "Your password was changed. Sign in again.",
+      code: "password_changed",
+    });
+  }
 
   req.user = user;
 
@@ -48,6 +81,11 @@ export async function requireAuth(req, res, next) {
     // Revoking someone's admin rights has to end the sessions they
     // opened with them, or revocation means very little.
     if (!actor || actor.role !== "admin" || actor.active === false) {
+      return res.status(401).json({ error: "That support session has ended. Sign in again." });
+    }
+    // And if the administrator changed their own password, the sessions
+    // they opened — including the ones worn as somebody else — go with it.
+    if (predatesPasswordChange(claims, actor)) {
       return res.status(401).json({ error: "That support session has ended. Sign in again." });
     }
     req.impersonatorId = actor.id;

@@ -19,7 +19,6 @@ import {
   PanelLeftOpen,
   ScrollText,
   Search,
-  Settings,
   ShieldCheck,
   Sparkles,
   Star,
@@ -56,22 +55,27 @@ const SPECIALIST_NAV: NavItem[] = [
   { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3, soon: true },
   { to: "/dashboard/messages", label: "Messages", icon: MessageSquare, soon: true },
   { to: "/dashboard/billing", label: "Plan & billing", icon: CreditCard },
-  { to: "/dashboard/settings", label: "Settings", icon: Settings, soon: true },
+  { to: "/dashboard/settings", label: "Account & security", icon: ShieldCheck },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/members", label: "Members", icon: Users },
+  /* Directly under Members, because it is the same job at a different
+     scale: Members is the individual doctors, Organisations is the
+     clinics and hospitals buying for several of them at once. The work
+     in both is reading an application and deciding — account work, not
+     accounting, which is why it is not filed under billing. */
+  { to: "/admin/organisations", label: "Organisations", icon: Building2 },
   { to: "/admin/verifications", label: "Verifications", icon: ShieldCheck },
   { to: "/admin/reviews", label: "Reviews", icon: MessageSquareQuote },
   { to: "/admin/claims", label: "Claims", icon: UserCheck },
   { to: "/admin/messages", label: "Messages", icon: Mail },
   { to: "/admin/articles", label: "Articles", icon: BookOpen },
-  /* Organisations sit next to Members rather than under Billing: the
-     work is reading an application and agreeing a figure, which is
-     account work, not accounting. */
-  { to: "/admin/organisations", label: "Organisations", icon: Building2 },
   { to: "/admin/audit", label: "Activity log", icon: ScrollText },
+  /* Last, and below the queues, because it is the one item here that is
+     about the administrator rather than about the site. */
+  { to: "/admin/settings", label: "Account & security", icon: ShieldCheck },
 ];
 
 export const STATUS_LABEL: Record<VerificationStatus, string> = {

@@ -502,6 +502,16 @@ export const users = pgTable(
     role: userRoleEnum("role").notNull().default("specialist"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
 
+    /* When the password last changed, and the reason sessions can be
+       ended at all. A session here is a signed token with no row behind
+       it, so there is nothing to delete on the server; the auth
+       middleware instead refuses any token issued before this moment.
+       Without it, resetting a password because somebody else has it
+       changes the lock and leaves the intruder inside. Null means never
+       changed, which is every account that predates this column and
+       correctly leaves their sessions standing. */
+    passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
+
     /* ------------------------------------------------- where from
        An admin looking at a list of sign-ups is asking one question
        first: is this real? A dental practice in Salford whose account
@@ -527,6 +537,39 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("users_role_idx").on(t.role)]
+);
+
+/* ---------------------------------------------------- password resets
+
+   What is stored is a SHA-256 of the token, never the token. The token
+   itself exists in exactly two places — the email we send and the link
+   in the member's browser — and nowhere else, so a leaked backup of
+   this table is worth nothing to whoever reads it. Storing the raw
+   value would make this a list of live passwords.
+
+   Single use (used_at) and short lived (expires_at, one hour). Both are
+   checked on redemption, and every outstanding token for an account is
+   burnt whenever that account's password changes by any route. */
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    /* Not used to decide anything. It is here so that "somebody keeps
+       requesting resets for my account" is a question an administrator
+       can answer. */
+    requestedIp: text("requested_ip"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("password_reset_tokens_hash_idx").on(t.tokenHash),
+    index("password_reset_tokens_user_idx").on(t.userId, t.createdAt),
+  ]
 );
 
 export const specialists = pgTable(

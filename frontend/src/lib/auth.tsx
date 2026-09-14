@@ -35,6 +35,17 @@ interface AuthState {
   signUp: (input: Parameters<typeof authApi.register>[0]) => Promise<Account>;
   signOut: () => void;
   refresh: () => Promise<void>;
+  /**
+   * Take over a session the server just issued, without a password.
+   *
+   * Two callers, both from the password screens. Redeeming a reset link
+   * returns a signed-in session — the person proved they hold the
+   * mailbox, and making them type the password they set four seconds ago
+   * proves nothing more. Changing a password returns a replacement token
+   * because the change kills every token older than it, this tab's
+   * included; swapping it in is what keeps them where they are.
+   */
+  adoptSession: (token: string, user?: Account) => Promise<Account | null>;
   /** Borrow a member's session. Resolves with the account now being worn. */
   startImpersonation: (memberId: string, reason?: string) => Promise<Account>;
   /** Hand the borrowed session back and return to the admin account. */
@@ -153,6 +164,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.user;
   }, []);
 
+  const adoptSession = useCallback(async (token: string, user?: Account) => {
+    /* Whatever this replaces, it is not a borrowed session: the server
+       refuses to change a password from inside one, and a reset link
+       belongs to the account itself. Clearing the parking is therefore
+       correct rather than merely tidy. */
+    setAdminToken(null);
+    setImpersonation(null);
+    setToken(token);
+    if (user) setAccount(user);
+    const me = await authApi.me().catch(() => null);
+    if (me) {
+      setAccount(me.user);
+      setSpecialist(me.specialist);
+    }
+    return me?.user ?? user ?? null;
+  }, []);
+
   const signOut = useCallback(() => {
     setToken(null);
     setAdminToken(null);
@@ -214,6 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signOut,
       refresh,
+      adoptSession,
       startImpersonation,
       stopImpersonation,
     }),
@@ -226,6 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signOut,
       refresh,
+      adoptSession,
       startImpersonation,
       stopImpersonation,
     ]

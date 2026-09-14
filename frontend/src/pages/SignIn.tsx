@@ -93,7 +93,23 @@ export default function SignIn() {
           />
         </Field>
 
-        <Field label="Password" htmlFor="password">
+        <Field
+          label="Password"
+          htmlFor="password"
+          /* Beside the field, not buried under the button: somebody who
+             cannot remember their password has already stopped reading
+             the rest of this form. The address they have typed is carried
+             across so they do not type it twice. */
+          action={
+            <Link
+              to="/forgot-password"
+              state={{ email: prefill.email }}
+              className="text-[12.5px] text-teal-700 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          }
+        >
           <div className="relative">
             <input
               id="password"

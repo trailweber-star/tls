@@ -109,6 +109,7 @@ export function Field({
   hint,
   error,
   optional,
+  action,
   children,
 }: {
   label: string;
@@ -116,6 +117,8 @@ export function Field({
   hint?: string;
   error?: string | null;
   optional?: boolean;
+  /** Sits on the label's own line, right-aligned — "Forgot password?". */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -123,6 +126,7 @@ export function Field({
       <label htmlFor={htmlFor} className="mb-1.5 flex items-baseline gap-2 text-[13px] font-bold text-ink">
         {label}
         {optional && <span className="text-[11.5px] font-semibold text-ink-faint">Optional</span>}
+        {action && <span className="ml-auto font-semibold">{action}</span>}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-[12px] text-ink-faint">{hint}</p>}

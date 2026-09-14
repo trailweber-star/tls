@@ -440,6 +440,28 @@ export const authApi = {
     }>("/auth/me"),
   demoCredentials: () =>
     get<{ accounts: { email: string; role: string; password: string }[] }>("/auth/demo-credentials"),
+
+  /* ------------------------------------------------------- passwords
+
+     forgotPassword always resolves. The server answers the same for an
+     address it has never seen as for one it emailed, so there is no
+     error case here to render and nothing for the screen to leak.
+
+     devResetUrl is only ever present on a machine with no mail provider
+     configured — it is what makes the flow walkable on a laptop. */
+  forgotPassword: (email: string) => post<{ ok: true; devResetUrl?: string }>("/auth/forgot-password", { email }),
+
+  resetPassword: (token: string, password: string) =>
+    post<{ ok: true; token: string; user: Account }>("/auth/reset-password", { token, password }),
+
+  /* Returns a fresh session token: changing the password ends every
+     other session on the account, and the caller must swap this in or
+     it would end its own too. */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    post<{ ok: true; token: string; signedOutElsewhere: true }>("/auth/change-password", {
+      currentPassword,
+      newPassword,
+    }),
 };
 
 /* ------------------------------------------------------- dashboard */

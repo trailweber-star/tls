@@ -19,6 +19,9 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import SignIn from "./pages/SignIn";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import AccountSecurity from "./pages/AccountSecurity";
 import DashboardOverview from "./pages/dashboard/Overview";
 import ProfileEditor from "./pages/dashboard/ProfileEditor";
 import Enquiries from "./pages/dashboard/Enquiries";
@@ -36,7 +39,7 @@ import AdminMessages from "./pages/admin/AdminMessages";
 import AdminArticles from "./pages/admin/AdminArticles";
 import AdminOrganisations from "./pages/admin/AdminOrganisations";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
-import { BarChart3, CalendarDays, MessageSquare, Settings } from "lucide-react";
+import { BarChart3, CalendarDays, MessageSquare } from "lucide-react";
 
 /**
  * The public site is chrome-wrapped (header, footer, paper background).
@@ -105,6 +108,11 @@ export default function App() {
 
         <Route path="/signin" element={<SignIn />} />
         <Route path="/register" element={<Register />} />
+        {/* Both are open by necessity: somebody who cannot sign in is
+            exactly who needs them. Neither reveals whether an address is
+            on an account — see the pages themselves. */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/claim/:slug" element={<Claim />} />
 
         {/* ------------------------------------ specialist workspace */}
@@ -169,22 +177,9 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="settings"
-            element={
-              <ComingSoon
-                icon={Settings}
-                instead={{ to: "/dashboard/billing", label: "Plan and billing" }}
-                title="Settings"
-                description="Account, notifications and privacy."
-                needs={[
-                  "Password change and email change with confirmation",
-                  "Notification preferences per event type",
-                  "Account closure, which has to unpublish your profile too",
-                ]}
-              />
-            }
-          />
+          {/* Was a "coming soon" placeholder whose first listed need was
+              a password change. It now is one. */}
+          <Route path="settings" element={<AccountSecurity />} />
           <Route path="billing" element={<Billing />} />
           {/* Older links pointed here before the billing screen existed. */}
           <Route path="upgrade" element={<Navigate to="/dashboard/billing" replace />} />
@@ -212,6 +207,9 @@ export default function App() {
           <Route path="reviews" element={<ReviewModeration />} />
           <Route path="audit" element={<AdminAudit />} />
           <Route path="messages" element={<AdminMessages />} />
+          {/* The same screen as the member side. An administrator's own
+              password is changed in the same place, by the same rules. */}
+          <Route path="settings" element={<AccountSecurity variant="admin" />} />
         </Route>
       </Routes>
       {/* Outside the routes on purpose: a borrowed session has to be

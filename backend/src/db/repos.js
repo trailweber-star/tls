@@ -16,7 +16,7 @@
  * place to fix it is here, behind these function signatures.
  * ------------------------------------------------------------------ */
 
-import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { getDb } from "./client.js";
 import * as t from "./schema.js";
 import { newId } from "./schema.js";
@@ -1492,5 +1492,83 @@ export const organisationApplications = {
       .select({ status: t.organisationApplications.status })
       .from(t.organisationApplications);
     return rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
+  },
+};
+
+/* ================================================= password resets */
+
+/**
+ * Reset tokens, stored as hashes.
+ *
+ * Nothing here ever sees the token the member was emailed — the caller
+ * hashes it and passes the hash in. That is not ceremony: it means this
+ * table can be dumped, backed up, or read over somebody's shoulder
+ * without handing out a single working link.
+ */
+export const passwordResets = {
+  async create({ userId, tokenHash, expiresAt, requestedIp = null }) {
+    const [row] = await db()
+      .insert(t.passwordResetTokens)
+      .values({ id: newId("prt"), userId, tokenHash, expiresAt, requestedIp })
+      .returning();
+    return row ?? null;
+  },
+
+  /** The redeem path's only lookup. Validity is the caller's decision. */
+  async findByHash(tokenHash) {
+    const [row] = await db()
+      .select()
+      .from(t.passwordResetTokens)
+      .where(eq(t.passwordResetTokens.tokenHash, tokenHash))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /** Single use. Returns null if somebody redeemed it first. */
+  async markUsed(id) {
+    const [row] = await db()
+      .update(t.passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(t.passwordResetTokens.id, id), isNull(t.passwordResetTokens.usedAt)))
+      .returning();
+    return row ?? null;
+  },
+
+  /**
+   * Burn every outstanding link for one account. Run on every successful
+   * reset and every password change, so a second email already in flight
+   * — or one an attacker requested — is dead the moment the password
+   * moves.
+   */
+  async burnAllFor(userId) {
+    const rows = await db()
+      .update(t.passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(t.passwordResetTokens.userId, userId), isNull(t.passwordResetTokens.usedAt)))
+      .returning({ id: t.passwordResetTokens.id });
+    return rows.length;
+  },
+
+  /**
+   * How many links this account has asked for since a given moment —
+   * the rate limit's only input. Counting rows rather than keeping a
+   * counter in memory means the limit survives a restart and applies
+   * across every instance the site runs on.
+   */
+  async countSince(userId, since) {
+    const [row] = await db()
+      .select({ count: sql`count(*)::int` })
+      .from(t.passwordResetTokens)
+      .where(and(eq(t.passwordResetTokens.userId, userId), gte(t.passwordResetTokens.createdAt, since)));
+    return row?.count ?? 0;
+  },
+
+  /** Housekeeping: expired and spent tokens are of no use to anybody. */
+  async purgeExpired(before = new Date()) {
+    const rows = await db()
+      .delete(t.passwordResetTokens)
+      .where(lt(t.passwordResetTokens.expiresAt, before))
+      .returning({ id: t.passwordResetTokens.id });
+    return rows.length;
   },
 };

@@ -2,6 +2,7 @@ import { isDbConfigured } from "../config/db.js";
 import {
   facilities as facilityRepo,
   leads as leadRepo,
+  passwordResets,
   reviews as reviewRepo,
   specialists as specialistRepo,
   users as userRepo,
@@ -360,6 +361,27 @@ async function runSweep() {
   /* Enquiries ClinWell was busy for when they arrived. A no-op while
      the forwarding gate is shut, which is its state today. */
   await sweepEnquiryForwarding().catch((e) => console.error("[reminders] enquiry forwarding failed:", e?.message ?? e));
+  /* Spent and expired password reset tokens. They are already useless —
+     the redeem path checks used_at and expires_at before anything else —
+     so this is housekeeping rather than security: a table that only ever
+     grows is a slow leak, and rows that record who asked to reset what
+     are not rows to keep for ever. */
+  await purgeSpentResetTokens().catch((e) =>
+    console.error("[reminders] reset token purge failed:", e?.message ?? e)
+  );
+}
+
+/**
+ * Reset tokens live one hour. Anything that expired more than a day ago
+ * is deleted; the day of slack is so that "somebody keeps requesting
+ * resets for my account" is still an answerable question the morning
+ * after it happens.
+ */
+async function purgeSpentResetTokens() {
+  if (!isDbConfigured()) return 0;
+  const gone = await passwordResets.purgeExpired(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  if (gone > 0) console.log(`[reminders] purged ${gone} expired reset token(s)`);
+  return gone;
 }
 
 export function stopReminderSweep() {

@@ -44,6 +44,11 @@ import {
 } from "../controllers/organisations.controller.js";
 import { demoCredentials, login, me, register } from "../controllers/auth.controller.js";
 import {
+  changePassword,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/password.controller.js";
+import {
   getOverview,
   getProfile,
   updateProfile,
@@ -266,6 +271,15 @@ router.post("/auth/register", register);
 router.post("/auth/login", login);
 router.get("/auth/me", requireAuth, me);
 router.get("/auth/demo-credentials", demoCredentials);
+
+/* Passwords. The first two are unauthenticated by necessity — somebody
+   who cannot sign in is exactly who needs them — and both are written to
+   give nothing away to a caller guessing addresses or links. The third
+   needs a session AND the current password; a session alone is only
+   evidence that a browser was left open. */
+router.post("/auth/forgot-password", forgotPassword);
+router.post("/auth/reset-password", resetPassword);
+router.post("/auth/change-password", requireAuth, changePassword);
 
 /* ------------------------------------------------- specialist dashboard
    Every route reads the profile id from the session, never from the URL,
