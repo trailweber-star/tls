@@ -1,0 +1,218 @@
+{
+  "$comment": [
+    "Mr Kirti Moholkar, transcribed from his public Doctify profile on 14 Sep 2026.",
+    "",
+    "This file is DATA, kept separate from the importer on purpose: everything here",
+    "is a claim about a real person, and it should be readable and correctable by",
+    "somebody who is not going to read a script.",
+    "",
+    "THREE THINGS ARE DELIBERATELY ABSENT, and each absence is the point:",
+    "",
+    "  ratings    His Doctify score is 4.95 from 145 reviews. It is recorded under",
+    "             `notImported` below and it does not become a TLS figure. A star",
+    "             rating here has to mean reviews THIS site holds and moderated.",
+    "             Publishing 4.95 for reviews we cannot show is a number we could",
+    "             not defend the first time anybody asked.",
+    "",
+    "  reviews    The 145 review texts are patients' words, published on another",
+    "             platform. They are not ours to move, and moved here they would",
+    "             read as reviews left on TLS. None are imported.",
+    "",
+    "  bio        The three paragraphs on Doctify are written copy. The BIOGRAPHY",
+    "             BELOW IS NEW PROSE assembled from the facts on that page, not a",
+    "             copy of it — and it still needs Mr Moholkar's sign-off before it",
+    "             is treated as his own words."
+  ],
+  "sourceName": "Doctify",
+  "sourceUrl": "https://www.doctify.com/uk/specialist/mr-kirti-moholkar-1",
+  "slug": "mr-kirti-moholkar",
+  "fullName": "Mr Kirti Moholkar",
+  "title": "Consultant Orthopaedic Surgeon",
+  "qualifications": "MBBS, FRCSI (Tr & Ortho), DSM",
+  "yearsExperience": 35,
+  "languages": [
+    "English"
+  ],
+  "regulatorCode": "GMC",
+  "registrationNumber": "5192081",
+  "websiteUrl": "https://www.droitwichkneeclinic.co.uk/",
+  "bookingUrl": "https://www.droitwichkneeclinic.co.uk/",
+  "bioNeedsApproval": true,
+  "bio": "Mr Kirti Moholkar is a consultant orthopaedic surgeon at the Royal Orthopaedic Hospital in Birmingham, where he completed his training at the hospital's Knee and Shoulder Unit in 2000. He has since held fellowships and undertaken clinical work in India, Australia, the United States and the United Kingdom, and has practised for around 35 years.\n\nHis work centres on the knee and the shoulder — sports injuries in both, and the arthritic conditions that follow. He designed a surgical instrument for balancing the knee during replacement, and lectures internationally on the medial pivot point in knee replacement and on reducing post-operative pain. He also works on patient-specific guides for knee replacement surgery.\n\nHe consults at nine locations across the West Midlands and at the Royal National Orthopaedic Hospital in Stanmore, and runs the Droitwich Knee Clinic.",
+  "consultationPriceMinor": 25000,
+  "currency": "GBP",
+  "fees": [
+    {
+      "label": "New appointment",
+      "amountMinor": 25000
+    },
+    {
+      "label": "Follow-up appointment",
+      "amountMinor": 15000
+    }
+  ],
+  "$feesNote": "As published on the source profile, which carries the note '*May vary on location'. consultationPriceMinor drives the public 'from £250' line and the price filter — change it here if his TLS fee differs.",
+  "insurers": [
+    "Bupa",
+    "AXA Health",
+    "Cigna",
+    "Allianz Worldwide Care",
+    "Healix Health Services"
+  ],
+  "$insurersNote": "The source page listed these five with a 'Show more' control, so the list may be incomplete.",
+  "primarySpecialtySlug": "knee-replacement",
+  "$primaryNote": "The narrowest tier, and the one his own figures point at: knee replacement carried 71 of his source reviews, more than twice the next.",
+  "subspecialtySlugs": [
+    "orthopaedics-knee",
+    "orthopaedics-shoulder-and-elbow",
+    "orthopaedics-sports-injuries"
+  ],
+  "specialtySlugs": [
+    "knee-replacement",
+    "total-knee-replacement",
+    "unicompartmental-partial-knee-replacement",
+    "revision-knee-replacement",
+    "complex-knee-replacement",
+    "robotic-knee-replacement",
+    "knee-replacement-second-opinion",
+    "knee-arthritis-osteoarthritis",
+    "anterior-knee-pain",
+    "patellofemoral-arthritis",
+    "patellar-instability-dislocation",
+    "mpfl-reconstruction",
+    "knee-arthroscopy",
+    "meniscus-repair",
+    "meniscus-tear",
+    "meniscus-surgery",
+    "acl-injury",
+    "acl-reconstruction",
+    "lcl-posterolateral-corner-injury",
+    "multi-ligament-knee-injury",
+    "knee-tendon-injury",
+    "cartilage-repair-restoration",
+    "knee-osteotomy",
+    "bakers-cyst",
+    "knee-injection",
+    "steroid-injection",
+    "prp-injection",
+    "knee-sports-knee-injury",
+    "shoulder-pain",
+    "shoulder-arthritis",
+    "shoulder-impingement",
+    "subacromial-decompression",
+    "shoulder-arthroscopy",
+    "shoulder-instability",
+    "shoulder-dislocation",
+    "rotator-cuff-tear",
+    "rotator-cuff-repair",
+    "frozen-shoulder",
+    "ac-joint-injury-arthritis",
+    "shoulder-injection",
+    "shoulder-and-elbow-sports-shoulder-injury"
+  ],
+  "$specialtyNote": [
+    "Mapped BY HAND from the 50 'areas of expertise' on the source profile. Not",
+    "fuzzy-matched: a loose match put 'Arthritis (Knee)' on hand arthritis and",
+    "'Sports Injury' on sports hip injury, which would have listed a knee and",
+    "shoulder surgeon under two things he does not do.",
+    "",
+    "Nine of his 50 have no home in the TLS taxonomy and are left off rather than",
+    "forced into a near-neighbour: MRI Scan, Minimally Invasive Knee Surgery,",
+    "Enhanced Recovery Knee Replacement, Endoprosthetic Replacement, Tibial",
+    "Tubercle Transfer, Shoulder Hydrodilatation, Cartilage Surgery (Shoulder),",
+    "The Young Knee, Knee Preservation Surgery. Most are procedure names for",
+    "things already covered by the nodes above; if they should be in the tree,",
+    "that is a taxonomy change, not an import one."
+  ],
+  "locations": [
+    {
+      "clinicName": "The Priory Hospital",
+      "clinicSlug": "the-priory-hospital-birmingham",
+      "address": "Priory Road, Edgbaston",
+      "postcode": "B5 7UG",
+      "city": "Edgbaston",
+      "region": "West Midlands",
+      "$note": "Part of Circle Health Group. The first location is the one the hero shows."
+    },
+    {
+      "clinicName": "The Droitwich Spa Hospital",
+      "clinicSlug": "the-droitwich-spa-hospital",
+      "address": "St Andrews Road",
+      "postcode": "WR9 8DN",
+      "city": "Droitwich Spa",
+      "region": "Worcestershire",
+      "$note": "Part of Circle Health Group."
+    },
+    {
+      "clinicName": "The Droitwich Knee Clinic",
+      "clinicSlug": "the-droitwich-knee-clinic",
+      "address": "Ultrasound Suite, 27 New Road",
+      "postcode": "B60 2JL",
+      "city": "Bromsgrove",
+      "region": "Worcestershire",
+      "$note": "His own clinic — the website and booking link both point here."
+    },
+    {
+      "clinicName": "Modality Treatment Centre — Bromsgrove",
+      "clinicSlug": "modality-treatment-centre-bromsgrove",
+      "address": "27 New Road",
+      "postcode": "B60 2JL",
+      "city": "Bromsgrove",
+      "region": "Worcestershire"
+    },
+    {
+      "clinicName": "Royal Orthopaedic Hospital",
+      "clinicSlug": "royal-orthopaedic-hospital",
+      "address": "Bristol Road South, Northfield",
+      "postcode": "B31 2AP",
+      "city": "Birmingham",
+      "region": "West Midlands",
+      "$note": "Where he holds his NHS consultant post."
+    },
+    {
+      "clinicName": "The Woodlands Suite, Royal Orthopaedic Hospital",
+      "clinicSlug": "the-woodlands-suite",
+      "address": "The Woodlands Suite, Royal Orthopaedic Hospital",
+      "postcode": "B31 2AP",
+      "city": "Birmingham",
+      "region": "West Midlands",
+      "$note": "The private wing of the hospital above."
+    },
+    {
+      "clinicName": "Modality Treatment Centre — Edgbaston",
+      "clinicSlug": "modality-treatment-centre-edgbaston",
+      "address": "38 Highfield Road",
+      "postcode": "B15 3ED",
+      "city": "Edgbaston",
+      "region": "West Midlands"
+    },
+    {
+      "clinicName": "West Midlands Hospital",
+      "clinicSlug": "west-midlands-hospital",
+      "address": "Colman Hill, Halesowen",
+      "postcode": "B63 2AH",
+      "city": "Halesowen",
+      "region": "West Midlands"
+    },
+    {
+      "clinicName": "Royal National Orthopaedic Hospital",
+      "clinicSlug": "royal-national-orthopaedic-hospital",
+      "address": "Brockley Hill, Stanmore",
+      "postcode": "HA7 4LP",
+      "city": "Stanmore",
+      "region": "Greater London"
+    }
+  ],
+  "notImported": {
+    "rating": "4.95",
+    "reviewCount": "145",
+    "reviewsWithText": "145 patient reviews, dated 10 Jul 2025 to 10 Sep 2026",
+    "skillEndorsements": "3 — Mr Shakir Hussain, Mr Jwalant Mehta, Mr Yuvraj Agrawal",
+    "reviewsByKeyword": "Knee Replacement 71, Total Knee Replacement 33, Knee Pain 25, Arthritis (Knee) 13, Shoulder Pain 7, MRI Scan 5, Rotator Cuff Repair 4, Joint Injection 3",
+    "aiReviewSummary": "present on the source page",
+    "verifiedOnSource": "yes — Doctify's own verification mark",
+    "photoUrl": "https://www.doctify.com/images/athena-uk/hermes/media/specialists/mr-kirti-moholkar-1/mr-kirti-moholkar-1.webp",
+    "why": "Another platform's figures, another platform's patients, and another platform's verification. None of it is ours to publish. The photo is hotlinkable but not ours to serve — ask him for one."
+  },
+  "$locationNote": "Each location names its town explicitly rather than leaving it to the postcode lookup. The lookup is better when it is reachable — it resolves the district and returns the coordinates a radius search needs — but a listing should not fail to import because an API was down, and a town in the file is something a person can check."
+}

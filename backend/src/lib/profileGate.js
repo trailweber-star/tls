@@ -56,6 +56,14 @@ const NEVER_PUBLIC = [
   "importSource",
   "sourceUrl",
   "sourceImportedAt",
+  /* The fourth of the same family, and it was the one left out.
+     `sourceName` was reaching the public profile endpoint, so every
+     imported listing's JSON announced "Doctify" — this site telling
+     anyone who looked where it got its listings, and naming a
+     competitor on its own pages. Nothing public ever rendered it; the
+     admin members list and drawer read it from the admin endpoint,
+     which does not go through this gate. */
+  "sourceName",
   /* The ClinWell integration's internals. Exactly one of these columns
      is a public fact — clinwellLive, which drives the "Runs on
      ClinWell" badge — and the rest are plumbing:

@@ -36,6 +36,28 @@ export function hashPassword(password) {
   return `scrypt$${salt}$${derived}`;
 }
 
+/* ------------------------------------------------------------------ *
+ * Accounts that exist but cannot be signed in to
+ *
+ * An imported listing has a shell account behind it so an administrator
+ * can open it and fill the profile in, but nobody has ever chosen a
+ * password for it. That account carries UNUSABLE_PASSWORD rather than a
+ * hash, and because verifyPassword below only accepts a scrypt string,
+ * every password in the world fails against it — including an empty one.
+ *
+ * The check has to be "is there a usable hash", not "is the sentinel
+ * present": a row with a corrupted or half-written hash should be
+ * unusable too, and would be. `usablePassword` is what the forgot-
+ * password route asks before it will email a reset link, which is what
+ * stops somebody resetting their way into an unclaimed listing and
+ * around the claim review.
+ * ------------------------------------------------------------------ */
+
+export const UNUSABLE_PASSWORD = "unclaimed";
+
+/** Has somebody actually set a password on this account? */
+export const usablePassword = (stored) => typeof stored === "string" && stored.startsWith("scrypt$");
+
 export function verifyPassword(password, stored) {
   if (typeof stored !== "string") return false;
   const [scheme, salt, expected] = stored.split("$");

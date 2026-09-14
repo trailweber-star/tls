@@ -48,7 +48,7 @@ import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import { passwordResets as resetRepo, users as userRepo, attachSpecialistId } from "../db/repos.js";
 import { demoAccounts } from "../data/accounts.js";
-import { hashPassword, verifyPassword } from "../lib/auth.js";
+import { hashPassword, usablePassword, verifyPassword } from "../lib/auth.js";
 import { issueSession, revokeAllSessions } from "../lib/sessions.js";
 import { requestOrigin } from "../lib/requestIp.js";
 import { hasMailer, sendMail } from "../lib/mailer.js";
@@ -254,6 +254,15 @@ export async function forgotPassword(req, res) {
      back into an account an administrator switched off would make
      deactivation advisory. */
   if (!user || user.active === false) return ok();
+
+  /* Neither does an unclaimed imported listing.
+     Those have a shell account so an administrator can open them, but
+     nobody has ever set a password on one. If this sent a link, anybody
+     who could receive mail at the practice address could take over a
+     listing without the claim being reviewed against the regulator's
+     register — which is the one check the whole directory rests on.
+     Claiming an imported listing goes through /claims, on purpose. */
+  if (!usablePassword(user.passwordHash)) return ok();
 
   const since = new Date(Date.now() - 60 * 60 * 1000);
   const recent = await resets().countSince(user.id, since);
