@@ -2,6 +2,7 @@
   "$comment": "Postcode centroids and place centroids from postcodes.io (Ordnance Survey / ONS open data, Open Government Licence v3). Written by scripts/geotag.mjs; safe to delete — it will be refetched. `places` keeps EVERY town of a given name, because which one a listing means is decided from its postcodes, not from this file.",
   "source": "https://api.postcodes.io",
   "postcodes": {
+    "202384": null,
     "B152TQ": {
       "postcode": "B15 2TQ",
       "lat": 52.452669,

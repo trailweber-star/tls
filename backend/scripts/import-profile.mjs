@@ -38,16 +38,24 @@
  * updates what the first one made.
  * ------------------------------------------------------------------ */
 
-import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
-import { eq, inArray } from "drizzle-orm";
-import { getDb, disconnectDb, isDbConfigured } from "../src/db/client.js";
-import * as t from "../src/db/schema.js";
-import { newId } from "../src/db/schema.js";
-import { registerGeocoder } from "../src/lib/geocoders.js";
-import { geocode, hasGeocoder } from "../src/lib/geo.js";
-import { UNUSABLE_PASSWORD } from "../src/lib/auth.js";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+
+/* backend/.env by its own path, not by the current directory, so this
+   works whether it is run from backend/ or from the repo root. A
+   DATABASE_URL already in the environment still wins. */
+const BACKEND = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+dotenv.config({ path: path.join(BACKEND, ".env") });
+
+const { eq, inArray } = await import("drizzle-orm");
+const { getDb, disconnectDb, isDbConfigured } = await import("../src/db/client.js");
+const t = await import("../src/db/schema.js");
+const { newId } = t;
+const { registerGeocoder } = await import("../src/lib/geocoders.js");
+const { geocode, hasGeocoder } = await import("../src/lib/geo.js");
+const { UNUSABLE_PASSWORD } = await import("../src/lib/auth.js");
 
 const args = process.argv.slice(2);
 const DRY = args.includes("--dry-run");
