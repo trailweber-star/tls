@@ -41,22 +41,34 @@
  * applied somewhere without it. Delete the file to force fresh lookups.
  * ------------------------------------------------------------------ */
 
-import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isNull, or, sql } from "drizzle-orm";
-import { getDb, disconnectDb, isDbConfigured } from "../src/db/client.js";
-import * as t from "../src/db/schema.js";
-import { bulkPostcodes, lookupPlaces } from "../src/lib/geocoders.js";
+import dotenv from "dotenv";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const BACKEND = path.join(here, "..");
+
+/* `import "dotenv/config"` reads .env from the CURRENT directory, so
+   `node backend/scripts/geotag.mjs` from the repo root finds nothing,
+   decides there is no DATABASE_URL and reports demo mode — which is
+   true of the shell, not of the project. Point it at backend/.env and
+   the script works from wherever it is run. A DATABASE_URL already in
+   the environment still wins, which is how it is pointed at a
+   deployed database. */
+dotenv.config({ path: path.join(BACKEND, ".env") });
+
+const { isNull, or, sql } = await import("drizzle-orm");
+const { getDb, disconnectDb, isDbConfigured } = await import("../src/db/client.js");
+const t = await import("../src/db/schema.js");
+const { bulkPostcodes, lookupPlaces } = await import("../src/lib/geocoders.js");
 
 const args = process.argv.slice(2);
 const DRY = args.includes("--dry-run");
 const ALL = args.includes("--all");
 const OFFLINE = args.includes("--offline");
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const CACHE_PATH = path.join(here, "..", "data", "geocache.json");
+const CACHE_PATH = path.join(BACKEND, "data", "geocache.json");
 
 const c = { ok: "\x1b[32m", warn: "\x1b[33m", bad: "\x1b[31m", dim: "\x1b[2m", off: "\x1b[0m" };
 const say = (s = "") => console.log(s);
@@ -121,7 +133,12 @@ const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 async function main() {
   if (!isDbConfigured()) {
-    bad("No DATABASE_URL — there is nothing to geotag in demo mode.");
+    bad("No DATABASE_URL, so there is no database to geotag.");
+    say(
+      `  Looked for it in the environment and in ${path.join(BACKEND, ".env")}.\n` +
+        `  To geotag a deployed database, pass its URL for this one command:\n` +
+        `    DATABASE_URL="postgres://…" node backend/scripts/geotag.mjs --dry-run`
+    );
     process.exit(1);
   }
   const db = getDb();
