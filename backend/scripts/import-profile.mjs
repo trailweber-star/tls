@@ -380,25 +380,45 @@ async function run() {
        share one. Keyed on clinic + postcode + street so a second run
        reuses the row rather than stacking another copy of the same
        address under the same hospital. */
-    const [existingLocation] = await db
+    /* Every address this clinic already holds, not just the first one.
+       An earlier version selected one row and compared against it, so a
+       hospital with two addresses matched neither on the second and
+       stacked a duplicate row on every run. */
+    const rows = await db
       .select()
       .from(t.clinicLocations)
       .where(eq(t.clinicLocations.clinicId, clinic.id));
 
-    let locationId = null;
-    const sameAddress =
-      existingLocation &&
-      String(existingLocation.postcode ?? "").replace(/\s/g, "").toUpperCase() ===
-        String(location.postcode ?? "").replace(/\s/g, "").toUpperCase() &&
-      String(existingLocation.address ?? "") === String(location.address ?? "");
+    const norm = (v) => String(v ?? "").replace(/\s/g, "").toUpperCase();
+    const existingLocation = rows.find(
+      (r) =>
+        norm(r.postcode) === norm(location.postcode) &&
+        String(r.address ?? "") === String(location.address ?? "")
+    );
 
-    if (sameAddress) {
+    let locationId = null;
+
+    if (existingLocation) {
       locationId = existingLocation.id;
-      if (city && (existingLocation.lat == null || existingLocation.lng == null)) {
-        await db
-          .update(t.clinicLocations)
-          .set({ lat: city.lat ?? null, lng: city.lng ?? null, cityId: city.id })
-          .where(eq(t.clinicLocations.id, locationId));
+      /* RECONCILE, don't just backfill. The city is the field that
+         drifts: a row created by a run that named the town wrongly
+         keeps that town forever if we only ever write cityId while
+         filling in missing coordinates — which is exactly what
+         happened here. Kirti's Droitwich, Halesowen and Stanmore rows
+         had coordinates already, so the correcting branch never ran
+         and all nine locations stayed pointed at the districts.
+
+         The file is the statement of where these clinics are, so on
+         every run the row is brought back into line with it. */
+      const patch = {};
+      if (city && existingLocation.cityId !== city.id) patch.cityId = city.id;
+      if (city?.lat != null && (existingLocation.lat == null || existingLocation.lng == null)) {
+        patch.lat = city.lat;
+        patch.lng = city.lng;
+      }
+      if (Object.keys(patch).length) {
+        await db.update(t.clinicLocations).set(patch).where(eq(t.clinicLocations.id, locationId));
+        if (patch.cityId) notes.push(`${location.clinicName} moved to ${city.name}`);
       }
     } else {
       locationId = newId("loc");

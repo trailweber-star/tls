@@ -131,6 +131,14 @@ async function placesFor(name, cache) {
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
+/* A region column holding a postcode. An earlier import bug wrote the
+   postcode there instead of the county, and a wrong region is worse
+   than an empty one: it shows in every list of towns and it is what an
+   SEO location page puts in its title. Matches an outward code with or
+   without the inward half, so "B60 2JL" and "B60" both count. */
+const looksLikePostcode = (v) =>
+  typeof v === "string" && /^[A-Z]{1,2}\d[A-Z\d]?(\s*\d[A-Z]{2})?$/i.test(v.trim());
+
 async function main() {
   if (!isDbConfigured()) {
     bad("No DATABASE_URL, so there is no database to geotag.");
@@ -378,8 +386,8 @@ async function main() {
     const point = chosen ?? fallback;
     /* Fill in the region while we are here: a city row with no region
        reads as "Stanmore" in a list of towns that all say their county. */
-    const region =
-      city.region ?? [...e.counties][0] ?? [...e.regions][0] ?? null;
+    const stated = looksLikePostcode(city.region) ? null : city.region;
+    const region = stated ?? [...e.counties][0] ?? [...e.regions][0] ?? null;
 
     dim(`  ${city.name.padEnd(16)} → ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}   ${c.dim}${how}${c.off}`);
     if (!DRY) {
@@ -392,6 +400,26 @@ async function main() {
   }
   if (!DRY) writeCache(cache);
   good(`${wroteCity} cit${wroteCity === 1 ? "y" : "ies"} geotagged`);
+
+  /* Regions, separately. A city can have perfect coordinates and still
+     say its region is "B60 2JL", so this pass looks at every row rather
+     than only the ones the geotagging touched. */
+  let wroteRegion = 0;
+  for (const city of cities) {
+    if (!looksLikePostcode(city.region)) continue;
+    const e = evidence.get(city.id);
+    const better = [...(e?.counties ?? [])][0] ?? [...(e?.regions ?? [])][0] ?? null;
+    if (!better) {
+      warn(`${city.slug}: region is "${city.region}", which is a postcode, and nothing says what it should be`);
+      continue;
+    }
+    dim(`  ${city.name.padEnd(16)} region "${city.region}" → "${better}"`);
+    if (!DRY) {
+      await db.update(t.cities).set({ region: better }).where(sql`${t.cities.id} = ${city.id}`);
+    }
+    wroteRegion += 1;
+  }
+  if (wroteRegion) good(`${wroteRegion} region(s) corrected`);
   if (stuck.length) {
     warn(
       `${stuck.length} cit${stuck.length === 1 ? "y has" : "ies have"} no located address to work from — ` +
