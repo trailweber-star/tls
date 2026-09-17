@@ -34,6 +34,20 @@ function isExempt(path) {
     // Stripe cannot be handed a password, and it verifies its own
     // signature — see lib/paymentProviders.js.
     path === "/api/billing/webhook" ||
+    /* Partner machines, for the same reason as Stripe and with the same
+       condition attached: nothing under /api/partners/ is reachable
+       without a bearer key AND an HMAC signature over the raw body,
+       checked before the handler looks at anything (see
+       controllers/clinwellStatus.controller.js). A server in someone
+       else's data centre cannot be handed a shared password, and the
+       gate refusing it is indistinguishable, from their side, from our
+       key being wrong — which is a whole afternoon lost to the wrong
+       question.
+
+       The condition is not decoration: anything added under this prefix
+       that does NOT verify a signature is published to the internet by
+       this line. */
+    path.startsWith("/api/partners/") ||
     path === "/__preview" ||
     path === "/robots.txt"
   );
