@@ -129,12 +129,25 @@ async function cityFor(postcode, fallbackName, fallbackRegion) {
     try {
       const hit = await geocode(postcode);
       if (hit) {
+        /* COORDINATES ONLY. The town and region in the file are what a
+           person curated, and they win.
+
+           An earlier version of this took the name from the geocoder
+           too, on a wrong guess about its shape: postcodes.io answers
+           "WR9 8DN · Wychavon" — the postcode and the ADMINISTRATIVE
+           DISTRICT, not "town · area". So it filed Kirti's Droitwich
+           clinic under "Wychavon", his Halesowen one under "Dudley" and
+           the Stanmore hospital under "Harrow", and wrote the postcode
+           itself into the region column. Every one of those is a name no
+           patient would search for, on a page whose whole job is to be
+           found by the town it names. */
         coords = { lat: hit.lat, lng: hit.lng };
-        /* postcodes.io returns "Birmingham · Edgbaston" style names; the
-           last part is the district, which is what a patient searches. */
-        const parts = String(hit.name ?? "").split("·").map((s) => s.trim()).filter(Boolean);
-        if (parts.length) name = parts[parts.length - 1];
-        if (parts.length > 1) region = parts[0];
+        /* Only when the file named no town at all is the district
+           better than nothing. */
+        if (!name) {
+          const parts = String(hit.name ?? "").split("·").map((s) => s.trim()).filter(Boolean);
+          if (parts.length > 1) name = parts[parts.length - 1];
+        }
       }
       if (!hit && !geocoderWarned) {
         geocoderWarned = true;
