@@ -534,7 +534,24 @@ export function SearchBar({
           </button>
           <hr className="border-line" />
           <ul className="max-h-[260px] overflow-y-auto overscroll-contain py-1">
-            {cityMatches.length === 0 ? (
+            {/* AN EMPTY LIST IS NOT THE SAME ANSWER AS NO MATCH.
+                `cities` arrives as a prop and defaults to [], so during
+                the window before it loads -- seconds, on a cold Render
+                instance -- every query fell through to "No town of that
+                name". Typing "birmingham" was told Birmingham does not
+                exist, while 262 listings sat in it. That is a confident
+                factual claim made from having no data at all, which is
+                worse than saying nothing: it sends somebody off to
+                check their spelling of a city they spelled correctly.
+
+                With no towns on hand we cannot speak to whether a name
+                is among them, so we say what is actually true and give
+                them a way through in the meantime. */}
+            {cities.length === 0 ? (
+              <li className="px-5 py-4 text-[13px] text-ink-muted">
+                Still loading towns — you can type a postcode instead.
+              </li>
+            ) : cityMatches.length === 0 ? (
               <li className="px-5 py-4 text-[13px] text-ink-muted">
                 No town of that name — a postcode works too.
               </li>
