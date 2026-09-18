@@ -225,9 +225,23 @@ export function MemberDrawer({
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl bg-white p-4 shadow-sm">
                 <Field label="Email">
                   {member.email ? (
-                    <a className="inline-flex items-center gap-1.5 text-teal-700 hover:underline" href={`mailto:${member.email}`}>
-                      <Mail className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                      <span className="truncate">{member.email}</span>
+                    /* max-w-full + min-w-0 + break-all, because an
+                       inline-flex box sizes to its content: without a
+                       width constraint the `truncate` that used to be on
+                       the span could never engage, and an imported
+                       address like
+                       wv1-dental-implant-clinic@unclaimed.toplocalspecialists.com
+                       -- 58 characters with no spaces -- ran straight out
+                       of its grid column and printed on top of the phone
+                       number. Wrapping rather than truncating because an
+                       administrator needs to read and copy the whole
+                       address, not hover to discover it. */
+                    <a
+                      className="inline-flex max-w-full items-start gap-1.5 text-teal-700 hover:underline"
+                      href={`mailto:${member.email}`}
+                    >
+                      <Mail className="mt-[3px] h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                      <span className="min-w-0 break-all">{member.email}</span>
                     </a>
                   ) : (
                     dash(null)
@@ -235,9 +249,9 @@ export function MemberDrawer({
                 </Field>
                 <Field label="Phone">
                   {member.contactPhone ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Phone className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2} aria-hidden />
-                      {member.contactPhone}
+                    <span className="inline-flex max-w-full items-start gap-1.5">
+                      <Phone className="mt-[3px] h-3.5 w-3.5 shrink-0 text-ink-faint" strokeWidth={2} aria-hidden />
+                      <span className="min-w-0 break-all">{member.contactPhone}</span>
                     </span>
                   ) : (
                     dash(null)

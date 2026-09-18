@@ -784,6 +784,23 @@ export default function AdminMembers() {
                         </td>
 
                         <td className="relative px-4 py-3 text-right align-top">
+                          {/* Previewing a listing was reachable only by
+                              opening this row's menu first, so from the
+                              list there was no sign it could be done at
+                              all. Checking a listing looks right is the
+                              commonest thing an administrator wants from
+                              a row -- it gets its own control. */}
+                          <a
+                            href={`/specialists/${row.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Preview the public profile for ${row.fullName}`}
+                            title="Preview public profile"
+                            className="mr-1 inline-grid h-8 w-8 place-items-center rounded-full align-middle text-ink-faint transition hover:bg-paper-tint hover:text-ink"
+                          >
+                            <ExternalLink className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+                          </a>
                           <button
                             type="button"
                             aria-label={`Actions for ${row.fullName}`}
@@ -831,15 +848,6 @@ export default function AdminMembers() {
                                 <LogIn className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
                                 Sign in as this member
                               </button>
-                              <a
-                                href={`/specialists/${row.slug}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex w-full items-center gap-2 px-4 py-2.5 text-[12.5px] font-semibold text-ink transition hover:bg-paper-muted"
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                                Public profile
-                              </a>
                               <button
                                 type="button"
                                 onClick={() => {
