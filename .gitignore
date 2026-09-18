@@ -9,3 +9,7 @@ backend/uploads/*
 _to_delete
 _incoming
 Claude outputs/
+
+# Harvested copies of the live Brilliant Directories site. Real member
+# records — never committed.
+backend/data/harvest/
