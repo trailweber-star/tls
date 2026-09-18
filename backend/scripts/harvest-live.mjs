@@ -713,11 +713,29 @@ const REQUIRED = [
      this stage held every single row and let nothing through at all.
      map-taxonomy.mjs resolves it against the tree and holds whatever it
      cannot place. The gate belongs where the answer is. */
-  ["description", (r) => r.description],
   ["photo", (r) => r.image],
   ["address", (r) => r.addressLine || r.postcodeFromAddress],
   ["town", (r) => r.townFromAddress || r.townFromSlug],
   ["coordinates", (r) => r.lat && r.lng],
+];
+
+/* Fields worth counting but not worth blocking on.
+ *
+ * DESCRIPTION started out required and stopped being so once the
+ * numbers were in: it is present on about two thirds of the directory,
+ * so requiring it held back a third of every specialist on the old site
+ * over text that its subject is better placed to write anyway. An
+ * unclaimed listing with a name, a specialty, an address on the map and
+ * a photograph is findable, which is the whole point of migrating it;
+ * the biography arrives when the clinician claims the listing, and the
+ * one they write themselves beats anything carried over. Still counted
+ * in the report, because "how many profiles will look thin on day one"
+ * is a number worth having before launch. */
+const REPORTED_ONLY = [
+  ["description", (r) => r.description],
+  ["phone", (r) => r.telephone],
+  ["website", (r) => r.website],
+  ["postcode", (r) => r.postcodeFromAddress],
 ];
 
 const missingFields = (rec) => REQUIRED.filter(([, get]) => !get(rec)).map(([name]) => name);
@@ -861,15 +879,21 @@ function writeCsv() {
      go and get the export, not a reason to import 2,000 half-listings. */
   const gated = [...keep, ...review.filter((r) => /^missing:/.test(r.reviewReason))];
   if (gated.length) {
-    console.log(`\n  field completeness across ${gated.length} UK healthcare listings:`);
-    for (const [name, get] of REQUIRED) {
+    const row = ([name, get], required) => {
       const have = gated.filter((r) => get(r)).length;
       const bar = "█".repeat(Math.round((have / gated.length) * 24)).padEnd(24, "·");
-      console.log(
-        `    ${name.padEnd(12)} ${bar} ${String(have).padStart(5)}/${gated.length}` +
-        (have === 0 ? "   ← nothing has this" : have < gated.length * 0.5 ? "   ← mostly missing" : "")
-      );
-    }
+      const note = have === 0
+        ? (required ? "   ← nothing has this" : "   ← nothing has this (not blocking)")
+        : have < gated.length * 0.5
+          ? (required ? "   ← mostly missing" : "   ← mostly missing (not blocking)")
+          : "";
+      console.log(`    ${name.padEnd(12)} ${bar} ${String(have).padStart(5)}/${gated.length}${note}`);
+    };
+
+    console.log(`\n  required — a row short of any of these is held:`);
+    for (const f of REQUIRED) row(f, true);
+    console.log(`\n  recorded but not required:`);
+    for (const f of REPORTED_ONLY) row(f, false);
   }
 
   const noPhotoReason = {};
