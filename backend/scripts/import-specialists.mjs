@@ -44,6 +44,7 @@ import * as t from "../src/db/schema.js";
 import { newId } from "../src/db/schema.js";
 import { registerGeocoder } from "../src/lib/geocoders.js";
 import { geocode, hasGeocoder } from "../src/lib/geo.js";
+import { UNUSABLE_PASSWORD } from "../src/lib/auth.js";
 
 /* ----------------------------------------------------------- the file */
 
@@ -353,7 +354,22 @@ Import specialist listings from a spreadsheet.
   --dry-run         Show exactly what would happen and write nothing.
   --photos          Also fetch photo URLs and store them locally.
                     OFF by default — read the note it prints first.
+
+  A mapped.csv from the harvester is recognised on its columns and read
+  differently: see "Two shapes of input" below. For that file, pass
+  --source "toplocalspecialists.com (Brilliant Directories)".
 `);
+  process.exit(1);
+}
+if (/[<>]/.test(process.env.DATABASE_URL ?? "")) {
+  /* Pasting the instructions rather than the value surfaces as
+     "getaddrinfo ENOTFOUND base" from deep inside the driver, which
+     names neither the problem nor the fix. Third script to need this. */
+  console.error(
+    `DATABASE_URL contains angle brackets, so it is the placeholder and not a URL:\n` +
+    `  ${(process.env.DATABASE_URL ?? "").slice(0, 60)}\n\n` +
+    `Replace the whole of <paste it here> — brackets included — with the connection string.`
+  );
   process.exit(1);
 }
 if (!isDbConfigured()) {
@@ -392,9 +408,44 @@ if (rows.length === 0) {
   process.exit(1);
 }
 
-const { mapping, unmatched } = buildMapping(Object.keys(rows[0]));
+/* ------------------------------------------------------------------ *
+ * Two shapes of input
+ *
+ * The spreadsheet path above guesses: it reads whatever headers somebody
+ * typed, fuzzy-matches a category string against the taxonomy, pulls a
+ * postcode out of a single address field by shape, and geocodes it to
+ * get a pin. Every one of those is a guess, and each is the best
+ * available when the input is a hand-made sheet.
+ *
+ * data/harvest/mapped.csv is not a hand-made sheet. It is the output of
+ * harvest-live.mjs and map-taxonomy.mjs, which have already answered all
+ * four questions and shown their work: the specialty is a resolved slug
+ * with the evidence beside it, the address is already split into line,
+ * town, county and postcode, and the coordinates are the member's own
+ * pin off the old site rather than a lookup of their postcode.
+ *
+ * Guessing again over the top of that would be strictly worse, and
+ * quietly so — a fuzzy match on "General Practioners" is not visibly a
+ * downgrade from a slug that a 700-line mapper produced and flagged as
+ * exact. So the harvest shape is recognised on its columns and read
+ * directly, and nothing in this file re-derives what it already knows.
+ * ------------------------------------------------------------------ */
+const HARVEST_MARKERS = ["primarySpecialtySlug", "locationSource", "taxonomyConfidence"];
+const HARVEST = HARVEST_MARKERS.every((c) => c in rows[0]);
+
+const { mapping, unmatched } = HARVEST ? { mapping: {}, unmatched: [] } : buildMapping(Object.keys(rows[0]));
 
 console.log(`\n${rows.length} row${rows.length === 1 ? "" : "s"} in ${path.relative(process.cwd(), found.file)}\n`);
+if (HARVEST) {
+  console.log("Recognised as a harvest file — reading the resolved columns directly.");
+  console.log("  primarySpecialtySlug / subSpecialtySlug / subSubSpecialtySlug → the specialty chain, as mapped");
+  console.log("  subSpecialtySlugsAll                                         → every equally-good match, all tagged");
+  console.log("  lat / lng                                                    → the pin, used as given (not re-geocoded)");
+  console.log("  addressLine / postcodeFromAddress / townFromAddress|Slug     → the address, already split");
+  console.log("  gmcId                                                        → registration number (NOT a verification)");
+  console.log("  sourceRating_DO_NOT_IMPORT, sourceReviewCount_DO_NOT_IMPORT  ← recorded, never published");
+  console.log("  image                                                        ← path only; --photos is a separate step");
+} else {
 console.log("Column mapping");
 for (const [field, header] of Object.entries(mapping)) {
   const note = NOT_IMPORTED[field] ? `  ← ${NOT_IMPORTED[field]}` : "";
@@ -404,8 +455,9 @@ for (const field of Object.keys(COLUMNS)) {
   if (!mapping[field]) console.log(`  ${"(no column)".padEnd(32)} → ${field}`);
 }
 if (unmatched.length) console.log(`\nColumns with nowhere to go: ${unmatched.join(", ")}`);
+}
 
-if (!hasGeocoder()) {
+if (!hasGeocoder() && !HARVEST) {
   console.log("\nNo geocoder configured — addresses will be placed on their town rather than pinned.");
 }
 
@@ -423,6 +475,81 @@ const specialties = await db.select().from(t.specialties);
 
 const specialtyBySlug = new Map(specialties.map((s) => [s.slug, s]));
 const specialtyByName = new Map(specialties.map((s) => [normalise(s.name), s]));
+
+/* ------------------------------------------------------------------ *
+ * Everything the row loop would otherwise ask the database for
+ *
+ * The spreadsheet path does a handful of SELECTs per row, which is fine
+ * for the 40-row sheet it was written for. A 2,343-row harvest against a
+ * database in Frankfurt turns the same code into an hour of round trips,
+ * most of them asking whether a slug is free. Read it all once.
+ * ------------------------------------------------------------------ */
+const existingSpecialists = await db
+  .select({ id: t.specialists.id, slug: t.specialists.slug, sourceUrl: t.specialists.sourceUrl })
+  .from(t.specialists);
+const bySourceUrl = new Map(existingSpecialists.filter((r) => r.sourceUrl).map((r) => [r.sourceUrl, r]));
+const takenSlugs = new Set(existingSpecialists.map((r) => r.slug));
+
+const existingUsers = new Map(
+  (await db.select({ id: t.users.id, email: t.users.email }).from(t.users)).map((u) => [u.email.toLowerCase(), u.id])
+);
+
+/* ------------------------------------------------------------------ *
+ * A harvest row, read rather than guessed
+ *
+ * Returns null with a reason when the row cannot be imported, which in
+ * practice means one thing: a slug the mapper resolved is not in THIS
+ * database. That happens when specialty-tree.json has moved ahead of
+ * the database being imported into, and the fix is one command, so say
+ * which command.
+ * ------------------------------------------------------------------ */
+function harvestFacts(row) {
+  const slugs = {
+    root: clean(row.primarySpecialtySlug),
+    sub: clean(row.subSpecialtySlug),
+    subSub: clean(row.subSubSpecialtySlug),
+  };
+  const tags = new Set(
+    [slugs.root, slugs.sub, slugs.subSub, ...String(row.subSpecialtySlugsAll ?? "").split(/\s+/)]
+      .map((x) => clean(x))
+      .filter(Boolean)
+  );
+
+  const unknown = [...tags].filter((sl) => !specialtyBySlug.has(sl));
+  if (unknown.length) {
+    return {
+      error:
+        `specialty ${unknown.join(", ")} is not in this database — ` +
+        `run \`node scripts/sync-taxonomy.mjs --write\` against it first`,
+    };
+  }
+
+  /* The most specific node the mapper reached is the one the profile
+     leads with; every node in the chain is tagged, so a filter on the
+     root and a filter on the leaf both find this person. */
+  const primary = specialtyBySlug.get(slugs.subSub ?? slugs.sub ?? slugs.root) ?? null;
+
+  const lat = Number(row.lat);
+  const lng = Number(row.lng);
+  const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+
+  return {
+    primary,
+    tagIds: [...tags].map((sl) => specialtyBySlug.get(sl).id),
+    coords,
+    town: clean(row.townFromAddress) ?? clean(row.townFromSlug),
+    county: clean(row.countyFromAddress),
+    address: clean(row.addressLine),
+    postcode: clean(row.postcodeFromAddress),
+    gmcId: clean(row.gmcId),
+    rootSlug: slugs.root,
+    description: clean(row.description),
+    telephone: clean(row.telephone),
+    website: clean(row.website),
+    yearsEstablished: asInt(row.yearsEstablished),
+    confidence: clean(row.taxonomyConfidence),
+  };
+}
 
 /** "Orthopaedic Surgery +36" → the taxonomy node for orthopaedics. */
 function matchSpecialty(...candidates) {
@@ -447,7 +574,7 @@ function matchSpecialty(...candidates) {
 }
 
 /** A city row for this town, creating one the first time it is seen. */
-async function cityFor(town, postcode, coords) {
+async function cityFor(town, postcode, coords, region = null) {
   const name = clean(town);
   if (!name) return null;
   const slug = slugify(name);
@@ -462,7 +589,7 @@ async function cityFor(town, postcode, coords) {
       countryId: gb.id,
       name,
       slug,
-      region: null,
+      region: clean(region),
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -503,30 +630,44 @@ async function fetchPhoto(url, slug) {
 
 /* ------------------------------------------------------------ importing */
 
-const summary = { created: 0, updated: 0, skipped: 0, cities: 0, photos: 0, problems: [] };
+const summary = { created: 0, updated: 0, skipped: 0, cities: 0, photos: 0, accounts: 0, problems: [] };
+
 const preview = [];
 
 for (const [index, row] of rows.entries()) {
-  const at = (field) => (mapping[field] ? row[mapping[field]] : null);
+  const at = (field) => (HARVEST ? null : mapping[field] ? row[mapping[field]] : null);
   const line = index + 2; // +1 for the header, +1 because humans count from one
 
-  const fullName = clean(at("fullName"));
+  const facts = HARVEST ? harvestFacts(row) : null;
+  if (facts?.error) {
+    summary.skipped += 1;
+    summary.problems.push(`row ${line}: ${facts.error}`);
+    continue;
+  }
+
+  const fullName = clean(HARVEST ? row.name : at("fullName"));
   if (!fullName) {
     summary.skipped += 1;
     summary.problems.push(`row ${line}: no name — skipped`);
     continue;
   }
 
-  const sourceUrl = clean(at("sourceUrl"));
-  const { address, town, postcode } = splitAddress(at("address"));
+  const sourceUrl = clean(HARVEST ? row.url : at("sourceUrl"));
+  const { address, town, postcode } = HARVEST
+    ? { address: facts.address, town: facts.town, postcode: facts.postcode }
+    : splitAddress(at("address"));
 
   /* The postcode is the authority on the town. "Priory Rd, Edgbaston,
      B5 7UG" says Edgbaston, which is a district of Birmingham, and only
      the lookup knows that. It also returns the coordinates, which is
      what makes "within 5km" mean the address rather than the town. */
-  let coords = null;
+  /* A harvest row arrives with the member's own pin off the old site.
+     That is a better answer than the centroid of their postcode, so it
+     is used as given and the lookup below runs only for the handful of
+     rows that have no pin at all. */
+  let coords = HARVEST ? facts.coords : null;
   let resolvedTown = town;
-  if (postcode && hasGeocoder()) {
+  if (!coords && postcode && hasGeocoder()) {
     try {
       const hit = await geocode(postcode);
       if (hit) {
@@ -539,8 +680,8 @@ for (const [index, row] of rows.entries()) {
     }
   }
 
-  const city = await cityFor(resolvedTown, postcode, coords);
-  const specialty = matchSpecialty(at("specialtyName"), at("title"));
+  const city = await cityFor(resolvedTown, postcode, coords, facts?.county);
+  const specialty = HARVEST ? facts.primary : matchSpecialty(at("specialtyName"), at("title"));
 
   /* Kept verbatim, shown to nobody but an admin. The rating and review
      count are in here precisely BECAUSE they are not imported: when the
@@ -560,9 +701,54 @@ for (const [index, row] of rows.entries()) {
       distanceMiles: clean(at("distance")),
       liveBooking: clean(at("liveBooking")),
       verifiedOnSource: clean(at("sourceVerified")),
+      gmcIdOnSource: facts?.gmcId ?? null,
+      whyGmcIdNotImported: facts?.gmcId
+        ? "Not a GMC number. The old site issues these in sequence and repeats them across " +
+          "unrelated members; PHIN gives a different number for the one consultant we checked. " +
+          "Recorded so a claim reviewer can see what was published, never shown to the public."
+        : null,
       why: "Another platform's figures. Not this site's ratings, and not this site's verification.",
     },
   };
+
+  /* Fields the harvest carries and a typed sheet does not.
+
+     TITLE stays empty on a harvest row. The old site's own label is
+     the member's answer to "Best Describes You" — "Orthopaedics",
+     "General Practioners" — which is a category, not a job title, and
+     writing a category (or its typo) into the line under somebody's
+     name would be putting words in their mouth. The specialty renders
+     there already; a real title arrives when they claim the listing.
+
+     THE GMC ID IS NOT IMPORTED, and this is not caution — the numbers
+     on the old site are not GMC numbers.
+
+     They are a counter. 2,342 listings carry one; only 122 of the
+     numbers are unique; 869 of them are shared by 2,220 listings, four
+     to a number, and the four are a counsellor, an orthopaedic surgeon,
+     a physiotherapist and another orthopaedic surgeon — two of whom
+     would not be on the GMC's register at all. The values run in
+     sequence: 7482030, 7482031, 7482033, 7482034.
+
+     Spot-checked against PHIN, which is the statutory source for
+     private consultants: the old site shows Mr Vikas Khanduja as GMC
+     7482843. His registration number is 4759377.
+
+     So every one of those badges is false, and a false registration
+     number under a named doctor's photograph is the most damaging single
+     field this import could carry. It is kept verbatim in importSource
+     below — where an admin can see what the old site claimed and the
+     public cannot — and it goes nowhere near registrationNumber. A real
+     number arrives when the clinician claims the listing, or from a
+     licensed register feed; neither is a counter. */
+  const harvestValues = HARVEST
+    ? {
+        bio: facts.description,
+        contactPhone: facts.telephone,
+        websiteUrl: facts.website,
+        yearsExperience: facts.yearsEstablished,
+      }
+    : {};
 
   const values = {
     fullName,
@@ -581,17 +767,17 @@ for (const [index, row] of rows.entries()) {
     sourceUrl,
     sourceImportedAt: new Date(),
     importSource,
+    ...harvestValues,
   };
 
-  const existing = sourceUrl
-    ? (await db.select().from(t.specialists).where(eq(t.specialists.sourceUrl, sourceUrl)))[0]
-    : null;
+  const existing = sourceUrl ? bySourceUrl.get(sourceUrl) ?? null : null;
 
   preview.push({
     line,
     name: fullName,
     action: existing ? "update" : "create",
     specialty: specialty?.name ?? "(unmatched)",
+    confidence: facts?.confidence ?? "",
     town: city?.name ?? "(none)",
     pinned: coords ? "yes" : "no",
     newCity: city?.__new ? "new" : "",
@@ -600,33 +786,40 @@ for (const [index, row] of rows.entries()) {
   if (DRY) continue;
 
   let specialistId = existing?.id ?? null;
+  let specialistSlug = existing?.slug ?? null;
   if (existing) {
     await db.update(t.specialists).set(values).where(eq(t.specialists.id, existing.id));
     summary.updated += 1;
   } else {
     const base = slugify(fullName);
     let slug = base;
-    for (let n = 2; ; n += 1) {
-      const clash = await db.select().from(t.specialists).where(eq(t.specialists.slug, slug));
-      if (clash.length === 0) break;
-      slug = `${base}-${n}`;
-    }
+    for (let n = 2; takenSlugs.has(slug); n += 1) slug = `${base}-${n}`;
+    takenSlugs.add(slug);
+    specialistSlug = slug;
     const [created] = await db
       .insert(t.specialists)
       .values({ id: newId("sp"), slug, ...values })
       .returning();
     specialistId = created.id;
+    if (sourceUrl) bySourceUrl.set(sourceUrl, { id: specialistId, slug, sourceUrl });
     summary.created += 1;
   }
 
   if (city?.__new === undefined && city && !cities.some((c) => c.id === city.id)) summary.cities += 1;
 
-  // The specialty link table, so search facets and filters see them.
-  if (specialty) {
+  /* The specialty link table, so search facets and filters see them.
+
+     A harvest row tags the whole chain — root, subcategory, leaf — and
+     every subcategory the mapper rated equally. "Hip and knee
+     arthroplasty" names two subspecialties and filing it under whichever
+     sorted first was the wrong answer twice over: it loses the person
+     from one filter and misdescribes them in the other. Both go in. */
+  const tagIds = HARVEST ? facts.tagIds : specialty ? [specialty.id] : [];
+  if (tagIds.length) {
     await db.delete(t.specialistSpecialties).where(eq(t.specialistSpecialties.specialistId, specialistId));
     await db
       .insert(t.specialistSpecialties)
-      .values({ specialistId, specialtyId: specialty.id })
+      .values(tagIds.map((specialtyId) => ({ specialistId, specialtyId })))
       .onConflictDoNothing();
   }
 
@@ -668,6 +861,47 @@ for (const [index, row] of rows.entries()) {
       .onConflictDoNothing();
   }
 
+  /* ----------------------------------------------- the shell account
+
+     An imported listing with no account behind it is a listing an
+     administrator cannot open: impersonation borrows a member's
+     session, and there is no session to borrow. So every import gets an
+     account — with no password anybody has ever chosen.
+
+     UNUSABLE_PASSWORD is not a scrypt string and verifyPassword only
+     accepts one, so no password on earth signs in to it, and the
+     forgot-password route refuses it for the same reason. That second
+     part is the one that matters: without it, anybody who could receive
+     mail at this address could reset their way in and skip the claim
+     review against the regulator's register.
+
+     No email is harvested and none is guessed. Brilliant Directories
+     routes member contact through /connect precisely so addresses
+     cannot be scraped, and an address scraped off a page would not be
+     consent to be emailed anyway. The account is keyed on the slug at a
+     domain that goes nowhere: it exists to be borrowed by an admin, not
+     written to, and the real address arrives when the clinician claims
+     the listing. */
+  const accountEmail = `${specialistSlug}@unclaimed.toplocalspecialists.com`;
+  let userId = existingUsers.get(accountEmail.toLowerCase()) ?? null;
+  if (!userId) {
+    userId = newId("usr");
+    await db.insert(t.users).values({
+      id: userId,
+      email: accountEmail,
+      passwordHash: UNUSABLE_PASSWORD,
+      fullName,
+      role: "specialist",
+      active: true,
+      adminNotes:
+        `Unclaimed listing imported from ${SOURCE}. No password has been set; an admin ` +
+        `can sign in as them from the members list, and claiming goes through /claims.`,
+    });
+    existingUsers.set(accountEmail.toLowerCase(), userId);
+    summary.accounts += 1;
+  }
+  await db.update(t.specialists).set({ userId }).where(eq(t.specialists.id, specialistId));
+
   if (WITH_PHOTOS) {
     const photo = clean(at("photoUrl"));
     if (photo) {
@@ -684,13 +918,45 @@ for (const [index, row] of rows.entries()) {
 
 /* ---------------------------------------------------------- the report */
 
-console.log("\nWhat this does\n");
-const width = Math.max(...preview.map((p) => p.name.length), 4);
-for (const p of preview) {
-  console.log(
-    `  ${String(p.line).padStart(3)}  ${p.action.padEnd(6)}  ${p.name.padEnd(width)}  ` +
-      `${p.specialty.padEnd(24)}  ${p.town}${p.newCity ? " (new city)" : ""}  ${p.pinned === "yes" ? "pinned" : "town centre"}`
-  );
+/* A 2,343-row listing is not a report, it is a wall. Past a couple of
+   screens the useful thing is the shape of it — what got created, where
+   they landed, how confident the specialty is — with a sample to eyeball
+   and the full detail in the database. */
+if (preview.length <= 60) {
+  console.log("\nWhat this does\n");
+  const width = Math.max(...preview.map((p) => p.name.length), 4);
+  for (const p of preview) {
+    console.log(
+      `  ${String(p.line).padStart(3)}  ${p.action.padEnd(6)}  ${p.name.padEnd(width)}  ` +
+        `${p.specialty.padEnd(24)}  ${p.town}${p.newCity ? " (new city)" : ""}  ${p.pinned === "yes" ? "pinned" : "town centre"}`
+    );
+  }
+} else {
+  const tally = (get) => {
+    const out = {};
+    for (const p of preview) out[get(p) || "(none)"] = (out[get(p) || "(none)"] ?? 0) + 1;
+    return Object.entries(out).sort((a, b) => b[1] - a[1]);
+  };
+  const show = (label, rows, limit = 12) => {
+    console.log(`\n  ${label}`);
+    for (const [k, v] of rows.slice(0, limit)) console.log(`    ${String(v).padStart(5)}  ${k}`);
+    if (rows.length > limit) console.log(`    ${String(rows.slice(limit).reduce((a, b) => a + b[1], 0)).padStart(5)}  …across ${rows.length - limit} more`);
+  };
+
+  console.log(`\nWhat this does — ${preview.length} rows`);
+  show("create or update", tally((p) => p.action), 4);
+  show("specialty", tally((p) => p.specialty));
+  show("how the specialty was reached", tally((p) => p.confidence), 8);
+  show("town", tally((p) => p.town), 10);
+  console.log(`\n  pinned to their own address  ${preview.filter((p) => p.pinned === "yes").length}`);
+  console.log(`  placed on the town centre    ${preview.filter((p) => p.pinned !== "yes").length}`);
+  console.log(`  towns that do not exist yet  ${new Set(preview.filter((p) => p.newCity).map((p) => p.town)).size}`);
+  console.log("\n  a sample, to read properly:");
+  const step = Math.ceil(preview.length / 12);
+  for (let i = 0; i < preview.length; i += step) {
+    const p = preview[i];
+    console.log(`    ${String(p.line).padStart(5)}  ${p.action.padEnd(6)}  ${p.name.slice(0, 30).padEnd(32)}${p.specialty.slice(0, 26).padEnd(28)}${p.town}`);
+  }
 }
 
 if (summary.problems.length) {
@@ -702,6 +968,7 @@ console.log(
   DRY
     ? "\nDry run — nothing was written. Drop --dry-run to apply.\n"
     : `\nDone. ${summary.created} created, ${summary.updated} updated, ${summary.skipped} skipped` +
+        (summary.accounts ? `, ${summary.accounts} shell accounts` : "") +
         (summary.photos ? `, ${summary.photos} photos stored` : "") +
         ".\n" +
         "Every listing is unclaimed, unverified and carries no rating. They are\n" +
