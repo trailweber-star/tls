@@ -537,7 +537,12 @@ function harvestFacts(row) {
     primary,
     tagIds: [...tags].map((sl) => specialtyBySlug.get(sl).id),
     coords,
-    town: clean(row.townFromAddress) ?? clean(row.townFromSlug),
+    /* townResolved is the harvester's settled answer — the member's own
+       wording, or a district reverse-geocoded from their pin where the
+       address line gave a street instead of a town. The other two are
+       read only for a file written before that column existed. */
+    town: clean(row.townResolved) ?? clean(row.townFromAddress) ?? clean(row.townFromSlug),
+    photoFile: clean(row.photoFile),
     county: clean(row.countyFromAddress),
     address: clean(row.addressLine),
     postcode: clean(row.postcodeFromAddress),
@@ -615,17 +620,23 @@ if (WITH_PHOTOS) {
 `);
 }
 
-async function fetchPhoto(url, slug) {
+/** Where harvest-live.mjs --photos leaves what it downloaded. */
+const BACKEND_DATA_PHOTOS = path.resolve(process.cwd(), "data", "harvest", "photos");
+
+async function storeBuffer(buffer) {
   const { saveImage } = await import("../src/lib/storage.js");
-  const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const buffer = Buffer.from(await res.arrayBuffer());
   const saved = await saveImage({
     buffer,
     kind: "profile-photo",
     origin: process.env.PUBLIC_API_URL ?? "",
   });
   return saved.url;
+}
+
+async function fetchPhoto(url, slug) {
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return storeBuffer(Buffer.from(await res.arrayBuffer()));
 }
 
 /* ------------------------------------------------------------ importing */
@@ -903,15 +914,31 @@ for (const [index, row] of rows.entries()) {
   await db.update(t.specialists).set({ userId }).where(eq(t.specialists.id, specialistId));
 
   if (WITH_PHOTOS) {
-    const photo = clean(at("photoUrl"));
-    if (photo) {
-      try {
-        const stored = await fetchPhoto(photo, slugify(fullName));
+    /* A harvest row names a file that harvest-live.mjs --photos already
+       downloaded and checked the magic bytes of. Reading it off disk
+       rather than fetching it again is not just faster: the old site is
+       not reachable from every machine this might run on, and a photo
+       that verified as a real image an hour ago should not get a second
+       chance to arrive as a 404 page. */
+    const local = facts?.photoFile
+      ? path.join(BACKEND_DATA_PHOTOS, facts.photoFile)
+      : null;
+    try {
+      let stored = null;
+      if (local && fs.existsSync(local)) {
+        stored = await storeBuffer(fs.readFileSync(local));
+      } else if (!HARVEST) {
+        const photo = clean(at("photoUrl"));
+        if (photo) stored = await fetchPhoto(photo, slugify(fullName));
+      } else if (facts?.photoFile) {
+        summary.problems.push(`row ${line}: ${facts.photoFile} is named in the CSV but not on disk — run harvest-live.mjs --photos`);
+      }
+      if (stored) {
         await db.update(t.specialists).set({ photoUrl: stored }).where(eq(t.specialists.id, specialistId));
         summary.photos += 1;
-      } catch (err) {
-        summary.problems.push(`row ${line}: photo could not be fetched — ${err.message}`);
       }
+    } catch (err) {
+      summary.problems.push(`row ${line}: photo not stored — ${err.message}`);
     }
   }
 }

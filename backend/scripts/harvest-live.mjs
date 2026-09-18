@@ -4,7 +4,9 @@
  *
  *   node scripts/harvest-live.mjs --urls          # phase 1: enumerate
  *   node scripts/harvest-live.mjs --fetch         # phase 2: fetch pages
- *   node scripts/harvest-live.mjs --csv           # phase 3: write the CSV
+ *   node scripts/harvest-live.mjs --towns        # phase 3: repair the towns
+ *   node scripts/harvest-live.mjs --photos       # phase 4: fetch the photos
+ *   node scripts/harvest-live.mjs --csv           # phase 5: write the CSV
  *   node scripts/harvest-live.mjs --all           # all three, in order
  *
  *   --limit N     stop after N profiles (phase 2) — use this first
@@ -68,6 +70,8 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const URLS_PATH = path.join(OUT, "urls.json");
 const PROFILES_PATH = path.join(OUT, "profiles.ndjson");
+const TOWNS_PATH = path.join(OUT, "towns.json");
+const PHOTOS_DIR = path.join(OUT, "photos");
 const CSV_PATH = path.join(OUT, "listings.csv");
 const REJECTS_PATH = path.join(OUT, "rejected.csv");
 
@@ -726,7 +730,7 @@ const REQUIRED = [
   /* NOT photo, for a reason particular to this directory. See the
      REPORTED_ONLY note below. */
   ["address", (r) => r.addressLine || r.postcodeFromAddress],
-  ["town", (r) => r.townFromAddress || r.townFromSlug],
+  ["town", (r) => r.townResolved || r.townFromAddress || r.townFromSlug],
   ["coordinates", (r) => r.lat && r.lng],
 ];
 
@@ -771,6 +775,13 @@ const missingFields = (rec) => REQUIRED.filter(([, get]) => !get(rec)).map(([nam
 const COLUMNS = [
   "url", "slug", "name", "category", "subCategory", "claimed", "gmcId",
   "townFromAddress", "countyFromAddress", "postcodeFromAddress", "townFromSlug",
+  /* The town everything downstream should use, and where it came from.
+     townFromAddress and townFromSlug stay in the file beside it: when a
+     town looks wrong on the live site, the first question is whether the
+     repair did it or the old site did, and that is only answerable if
+     both are still here. */
+  "townResolved", "townSource",
+  "photoFile",
   "addressLine", "lat", "lng", "region", "country", "locationSource",
   "telephone", "website", "image", "imageRejected", "yearsEstablished", "description",
   "bdLocality", "bdPostcode",
@@ -807,6 +818,17 @@ function writeCsv() {
     process.exit(1);
   }
 
+  /* Read once, outside the loop. Both are optional: no towns.json means
+     no repairs were run, no photos directory means the photos were not
+     fetched, and in neither case is that a reason to refuse to write a
+     CSV. */
+  const towns = readTowns();
+  const photoIndex = new Map();
+  if (fs.existsSync(PHOTOS_DIR)) {
+    for (const f of fs.readdirSync(PHOTOS_DIR)) photoIndex.set(f.replace(/\.[^.]+$/, ""), f);
+  }
+  const photoFor = (slug) => photoIndex.get(slug) ?? "";
+
   const keep = [];
   const review = [];
   const reject = [];
@@ -819,6 +841,21 @@ function writeCsv() {
     try { rec = JSON.parse(raw); } catch { reject.push({ line, url: "", reason: "unreadable line" }); continue; }
 
     rec.imageRejected = restateWhyNoPhoto(rec.imageRejected);
+
+    /* The town, settled here rather than left to each consumer to work
+       out for itself. A repaired town wins over a street name; the
+       member's own wording wins over everything else. */
+    const addressTown = rec.townFromAddress || rec.townFromSlug || "";
+    const repaired = rec.lat && rec.lng ? towns[coordKey(rec.lat, rec.lng)] : null;
+    if (isNotAPlace(addressTown) && repaired?.town) {
+      rec.townResolved = repaired.town;
+      rec.townSource = "reverse-geocoded from the pin";
+    } else {
+      rec.townResolved = addressTown;
+      rec.townSource = rec.townFromAddress ? "address line" : rec.townFromSlug ? "url slug" : "";
+    }
+
+    rec.photoFile = photoFor(rec.slug);
 
     if (rec.error) { reject.push({ line, url: rec.url, reason: rec.error }); continue; }
     if (!rec.name) { reject.push({ line, url: rec.url, reason: "no name on the record" }); continue; }
@@ -965,13 +1002,274 @@ function writeCsv() {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Phase 3 — a town that is actually a town
+ *
+ * The town is read off the old site's address line, which is the
+ * member's own wording and usually right. 247 times it is a street:
+ * "Tooley St", "27 Tooley St", "Nottingham Pl", "114A Harley St". The
+ * address parser prefers a segment with no street word and no digits in
+ * it, and when no segment qualifies it takes the last one rather than
+ * give up — which is the right fallback for "Bushey, Hertfordshire" and
+ * the wrong one for an address that never names its town at all.
+ *
+ * Only 10 of those 247 have a postcode, so the postcode lookup cannot
+ * fix them. The coordinates can: every row that passes the gates has a
+ * pin, and postcodes.io will name the district a point sits in. So the
+ * pin answers the question the address line could not.
+ *
+ * WHAT THIS DOES NOT DO: repair a town that merely looks unfamiliar.
+ * "Sutton Coldfield" and "Solihull" are real places and the member
+ * chose them; replacing them with a lookup's idea of the right label
+ * would overwrite 2,100 correct answers to fix 247 wrong ones, and
+ * would turn every London address into its borough. Only a town that
+ * fails the "is this a place at all" test is touched.
+ *
+ * THE CACHE. towns.json keys every lookup on the rounded coordinate, so
+ * a re-run is instant and a Ctrl-C costs nothing. Delete it to redo.
+ * ------------------------------------------------------------------ */
+
+/* A street, a building, a floor, a number — not a settlement. */
+const NOT_A_PLACE =
+  /(\b(road|rd|street|st|avenue|ave|lane|ln|close|drive|dr|way|place|pl|court|ct|crescent|terrace|square|sq|row|walk|parade|grove|mews|wharf|house|suite|floor|unit|wing|hospital|clinic|centre|center|surgery|practice)\b|\d)/i;
+
+const isNotAPlace = (town) => {
+  const t = String(town ?? "").trim();
+  return !t || t.length < 3 || NOT_A_PLACE.test(t);
+};
+
+const coordKey = (lat, lng) => `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
+
+const readTowns = () => {
+  try { return JSON.parse(fs.readFileSync(TOWNS_PATH, "utf8")); } catch { return {}; }
+};
+
+/**
+ * postcodes.io in bulk: 100 points per POST, nearest postcode to each.
+ * admin_district is the answer we want ("Southwark", "Westminster"),
+ * with the ward and parish as fallbacks for a rural point whose
+ * district is a shire with no town in the name.
+ */
+async function reverseGeocode(points) {
+  const res = await fetch("https://api.postcodes.io/postcodes", {
+    method: "POST",
+    headers: { "content-type": "application/json", "user-agent": UA },
+    body: JSON.stringify({
+      geolocations: points.map(({ lat, lng }) => ({
+        latitude: Number(lat), longitude: Number(lng), limit: 1, radius: 2000,
+      })),
+    }),
+  });
+  if (!res.ok) throw new Error(`postcodes.io HTTP ${res.status}`);
+  const body = await res.json();
+  return (body.result ?? []).map((row) => {
+    const hit = row?.result?.[0];
+    if (!hit) return null;
+    const name = hit.admin_district || hit.admin_ward || hit.parish || "";
+    return name ? { town: name, postcode: hit.postcode ?? "", region: hit.region ?? "" } : null;
+  });
+}
+
+async function repairTowns() {
+  if (!fs.existsSync(PROFILES_PATH)) {
+    console.error("No profiles.ndjson — run with --fetch first.");
+    process.exit(1);
+  }
+
+  const cache = readTowns();
+  const wanted = new Map();
+  let considered = 0;
+
+  for (const raw of fs.readFileSync(PROFILES_PATH, "utf8").split("\n")) {
+    if (!raw.trim()) continue;
+    let rec;
+    try { rec = JSON.parse(raw); } catch { continue; }
+    if (rec.error || !rec.lat || !rec.lng) continue;
+    considered += 1;
+    const town = rec.townFromAddress || rec.townFromSlug;
+    if (!isNotAPlace(town)) continue;
+    const key = coordKey(rec.lat, rec.lng);
+    if (key in cache) continue;
+    if (!wanted.has(key)) wanted.set(key, { lat: rec.lat, lng: rec.lng });
+  }
+
+  const cachedAlready = Object.keys(cache).length;
+  console.log(`${considered} records with a pin`);
+  console.log(`  towns that are not a place  ${wanted.size + cachedAlready} distinct points`);
+  console.log(`  already looked up           ${cachedAlready}`);
+  console.log(`  to look up now              ${wanted.size}\n`);
+
+  if (!wanted.size) {
+    console.log("Nothing to do. --csv will use towns.json as it stands.");
+    return;
+  }
+
+  const points = [...wanted.entries()];
+  const BULK = 100;
+  let named = 0;
+  let unnamed = 0;
+
+  for (let i = 0; i < points.length; i += BULK) {
+    const slice = points.slice(i, i + BULK);
+    let answers;
+    try {
+      answers = await reverseGeocode(slice.map(([, pt]) => pt));
+    } catch (err) {
+      /* Save what we have before giving up: a half-filled cache is worth
+         keeping, and the next run picks up exactly where this stopped. */
+      fs.writeFileSync(TOWNS_PATH, JSON.stringify(cache, null, 2));
+      console.error(`\n  ${String(err.message ?? err)} — saved ${named} lookups so far, re-run to continue`);
+      process.exit(1);
+    }
+    slice.forEach(([key], n) => {
+      const hit = answers[n];
+      /* null is cached too. A point in the sea, or 2km from any
+         postcode, will be null again next time and re-asking is just
+         load on a free service. */
+      cache[key] = hit;
+      hit ? named++ : unnamed++;
+    });
+    fs.writeFileSync(TOWNS_PATH, JSON.stringify(cache, null, 2));
+    process.stdout.write(`\r  ${Math.min(i + BULK, points.length)}/${points.length} — ${named} named, ${unnamed} no match   `);
+    await sleep(BATCH_DELAY_MS);
+  }
+
+  const counts = {};
+  for (const v of Object.values(cache)) if (v?.town) counts[v.town] = (counts[v.town] ?? 0) + 1;
+  console.log(`\n  → ${path.relative(BACKEND, TOWNS_PATH)}`);
+  console.log(`\n  the towns those points resolved to:`);
+  for (const [k, v] of Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+    console.log(`    ${String(v).padStart(4)}  ${k}`);
+  }
+  console.log(`\n  Now re-run --csv, then map-taxonomy.mjs --write --default-sub.`);
+}
+
+/* ------------------------------------------------------------------ *
+ * Phase 4 — the photographs
+ *
+ * The harvester records image PATHS, not images. This fetches them.
+ *
+ * It is deliberately a separate phase, and off by default, because
+ * copying a photograph is the one part of this migration that carries
+ * real exposure: copyright in a headshot belongs to the photographer or
+ * the subject, and a directory republishing one it has no licence for is
+ * considerably more exposed than it is over any of the text. The reason
+ * it is defensible HERE and was not for Doctify is that these images sit
+ * on the client's own Brilliant Directories install, uploaded by members
+ * to the client's site under the client's own terms. That is a licence
+ * question the client can answer; another platform's photo library is
+ * not.
+ *
+ * What it will not save:
+ *
+ *   - anything the parser already rejected as not a photograph, which is
+ *     the site's logo standing in for an empty profile, and the empty
+ *     avatar icon
+ *   - anything whose bytes are not actually an image, whatever the
+ *     content-type header said. A 404 page saved as <slug>.webp is a
+ *     broken image on a real consultant's profile, and it looks worse
+ *     than no photograph at all.
+ *
+ * Resumable by file presence: a photo already on disk is skipped, so a
+ * Ctrl-C at 1,200 costs nothing.
+ * ------------------------------------------------------------------ */
+
+/* Magic bytes. The header is a claim; these are the file. */
+function imageKind(buf) {
+  if (buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg";
+  if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "png";
+  if (buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP") return "webp";
+  if (buf.subarray(0, 6).toString("ascii").startsWith("GIF8")) return "gif";
+  return null;
+}
+
+async function fetchPhotos() {
+  if (!fs.existsSync(PROFILES_PATH)) {
+    console.error("No profiles.ndjson — run with --fetch first.");
+    process.exit(1);
+  }
+  fs.mkdirSync(PHOTOS_DIR, { recursive: true });
+
+  const todo = [];
+  let haveAlready = 0;
+  let noPhoto = 0;
+
+  const onDisk = new Set(fs.readdirSync(PHOTOS_DIR).map((f) => f.replace(/\.[^.]+$/, "")));
+
+  for (const raw of fs.readFileSync(PROFILES_PATH, "utf8").split("\n")) {
+    if (!raw.trim()) continue;
+    let rec;
+    try { rec = JSON.parse(raw); } catch { continue; }
+    if (rec.error) continue;
+    if (!rec.image) { noPhoto += 1; continue; }
+    if (onDisk.has(rec.slug)) { haveAlready += 1; continue; }
+    todo.push({ slug: rec.slug, url: rec.image });
+  }
+
+  console.log(`${todo.length + haveAlready} listings with a real photo`);
+  console.log(`  already downloaded  ${haveAlready}`);
+  console.log(`  no photo to fetch   ${noPhoto}  (the logo placeholder — see the note in the source)`);
+  console.log(`  to fetch now        ${todo.length}\n`);
+  if (!todo.length) return;
+
+  const LIMIT = Number(val("--limit", 0)) || todo.length;
+  const queue = todo.slice(0, LIMIT);
+  let saved = 0;
+  let notAnImage = 0;
+  let failed = 0;
+  const problems = [];
+
+  for (let i = 0; i < queue.length; i += CONCURRENCY) {
+    const batch = queue.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async ({ slug, url }) => {
+        try {
+          const res = await fetch(url.startsWith("http") ? url : ORIGIN + url, {
+            headers: { "user-agent": UA, accept: "image/*" },
+            redirect: "follow",
+          });
+          if (!res.ok) { failed += 1; problems.push(`${slug}: HTTP ${res.status}`); return; }
+          const buf = Buffer.from(await res.arrayBuffer());
+          const kind = imageKind(buf);
+          if (!kind) {
+            notAnImage += 1;
+            problems.push(`${slug}: ${buf.length} bytes that are not an image — not saved`);
+            return;
+          }
+          fs.writeFileSync(path.join(PHOTOS_DIR, `${slug}.${kind}`), buf);
+          saved += 1;
+        } catch (err) {
+          failed += 1;
+          problems.push(`${slug}: ${String(err.message ?? err)}`);
+        }
+      })
+    );
+    process.stdout.write(`\r  ${Math.min(i + CONCURRENCY, queue.length)}/${queue.length} — ${saved} saved, ${notAnImage} not an image, ${failed} failed   `);
+    await sleep(BATCH_DELAY_MS);
+  }
+
+  console.log(`\n  → ${path.relative(BACKEND, PHOTOS_DIR)}/`);
+  if (problems.length) {
+    console.log(`\n  ${problems.length} did not save:`);
+    for (const line of problems.slice(0, 20)) console.log(`    ${line}`);
+    if (problems.length > 20) console.log(`    …and ${problems.length - 20} more`);
+  }
+  console.log(`\n  Re-run --csv so the CSV names the files, then import with --photos.`);
+}
+
 /* ------------------------------------------------------------------ */
 
 const run = async () => {
   if (has("--urls") || has("--all")) await enumerate();
   if (has("--fetch") || has("--all")) await fetchAll();
+  if (has("--towns") || has("--all")) await repairTowns();
+  /* NOT in --all. Fetching 1,812 photographs is a licensing decision,
+     not a step in a pipeline, and it should be typed out deliberately
+     every time. */
+  if (has("--photos")) await fetchPhotos();
   if (has("--csv") || has("--all")) writeCsv();
-  if (!has("--urls") && !has("--fetch") && !has("--csv") && !has("--all")) {
+  if (!has("--urls") && !has("--fetch") && !has("--towns") && !has("--photos") && !has("--csv") && !has("--all")) {
     console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("* ---")[1]);
   }
 };

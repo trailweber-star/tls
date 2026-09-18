@@ -413,7 +413,7 @@ export default function SpecialistProfile() {
               <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">
                 About {specialist.fullName}
               </h2>
-              <Bio text={specialist.bio} />
+              <Bio text={specialist.bio} facts={factsOnFile(specialist)} />
             </div>
             {specialist.videoUrl && (
               <IntroVideo
@@ -732,9 +732,82 @@ export default function SpecialistProfile() {
 
 /* -------------------------------------------------------------------- */
 
+/* ------------------------------------------------------------------ *
+ * What the About section says when nobody has written a biography
+ *
+ * Roughly a quarter of the migrated directory has no bio: the old site
+ * did not have one either, and the person best placed to write it is the
+ * clinician, who has not claimed the listing yet. "No biography
+ * published yet" is true but it is also the whole panel, and on a
+ * profile that otherwise has a specialty, a town and nine years of
+ * practice on it, it reads as though we know nothing about them.
+ *
+ * So the fallback states the facts already on the record. Note that it
+ * is RENDERED and not stored: writing a generated paragraph into
+ * `bio` would make an assertion in the clinician's own voice, in a
+ * column the dashboard presents to them as their own words, and it
+ * would have to be recognised and cleared before they could write a
+ * real one. This is the site describing what it holds, which is a
+ * different thing and reads like one.
+ *
+ * Every clause is a field with a source. No adjectives, no claims about
+ * skill, reputation or outcomes, nothing about what they treat beyond
+ * the specialties they are actually tagged with.
+ * ------------------------------------------------------------------ */
+function factsOnFile(s: {
+  fullName: string;
+  primarySpecialty?: { name?: string } | null;
+  specialties?: { name?: string }[] | null;
+  yearsExperience?: number | null;
+  clinicLocations?: { city?: { name?: string; region?: string | null } | null }[] | null;
+}): string | null {
+  const specialty = s.primarySpecialty?.name ?? null;
+
+  /* The other tags, minus the primary — on a migrated listing these are
+     the subcategories the mapper resolved, and they are the most useful
+     thing on the record for somebody deciding whether this is the right
+     person. */
+  const also = (s.specialties ?? [])
+    .map((x) => x?.name)
+    .filter((n): n is string => Boolean(n) && n !== specialty);
+
+  const places = [
+    ...new Set(
+      (s.clinicLocations ?? [])
+        .map((l) => l?.city?.name)
+        .filter((n): n is string => Boolean(n))
+    ),
+  ];
+  const region = (s.clinicLocations ?? []).find((l) => l?.city?.region)?.city?.region ?? null;
+
+  const parts: string[] = [];
+  if (specialty && places.length) {
+    parts.push(
+      `${s.fullName} is listed under ${specialty} and practises ` +
+        (places.length === 1
+          ? `in ${places[0]}${region ? `, ${region}` : ""}`
+          : `at ${places.length} locations, including ${places.slice(0, 3).join(", ")}`) +
+        "."
+    );
+  } else if (specialty) {
+    parts.push(`${s.fullName} is listed under ${specialty}.`);
+  } else if (places.length) {
+    parts.push(`${s.fullName} practises in ${places[0]}${region ? `, ${region}` : ""}.`);
+  }
+
+  if (also.length) {
+    parts.push(
+      `The listing is tagged ${also.slice(0, 6).join(", ")}${also.length > 6 ? ` and ${also.length - 6} more` : ""}.`
+    );
+  }
+  if (s.yearsExperience) parts.push(`${s.yearsExperience} years in practice are recorded.`);
+
+  return parts.length ? parts.join(" ") : null;
+}
+
 // Collapsible bio: clamped to four lines with a Read more toggle, and no
 // toggle at all when the text is short enough to fit.
-function Bio({ text }: { text: string | null }) {
+function Bio({ text, facts = null }: { text: string | null; facts?: string | null }) {
   const [expanded, setExpanded] = useState(false);
   const [clampable, setClampable] = useState(false);
   const ref = useRef<HTMLParagraphElement | null>(null);
@@ -745,7 +818,20 @@ function Bio({ text }: { text: string | null }) {
     setClampable(el.scrollHeight - el.clientHeight > 4);
   }, [text]);
 
-  if (!text) return <p className="mt-4 text-[14.5px] text-ink-muted">No biography published yet.</p>;
+  if (!text) {
+    if (!facts) {
+      return <p className="mt-4 text-[14.5px] text-ink-muted">No biography published yet.</p>;
+    }
+    return (
+      <div className="mt-4">
+        <p className="text-[14.5px] leading-relaxed text-ink-muted">{facts}</p>
+        <p className="mt-3 text-[13px] text-ink-muted/80">
+          This summary is drawn from the details on this listing. No biography has been published
+          yet — the specialist can add one when they claim the profile.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4">
