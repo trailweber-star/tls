@@ -114,7 +114,7 @@ function column(rows, needle, limit, build) {
   };
 }
 
-async function loadAll() {
+async function readAll() {
   if (!isDbConfigured()) {
     return {
       specialists: mockSpecialistsWithRelations.filter((s) => s.verificationStatus === "verified"),
@@ -134,6 +134,41 @@ async function loadAll() {
     taxonomy.facilityCategories(),
   ]);
   return { specialists, facilities, specialties, conditions, treatments, facilityCategories };
+}
+
+/* ------------------------------------------------------- the snapshot
+   Every panel request needs the whole directory and the whole taxonomy:
+   ~2,400 specialists with their relations and ~700 taxonomy nodes, so
+   that a suggestion is only offered when somebody is actually behind it.
+   Reading all of that per keystroke measured ~6.5s on the preview
+   against a ~200ms round trip to the same service -- which is what made
+   the panel feel like it was ignoring the typing. The columns were
+   right; they arrived six seconds after the letter that asked for them,
+   by which point another letter had been typed.
+
+   So the read is shared rather than repeated. One in-flight promise
+   serves every request that arrives while it runs, and the result is
+   reused for SNAPSHOT_TTL afterwards. Nothing in it is per-user or
+   per-query, so there is nothing to leak between callers. The panel
+   offers suggestions, not answers -- a listing up to a minute behind an
+   admin edit is not a correctness problem, whereas a six-second
+   autocomplete is a broken one. */
+const SNAPSHOT_TTL = 60_000;
+let snapshot = null; // { at, data } — the last completed read
+let inFlight = null; // the read currently running, if any
+
+async function loadAll() {
+  if (snapshot && Date.now() - snapshot.at < SNAPSHOT_TTL) return snapshot.data;
+  if (inFlight) return inFlight;
+  inFlight = readAll()
+    .then((data) => {
+      snapshot = { at: Date.now(), data };
+      return data;
+    })
+    .finally(() => {
+      inFlight = null;
+    });
+  return inFlight;
 }
 
 // The columns scroll, so these are generous. They exist to stop a
