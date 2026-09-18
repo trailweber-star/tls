@@ -359,14 +359,22 @@ function parseProfile(url, html) {
    *   /logos/profile/profile_<timestamp>.jpg         a real logo/photo
    *   /logos/profile/limage-<id>-<n>-photo.webp      ditto
    *   /images/profile-profile-holder.png             the empty-state icon
-   *   /images/Generated-Image-September-17-2025…webp an AI-generated filler
+   *   /images/Generated-Image-September-17-2025…webp the site's own logo,
+   *                                                  stood in for a member
+   *                                                  who uploaded no photo
    *
-   * The last two are not profile photos and must never be imported as
-   * one. A placeholder at least fails honestly; a generated stock image
-   * on a named consultant's profile is a picture of a person who does
-   * not exist, sitting above a real doctor's GMC number. That is worse
-   * than an empty avatar, so it is recorded as "none" with the reason
-   * kept in imageRejected. */
+   * The last two are the same thing — an empty state — and neither is a
+   * picture of the member. The second one is not a fabricated portrait:
+   * it is the Top Local Specialists mark, put in place on 17 September
+   * 2025 across every profile that had no picture of its own. Those
+   * records are perfectly good; they simply have no photo yet.
+   *
+   * It still must not come across as a photo. In the avatar slot on the
+   * new site it would be indistinguishable from a picture the member
+   * chose, so the claim flow could not ask for a real one and nobody
+   * could count how many profiles are still waiting. Recorded as "none"
+   * with the reason kept in imageRejected, and the new site's initials
+   * tile fills the space until the member uploads something. */
   const imageCandidates = [
     real(biz?.image?.url),
     first(html, /<img[^>]+src="(\/(?:pictures|logos)\/profile\/[^"]+)"/),
@@ -381,8 +389,8 @@ function parseProfile(url, html) {
     ? ""
     : imageCandidates.find((u) => NOT_A_PHOTO.test(u))
       ? /Generated-Image/i.test(imageCandidates.join(" "))
-        ? "AI-generated filler image, not a real photo"
-        : "placeholder avatar, no real photo"
+        ? "no photo uploaded — the old site stood its own logo in"
+        : "no photo uploaded — placeholder avatar"
       : imageCandidates.length
         ? `unrecognised image path: ${imageCandidates[0]}`
         : "";
@@ -680,8 +688,10 @@ function healthVerdict(rec) {
  * The fields a listing cannot go live without
  *
  * Named by the client: address, coordinates, town, category,
- * subcategory, name, profile photo, description, email. A row missing
- * any of them is held in review.csv rather than imported, and the
+ * subcategory, name, profile photo, description, email. Photo,
+ * description and email have each since come off the list for reasons
+ * noted below; a row missing any of the rest is held in review.csv
+ * rather than imported, and the
  * summary counts each field separately — because "412 rows held back"
  * is not actionable, and "412 held back, 400 of them for the same one
  * missing field" tells you exactly what to go and fix.
@@ -713,7 +723,8 @@ const REQUIRED = [
      this stage held every single row and let nothing through at all.
      map-taxonomy.mjs resolves it against the tree and holds whatever it
      cannot place. The gate belongs where the answer is. */
-  ["photo", (r) => r.image],
+  /* NOT photo, for a reason particular to this directory. See the
+     REPORTED_ONLY note below. */
   ["address", (r) => r.addressLine || r.postcodeFromAddress],
   ["town", (r) => r.townFromAddress || r.townFromSlug],
   ["coordinates", (r) => r.lat && r.lng],
@@ -733,6 +744,23 @@ const REQUIRED = [
  * is a number worth having before launch. */
 const REPORTED_ONLY = [
   ["description", (r) => r.description],
+  /* PHOTO followed description off the required list. 777 profiles on
+     the old site share one file,
+     /images/Generated-Image-September-17-2025---6_06PM.webp — the Top
+     Local Specialists logo, stood in wherever a member had uploaded no
+     picture, across 448 orthopaedic surgeons, 172 physiotherapists and
+     11 GPs. So it is not a photograph, and the harvester is right not to
+     treat it as one; but it is also not a flaw in those records. They
+     are complete in every way that matters — a real name, a real GMC
+     number, a real postcode, a point on the map — and requiring a photo
+     held 587 of them back over a picture the old site never had either.
+     Counted, not blocked. They import with no photo and the new site's
+     initials tile fills the frame, which says the true thing: this
+     clinician has not uploaded a picture yet, and the claim flow can ask
+     for one. Importing the old logo instead would have said nothing at
+     all, in a slot the new site could no longer tell from a real
+     photograph. */
+  ["photo", (r) => r.image],
   ["phone", (r) => r.telephone],
   ["website", (r) => r.website],
   ["postcode", (r) => r.postcodeFromAddress],
@@ -755,6 +783,24 @@ const csvCell = (v) => {
 };
 const csvRow = (rec) => COLUMNS.map((c) => csvCell(rec[c])).join(",");
 
+/* ------------------------------------------------------------------ *
+ * Reasons written by an earlier run
+ *
+ * imageRejected is decided during --fetch and stored in the NDJSON, so
+ * a record harvested before we understood what
+ * Generated-Image-September-17-2025 actually was still carries the
+ * wording from then — "AI-generated filler image". It is the site's own
+ * logo, standing in where a member uploaded nothing, and calling those
+ * 756 profiles filler misreads them. Re-fetching 2,700 pages to correct
+ * a report label would be absurd, and the label is not data, so it is
+ * restated on the way out.
+ * ------------------------------------------------------------------ */
+const WHY_NO_PHOTO_WAS_CALLED = new Map([
+  ["AI-generated filler image, not a real photo", "no photo uploaded — the old site stood its own logo in"],
+  ["placeholder avatar, no real photo", "no photo uploaded — placeholder avatar"],
+]);
+const restateWhyNoPhoto = (reason) => WHY_NO_PHOTO_WAS_CALLED.get(reason) ?? reason ?? "";
+
 function writeCsv() {
   if (!fs.existsSync(PROFILES_PATH)) {
     console.error("No profiles.ndjson — run with --fetch first.");
@@ -771,6 +817,8 @@ function writeCsv() {
     line += 1;
     let rec;
     try { rec = JSON.parse(raw); } catch { reject.push({ line, url: "", reason: "unreadable line" }); continue; }
+
+    rec.imageRejected = restateWhyNoPhoto(rec.imageRejected);
 
     if (rec.error) { reject.push({ line, url: rec.url, reason: rec.error }); continue; }
     if (!rec.name) { reject.push({ line, url: rec.url, reason: "no name on the record" }); continue; }

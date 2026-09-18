@@ -361,9 +361,7 @@ const writeCsv = (file, header, rows) =>
 /* ------------------------------------------------------------------ */
 
 async function main() {
-  const { db, t } = await loadDb();
-
-  const all = await db.select().from(t.specialties);
+  const all = await loadTaxonomy();
   const byId = new Map(all.map((s) => [s.id, s]));
   const bySlug = new Map(all.map((s) => [s.slug, s]));
   const childrenOf = (id) => all.filter((s) => s.parentId === id);
@@ -672,17 +670,77 @@ function explain(term, all, childrenOf, tops) {
   process.exit(0);
 }
 
-async function loadDb() {
-  const { getDb, isDbConfigured } = await import("../src/db/client.js");
-  if (!isDbConfigured()) {
-    console.error(
-      "No database configured — this script reads the specialty tree from it.\n" +
-      "Set DATABASE_URL to the same database you are importing into."
-    );
+/* ------------------------------------------------------------------ *
+ * Where the tree comes from
+ *
+ * src/data/taxonomy/specialty-tree.json, not the database. This used to
+ * read the database, which meant classifying a CSV needed a live
+ * Postgres on the other end of a connection string — and the connection
+ * string for the environment you happen to be importing into, which is
+ * a strange thing to need in order to decide that a hip surgeon belongs
+ * under Hip. The file is the source of truth for the tree: seed.js
+ * inserts it into a new database and sync-taxonomy.mjs brings an
+ * existing one up to date with it. Reading the file directly means the
+ * mapping cannot drift from the definition, and it runs offline.
+ *
+ * Slugs stand in for ids. Everything downstream of here — mapped.csv,
+ * the importer, specialist_specialties — addresses specialties by slug
+ * anyway, and the generated uuids were never in the output.
+ *
+ * If DATABASE_URL happens to be set we take one look at that database
+ * and say so if it is behind the file, because a mapping onto a
+ * subcategory that does not exist in the database you are importing
+ * into will fail at import time, and it is much cheaper to hear about
+ * it now.
+ * ------------------------------------------------------------------ */
+async function loadTaxonomy() {
+  const file = path.join(BACKEND, "src", "data", "taxonomy", "specialty-tree.json");
+  if (!fs.existsSync(file)) {
+    console.error(`No specialty tree at ${file} — this script reads the tree from it.`);
     process.exit(1);
   }
-  const t = await import("../src/db/schema.js");
-  return { db: getDb(), t };
+
+  const all = [];
+  const walk = (nodes, parentId) => {
+    for (const n of nodes) {
+      all.push({ id: n.slug, parentId, slug: n.slug, name: n.name });
+      walk(n.children ?? [], n.slug);
+    }
+  };
+  walk(JSON.parse(fs.readFileSync(file, "utf8")), null);
+
+  const dupes = all.map((s) => s.slug).filter((sl, i, a) => a.indexOf(sl) !== i);
+  if (dupes.length) {
+    console.error(`specialty-tree.json has duplicate slugs: ${[...new Set(dupes)].join(", ")}`);
+    process.exit(1);
+  }
+
+  await warnIfDatabaseIsBehind(all);
+  return all;
+}
+
+/** One read-only look at the target database, if we have been given one. */
+async function warnIfDatabaseIsBehind(all) {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const { getDb, isDbConfigured } = await import("../src/db/client.js");
+    if (!isDbConfigured()) return;
+    const t = await import("../src/db/schema.js");
+    const rows = await getDb().select({ slug: t.specialties.slug }).from(t.specialties);
+    const have = new Set(rows.map((r) => r.slug));
+    const behind = all.filter((s) => !have.has(s.slug));
+    if (behind.length) {
+      console.log(
+        `NOTE: DATABASE_URL points at a database missing ${behind.length} of these ` +
+        `${all.length} specialties, so an import into it would fail on them.\n` +
+        "      Run:  node scripts/sync-taxonomy.mjs --write\n"
+      );
+    }
+  } catch {
+    /* Unreachable, wrong credentials, no such table — none of which stop
+       the mapping. The tree came from the file. Say nothing and carry on;
+       the import is where a bad connection string matters. */
+  }
 }
 
 main().catch((err) => {
