@@ -25,7 +25,8 @@
     "organisations:test": "node scripts/organisations-test.mjs",
     "pins:audit": "node scripts/audit-pins.mjs",
     "admin:password": "node scripts/set-admin-password.mjs",
-    "listings:retire": "node scripts/retire-listings.mjs"
+    "listings:retire": "node scripts/retire-listings.mjs",
+    "treatments:derive": "node scripts/derive-treatments.mjs"
   },
   "keywords": [],
   "author": "",
