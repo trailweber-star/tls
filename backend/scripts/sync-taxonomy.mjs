@@ -37,6 +37,37 @@ dotenv.config({ path: path.join(BACKEND, ".env") });
 
 const WRITE = process.argv.includes("--write");
 
+/* ------------------------------------------------------------------ *
+ * A connection string that is obviously a placeholder
+ *
+ * Pasting the instructions rather than the value is an easy mistake and
+ * a cheap one to catch. Left alone it surfaces as
+ * "getaddrinfo ENOTFOUND base" from deep inside the Postgres driver,
+ * which names neither the real problem nor the fix and has now cost
+ * three separate debugging detours.
+ * ------------------------------------------------------------------ */
+function refusePlaceholderUrl() {
+  const url = process.env.DATABASE_URL ?? "";
+  if (!url) return;
+  const looksLikeAPlaceholder =
+    /[<>]/.test(url) ||
+    /paste|your[-_ ]?(render|db|database)|PASTE_URL|example\.com|localhost:0/i.test(url) ||
+    !/^postgres(ql)?:\/\//i.test(url);
+  if (!looksLikeAPlaceholder) return;
+
+  console.error(
+    "DATABASE_URL does not look like a real connection string:\n" +
+    `  ${url.slice(0, 60)}${url.length > 60 ? "…" : ""}\n\n` +
+    "It should start with postgresql:// and contain no angle brackets.\n" +
+    "Copy the External Database URL from the Render dashboard, then:\n\n" +
+    '  export DATABASE_URL="<paste it here>?sslmode=require"\n\n' +
+    "replacing the whole of <paste it here> — brackets included — with the URL."
+  );
+  process.exit(1);
+}
+refusePlaceholderUrl();
+
+
 /** Depth-first, parents before children — the order rows must be inserted in. */
 function* walk(nodes, parentSlug = null, depth = 0) {
   for (const n of nodes) {

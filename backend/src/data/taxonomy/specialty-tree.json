@@ -824,6 +824,28 @@
             "slug": "sports-injuries-in-children"
           }
         ]
+      },
+      {
+        "name": "General Orthopaedics",
+        "slug": "orthopaedics-general-orthopaedics",
+        "children": [
+          {
+            "name": "General Orthopaedic Assessment",
+            "slug": "general-orthopaedic-assessment"
+          },
+          {
+            "name": "Joint Pain",
+            "slug": "joint-pain"
+          },
+          {
+            "name": "Musculoskeletal Pain",
+            "slug": "musculoskeletal-pain"
+          },
+          {
+            "name": "Fracture Follow-up",
+            "slug": "fracture-follow-up"
+          }
+        ]
       }
     ]
   },
@@ -1070,6 +1092,24 @@
           {
             "name": "Older Adult Rehabilitation",
             "slug": "older-adult-rehabilitation"
+          }
+        ]
+      },
+      {
+        "name": "General Physiotherapy",
+        "slug": "physiotherapy-general-physiotherapy",
+        "children": [
+          {
+            "name": "General Physiotherapy Assessment",
+            "slug": "general-physiotherapy-assessment"
+          },
+          {
+            "name": "Mobility Rehabilitation",
+            "slug": "mobility-rehabilitation"
+          },
+          {
+            "name": "Exercise Therapy",
+            "slug": "exercise-therapy"
           }
         ]
       }
@@ -1620,6 +1660,24 @@
             "slug": "skin-allergy-testing"
           }
         ]
+      },
+      {
+        "name": "General Aesthetics",
+        "slug": "aesthetics-specialists-general-aesthetics",
+        "children": [
+          {
+            "name": "Aesthetic Consultation",
+            "slug": "aesthetic-consultation"
+          },
+          {
+            "name": "Non-surgical Aesthetics",
+            "slug": "non-surgical-aesthetics"
+          },
+          {
+            "name": "Skin Assessment",
+            "slug": "skin-assessment"
+          }
+        ]
       }
     ]
   },
@@ -1836,6 +1894,24 @@
           {
             "name": "Sleep-related ENT Surgery",
             "slug": "sleep-related-ent-surgery"
+          }
+        ]
+      },
+      {
+        "name": "General ENT",
+        "slug": "ent-general-ent",
+        "children": [
+          {
+            "name": "General ENT Assessment",
+            "slug": "general-ent-assessment"
+          },
+          {
+            "name": "Ear Nose and Throat Consultation",
+            "slug": "ear-nose-and-throat-consultation"
+          },
+          {
+            "name": "ENT Follow-up",
+            "slug": "ent-follow-up"
           }
         ]
       }
@@ -2296,6 +2372,32 @@
             "slug": "stress-management"
           }
         ]
+      },
+      {
+        "name": "General Psychology & Counselling",
+        "slug": "psychology-general-psychology-and-counselling",
+        "children": [
+          {
+            "name": "General Counselling",
+            "slug": "general-counselling"
+          },
+          {
+            "name": "Individual Therapy",
+            "slug": "individual-therapy"
+          },
+          {
+            "name": "Talking Therapy",
+            "slug": "talking-therapy"
+          },
+          {
+            "name": "Mental Health Assessment",
+            "slug": "mental-health-assessment"
+          },
+          {
+            "name": "Wellbeing Support",
+            "slug": "wellbeing-support"
+          }
+        ]
       }
     ]
   },
@@ -2684,6 +2786,20 @@
           {
             "name": "Chronic Subdural Haematoma",
             "slug": "chronic-subdural-haematoma"
+          }
+        ]
+      },
+      {
+        "name": "General Neurosurgery",
+        "slug": "neurosurgery-general-neurosurgery",
+        "children": [
+          {
+            "name": "Neurosurgical Assessment",
+            "slug": "neurosurgical-assessment"
+          },
+          {
+            "name": "Neurosurgical Follow-up",
+            "slug": "neurosurgical-follow-up"
           }
         ]
       }

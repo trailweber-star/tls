@@ -4,6 +4,7 @@
  *
  *   node scripts/map-taxonomy.mjs                 # report only
  *   node scripts/map-taxonomy.mjs --write         # write the CSVs
+ *   node scripts/map-taxonomy.mjs --default-sub   # fall back to General
  *   node scripts/map-taxonomy.mjs --explain knee  # show how one matched
  *
  * Reads  data/harvest/listings.csv  and  data/harvest/review.csv
@@ -61,6 +62,37 @@ const BACKEND = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 dotenv.config({ path: path.join(BACKEND, ".env") });
 
 const OUT = path.join(BACKEND, "data", "harvest");
+
+/* ------------------------------------------------------------------ *
+ * A connection string that is obviously a placeholder
+ *
+ * Pasting the instructions rather than the value is an easy mistake and
+ * a cheap one to catch. Left alone it surfaces as
+ * "getaddrinfo ENOTFOUND base" from deep inside the Postgres driver,
+ * which names neither the real problem nor the fix and has now cost
+ * three separate debugging detours.
+ * ------------------------------------------------------------------ */
+function refusePlaceholderUrl() {
+  const url = process.env.DATABASE_URL ?? "";
+  if (!url) return;
+  const looksLikeAPlaceholder =
+    /[<>]/.test(url) ||
+    /paste|your[-_ ]?(render|db|database)|PASTE_URL|example\.com|localhost:0/i.test(url) ||
+    !/^postgres(ql)?:\/\//i.test(url);
+  if (!looksLikeAPlaceholder) return;
+
+  console.error(
+    "DATABASE_URL does not look like a real connection string:\n" +
+    `  ${url.slice(0, 60)}${url.length > 60 ? "…" : ""}\n\n` +
+    "It should start with postgresql:// and contain no angle brackets.\n" +
+    "Copy the External Database URL from the Render dashboard, then:\n\n" +
+    '  export DATABASE_URL="<paste it here>?sslmode=require"\n\n' +
+    "replacing the whole of <paste it here> — brackets included — with the URL."
+  );
+  process.exit(1);
+}
+refusePlaceholderUrl();
+
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
 const val = (f) => {
@@ -331,20 +363,31 @@ async function main() {
 
   if (val("--explain")) return explain(val("--explain"), all, childrenOf, tops);
 
+  /* listings.csv only. The harvester passes a row when everything it
+     can know about is present; the subcategory is the one required
+     field it cannot supply, and supplying it is this script's entire
+     job. Rows the harvester held for a missing photo or description are
+     in review.csv and stay there — a subcategory does not fix a missing
+     photo. */
   const listings = readCsv(path.join(OUT, "listings.csv"));
-  const held = readCsv(path.join(OUT, "review.csv"));
-
-  /* Rows the harvester held ONLY because subCategory was missing are
-     exactly the rows this script exists to rescue — it is the thing
-     that was missing. Rows held for anything else stay held. */
-  const rescuable = held.rows.filter((r) => /^missing: subCategory$/.test(r.reviewReason ?? ""));
-  const input = [...listings.rows, ...rescuable];
+  const input = listings.rows;
 
   if (!input.length) {
-    console.log("Nothing to map. Run the harvester first (--urls, --fetch, --csv).");
+    const held = readCsv(path.join(OUT, "review.csv"));
+    console.log("Nothing in listings.csv to map.");
+    if (held.rows.length) {
+      console.log(`review.csv holds ${held.rows.length} row(s) the harvester would not pass. Why:`);
+      const tally = {};
+      for (const r of held.rows) tally[r.reviewReason ?? "(no reason)"] = (tally[r.reviewReason ?? "(no reason)"] ?? 0) + 1;
+      for (const [k, v] of Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+        console.log(`  ${String(v).padStart(5)}  ${k}`);
+      }
+    } else {
+      console.log("Run the harvester first: --urls, then --fetch, then --csv.");
+    }
     process.exit(0);
   }
-  console.log(`${input.length} listings to map (${listings.rows.length} ready, ${rescuable.length} rescued from review)\n`);
+  console.log(`${input.length} listings to map\n`);
 
   const mapped = [];
   const unmapped = [];
@@ -433,6 +476,35 @@ async function main() {
       }
     }
 
+    /* Last resort, opt in with --default-sub.
+     *
+     * A great many listings name their specialty and nothing narrower:
+     * "SC Therapy and Wellbeing", "Birmingham-Therapy", "Edgbaston
+     * Private Medical Practice", with no description behind them. There
+     * is genuinely nothing in the record that picks one subcategory over
+     * another, so guessing would be inventing, and holding all of them
+     * means hand-sorting a large fraction of 2,750.
+     *
+     * The honest third option is a general subcategory under each root —
+     * which several roots already had, because a real directory needs
+     * somewhere to put a generalist. Falling back to it is not a guess:
+     * a psychologist filed under General Psychology & Counselling is
+     * correctly filed, just not precisely filed. Marked "default" so the
+     * rows are one filter away whenever somebody wants to refine them. */
+    if ((!sub || sub.confidence === "weak") && has("--default-sub")) {
+      const general = subs.find((x) => /^general\b/i.test(x.name));
+      if (general) {
+        sub = {
+          pick: general,
+          all: [general],
+          score: 1,
+          how: "nothing narrower in the listing - filed under " + general.name,
+          runnerUp: "",
+          confidence: "default",
+        };
+      }
+    }
+
     if (!sub || sub.confidence === "weak") {
       confTally[sub ? sub.confidence : "none"] = (confTally[sub ? sub.confidence : "none"] ?? 0) + 1;
       unmapped.push({
@@ -482,7 +554,7 @@ async function main() {
   if (Object.keys(confTally).length) {
     console.log("\n  subcategory match quality:");
     for (const [k, v] of Object.entries(confTally).sort((a, b) => b[1] - a[1])) {
-      const note = { exact: "the name appears verbatim", strong: "all its distinctive words matched", weak: "one word matched — held", ambiguous: "two candidates too close — held", none: "nothing matched — held" }[k] ?? "";
+      const note = { exact: "the name appears verbatim", strong: "all its distinctive words matched", multiple: "several matched equally - tagged with each", weak: "one word matched - held", default: "nothing narrower said - filed under the root General", none: "nothing matched - held" }[k] ?? "";
       console.log(`    ${String(v).padStart(5)}  ${k.padEnd(10)} ${note}`);
     }
   }
@@ -494,6 +566,17 @@ async function main() {
       total += v;
     }
     console.log(`    ${String(total).padStart(5)}  in total — these need a new top-level specialty before they can migrate`);
+  }
+
+  const rescuableByDefault = unmapped.filter(
+    (r) => r.suggestedPrimary && /^(nothing in the listing|subcategory weak)/.test(r.unmappedReason)
+  ).length;
+  if (rescuableByDefault && !has("--default-sub")) {
+    console.log(
+      "\n  " + rescuableByDefault + " of the " + unmapped.length + " unmapped resolved a specialty but nothing narrower.\n" +
+      "  Re-run with --default-sub to file those under the root General subcategory\n" +
+      "  (marked \"default\", so they stay one filter away from being refined)."
+    );
   }
 
   if (has("--write")) {

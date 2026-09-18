@@ -707,7 +707,12 @@ function healthVerdict(rec) {
 const REQUIRED = [
   ["name", (r) => r.name],
   ["category", (r) => r.category],
-  ["subCategory", (r) => r.subCategory],
+  /* NOT subCategory. It is required before a listing goes live, but it
+     cannot be required HERE: the harvester reads the old site and knows
+     nothing about this database's specialty tree, so demanding it at
+     this stage held every single row and let nothing through at all.
+     map-taxonomy.mjs resolves it against the tree and holds whatever it
+     cannot place. The gate belongs where the answer is. */
   ["description", (r) => r.description],
   ["photo", (r) => r.image],
   ["address", (r) => r.addressLine || r.postcodeFromAddress],
