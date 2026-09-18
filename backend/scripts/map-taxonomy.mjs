@@ -174,6 +174,82 @@ const FORCED_SUB = new Map(
   })
 );
 
+/* A PROFESSION IS NOT A CLINICAL AREA.
+   "I am an Advanced Practice Physiotherapist in Paediatric
+   Orthopaedics" names one profession (physiotherapist) and one area of
+   work (orthopaedics). Matching root names against the whole blurb sees
+   only the word "Orthopaedics" and concludes the old site has her filed
+   wrong -- so a physiotherapist of 35 years was about to be published as
+   an orthopaedic surgeon, and two more with her. The same mistake ran
+   the other way for eight GPs whose bios mention obstetrics or
+   paediatrics: a GP with an interest in menopause is still a GP.
+
+   So a profession stated ABOUT THE PERSON settles the root, and a
+   specialty word appearing anywhere in the prose does not get to
+   contradict it. Only nouns that name what someone IS belong here --
+   "orthopaedics" and "dermatology" are areas and are deliberately
+   absent. Bare "GP" is absent too: it turns up in "GP Partner" and "GP
+   practices" on people who have since moved into aesthetics, and those
+   are exactly the listings a person should look at. */
+const PROFESSION_NOUNS = new Map(
+  Object.entries({
+    "physiotherapist": "physiotherapy",
+    "general practitioner": "general-practice",
+    "dentist": "dentistry",
+    "psychologist": "psychology",
+    "psychotherapist": "psychology",
+    "counsellor": "psychology",
+    "gynaecologist": "gynaecology",
+    "obstetrician": "gynaecology",
+    "neurosurgeon": "neurosurgery",
+    "paediatrician": "paediatrics",
+    "orthopaedic surgeon": "orthopaedics",
+    "ent surgeon": "ent",
+  })
+);
+
+/* The profession this listing claims for the person, or null. Plural
+   allowed because "Royal College of General Practitioners" is how a
+   great many of these bios say it. */
+function professionStatedIn(description) {
+  const text = withoutBoilerplate(description);
+  if (!text.trim()) return null;
+  for (const [noun, slug] of PROFESSION_NOUNS) {
+    if (new RegExp(`\\b${noun}s?\\b`, "i").test(text)) return { noun, slug };
+  }
+  return null;
+}
+
+/* THE BOILERPLATE DESCRIPTION IS NOT EVIDENCE OF ANYTHING.
+   Listings with no bio get one generated line from Brilliant
+   Directories:
+
+     "Connect with Dr Hiba Al-Reefy , Physiotherapist in England United
+      Kingdom of Great Britain and Northern Ireland."
+
+   The word in the middle looks like a profession field, and it is
+   tempting: six listings under /physiotherapist/ have it saying
+   Orthopaedics, and all six are a "Mr" or "Professor". Believing it
+   would have refiled them as surgeons -- and it is wrong. Only 31 of
+   2,750 records carry this line at all, it disagrees with the category
+   in 20 of the 31, and it disagrees SYMMETRICALLY: six say Orthopaedics
+   under Physiotherapist and five say Physiotherapist under
+   Orthopaedics. A field that contradicts its own category two times in
+   three, in both directions, with 19 of its 31 values reading
+   "Physiotherapist", is a default leaking through rather than data.
+   Dr Hiba Al-Reefy sits under ENT Surgeon, is an ENT surgeon, and her
+   line says Physiotherapist.
+
+   So the line is stripped before the prose is read, for one specific
+   reason: the profession rule below must not find a noun in the very
+   sentence that carries the noise, agree with itself, and call that
+   corroboration. */
+const BOILERPLATE_LINE =
+  /connect with\b[^,]*,\s*.+?\s+in\s+(?:england|scotland|wales|northern ireland|the united kingdom)\b[^.]*\.\s*(?:find\b[^.]*\.)?/gi;
+
+const withoutBoilerplate = (description) =>
+  String(description ?? "").replace(BOILERPLATE_LINE, " ");
+
 /* ------------------------------------------------------------------ *
  * Matching
  *
@@ -401,6 +477,7 @@ async function main() {
   const mapped = [];
   const unmapped = [];
   let conflicts = 0;
+  const professionKept = []; // a stated profession outranked a mentioned specialty
   const primaryTally = {};
   const noHomeTally = {};
   const confTally = {};
@@ -447,12 +524,19 @@ async function main() {
      * own words name a DIFFERENT root outright. If they do, that is a
      * contradiction between two sources of evidence and a person should
      * settle it. Neither side is overridden silently. */
+    const professed = professionStatedIn(row.description);
     const rootByText = best(tops, haystack, haystackStems);
     if (
       rootByText &&
       rootByText.confidence === "exact" &&
       rootByText.pick.slug !== topSlug &&
-      !PRIMARY_ALIASES.get(key)?.includes(rootByText.pick.slug)
+      !PRIMARY_ALIASES.get(key)?.includes(rootByText.pick.slug) &&
+      /* A specialty word in the prose does not outrank the profession
+         the prose states. Only skip the hold when the stated profession
+         AGREES with where the listing already sits -- if it names a
+         third thing, that is a genuine three-way muddle and a person
+         should look at it. */
+      !(professed && professed.slug === topSlug)
     ) {
       unmapped.push({
         ...row,
@@ -464,6 +548,10 @@ async function main() {
       });
       conflicts += 1;
       continue;
+    }
+
+    if (professed && professed.slug === topSlug && rootByText?.confidence === "exact" && rootByText.pick.slug !== topSlug) {
+      professionKept.push({ name: row.name, is: professed.noun, notJust: rootByText.pick.name });
     }
 
     const top = bySlug.get(topSlug);
@@ -610,7 +698,13 @@ async function main() {
   }
 
   if (conflicts) {
-    console.log(
+      if (professionKept.length) {
+    console.log(`\n  ${professionKept.length} listing(s) kept where they were because the listing states a`);
+    console.log(`  profession and only MENTIONS another specialty — the profession wins:`);
+    for (const r of professionKept) console.log(`      ${r.name} — a ${r.is} who works in ${r.notJust}, not a ${r.notJust} specialist`);
+  }
+
+  console.log(
       `\n  ${conflicts} listing(s) where the old site's category contradicts the listing's own\n` +
       `  words. Those are in unmapped.csv with both candidates named — the old site has\n` +
       `  them filed wrong, or the wording is misleading, and only a person can say which.`
