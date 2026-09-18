@@ -24,7 +24,8 @@
     "clinwell:test": "node scripts/clinwell-test.mjs",
     "organisations:test": "node scripts/organisations-test.mjs",
     "pins:audit": "node scripts/audit-pins.mjs",
-    "admin:password": "node scripts/set-admin-password.mjs"
+    "admin:password": "node scripts/set-admin-password.mjs",
+    "listings:retire": "node scripts/retire-listings.mjs"
   },
   "keywords": [],
   "author": "",

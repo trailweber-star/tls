@@ -343,6 +343,23 @@ const DRY = flag("dry-run");
 const SOURCE = option("source", "import");
 const WITH_PHOTOS = flag("photos");
 
+/* --only-new: import the rows that are not here yet and leave the rest
+   alone.
+
+   An update is not free. It rewrites the listing's clinic location from
+   the CSV, which means the pin goes back to whatever the harvest
+   recorded — and by then geotag.mjs has usually moved it. Re-running a
+   full import to pick up fifteen new listings would have undone the
+   refinement on 2,400 that were already right (97% street-accurate back
+   down to 78%), for no gain on any of them.
+
+   So when the reason for the run is new rows, say so, and existing
+   listings are not touched at all. Everything an update would have
+   carried -- a corrected specialty, a new photo -- is still available
+   by running without the flag, deliberately, and re-running geotag
+   afterwards. */
+const ONLY_NEW = flag("only-new");
+
 if (!file) {
   console.error(`
 Import specialist listings from a spreadsheet.
@@ -354,6 +371,11 @@ Import specialist listings from a spreadsheet.
   --dry-run         Show exactly what would happen and write nothing.
   --photos          Also fetch photo URLs and store them locally.
                     OFF by default — read the note it prints first.
+  --only-new        Import rows that are not in the database yet and
+                    leave existing listings entirely alone. Use this
+                    when the reason for the run is new rows: an update
+                    rewrites the clinic location from the file, which
+                    throws away whatever geotag.mjs has since refined.
 
   A mapped.csv from the harvester is recognised on its columns and read
   differently: see "Two shapes of input" below. For that file, pass
@@ -676,7 +698,7 @@ async function fetchPhoto(url, slug) {
 
 /* ------------------------------------------------------------ importing */
 
-const summary = { created: 0, updated: 0, skipped: 0, cities: 0, photos: 0, accounts: 0, problems: [] };
+const summary = { created: 0, updated: 0, skipped: 0, untouched: 0, cities: 0, photos: 0, accounts: 0, problems: [] };
 
 const preview = [];
 
@@ -817,6 +839,11 @@ for (const [index, row] of rows.entries()) {
   };
 
   const existing = sourceUrl ? bySourceUrl.get(sourceUrl) ?? null : null;
+
+  if (ONLY_NEW && existing) {
+    summary.untouched += 1;
+    continue;
+  }
 
   preview.push({
     line,
@@ -1056,8 +1083,11 @@ if (summary.problems.length) {
 
 console.log(
   DRY
-    ? "\nDry run — nothing was written. Drop --dry-run to apply.\n"
+    ? `\nDry run — nothing was written. Drop --dry-run to apply.` +
+        (summary.untouched ? `\n${summary.untouched} existing listing(s) would be left untouched (--only-new).` : "") +
+        "\n"
     : `\nDone. ${summary.created} created, ${summary.updated} updated, ${summary.skipped} skipped` +
+        (summary.untouched ? `, ${summary.untouched} left untouched (--only-new)` : "") +
         (summary.accounts ? `, ${summary.accounts} shell accounts` : "") +
         (summary.photos ? `, ${summary.photos} photos stored` : "") +
         ".\n" +

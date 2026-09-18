@@ -1,0 +1,29 @@
+# Editorial decisions on individual harvested listings.
+#
+# map-taxonomy.mjs reads this before it looks at anything else, so a
+# decision here survives a re-harvest and a re-map. It is deliberately
+# small: this file is for rows a person has actually read and settled,
+# not for rules. Anything that generalises belongs in the alias tables
+# in map-taxonomy.mjs instead.
+#
+# slug     the listing's slug, as it appears in listings.csv
+# action   refile  -> force the primary specialty, ignoring the old
+#                     site's category, then match the subcategory as usual
+#          reject  -> never import it; it goes to rejected-by-decision.csv
+# primary  the top-level specialty slug, for refile only
+# reason   why, in one line, for whoever reads this next
+#
+slug,action,primary,reason
+livewell,refile,physiotherapy,"Filed under Psychologist on the old site; its own words are ""Sports Massage, Soft Tissue Services and Physiotherapy across the UK"""
+elite-therapy-coventry-physiotherapy,refile,physiotherapy,"Filed under Psychologist; describes itself as a multi-discipline physiotherapy and sports injury clinic"
+achieve-health-edgbaston-birmingham,refile,physiotherapy,"Filed under Psychologist; trades as Achieve Physiotherapy Birmingham and its team are physiotherapists"
+the-guildhall-practice-birmingham-city-centre,refile,physiotherapy,"Filed under Psychologist; multidisciplinary practice offering osteopathy, physiotherapy and sports massage"
+therapy-touch,refile,physiotherapy,"Filed under Psychologist; a physiotherapy and massage clinic"
+optimum-therapy,refile,physiotherapy,"Filed under Psychologist; treatment list names physiotherapy alongside sports massage and rehab"
+harmony-physiotherapy,refile,physiotherapy,"Filed under Psychologist; a physiotherapy practice in Tettenhall, Wolverhampton"
+coventry-central-chiropractic-clinic,refile,physiotherapy,"Filed under Psychologist. Chiropractic-led, but its own words name registered physiotherapists on the team and physiotherapy among the treatments, so it has a home. Worth a second look from Kirti."
+be-aesthetic-turkey,reject,,"Not a UK practice. Its clinics are in Izmir, Antalya and Istanbul; the UK entity is a booking agency, not a provider."
+dr-george-ross,reject,,"A chiropractor. Chiropractic is a separately regulated profession with no top-level specialty here, and filing him under Physiotherapy would misstate it."
+mr-bav-raindi,reject,,"A chiropractor (lead chiropractor at Fenchurch Chiropractic Group). Same reason as Dr George Ross."
+harborne-chiropractic-clinic,reject,,"A chiropractic clinic registered with the General Chiropractic Council, offering no physiotherapy. It was imported under Psychology / General Psychology & Counselling, which is wrong; rejecting it here stops it coming back."
+nav-pain-clinic-and-massages,reject,,"A soft-tissue, sports massage and acupuncture therapist. He holds a Bachelor of Physiotherapy from India but does not claim UK registration, and physiotherapist is a protected title here, so Physiotherapy is not a home for him."

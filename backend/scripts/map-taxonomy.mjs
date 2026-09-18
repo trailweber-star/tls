@@ -7,8 +7,10 @@
  *   node scripts/map-taxonomy.mjs --default-sub   # fall back to General
  *   node scripts/map-taxonomy.mjs --explain knee  # show how one matched
  *
- * Reads  data/harvest/listings.csv  and  data/harvest/review.csv
- * Writes data/harvest/mapped.csv    and  data/harvest/unmapped.csv
+ * Reads  data/harvest/listings.csv, data/harvest/review.csv and
+ *        data/listing-decisions.csv  (settled calls on single listings)
+ * Writes data/harvest/mapped.csv, data/harvest/unmapped.csv and
+ *        data/harvest/rejected-by-decision.csv
  *
  * WHY THIS IS NOT IN THE HARVESTER. The harvester's job is to get what
  * the old site says, faithfully, over the network. This one's job is to
@@ -395,7 +397,10 @@ function best(candidates, haystack, haystackStems) {
 
 function readCsv(file) {
   if (!fs.existsSync(file)) return { header: [], rows: [] };
-  const text = fs.readFileSync(file, "utf8");
+  return parseCsv(fs.readFileSync(file, "utf8"));
+}
+
+function parseCsv(text) {
   const rows = [];
   let row = [];
   let cell = "";
@@ -421,6 +426,43 @@ function readCsv(file) {
       .filter((r) => r.some((c) => c.trim()))
       .map((r) => Object.fromEntries(header.map((h, i) => [h, r[i] ?? ""]))),
   };
+}
+
+/* ------------------------------------------------------------- decisions
+   Rows a person has read and settled, in data/listing-decisions.csv.
+
+   Everything else in this script is a rule: it looks at what a listing
+   says and reasons about it. Some listings are not a rule. "Be
+   Aesthetic Turkey" is filed under birmingham-uk and its clinics are in
+   Izmir; a chiropractor is a real clinician with no top-level specialty
+   here to be filed under. No amount of matching resolves either, and
+   re-deciding them by hand after every harvest is how a decision gets
+   quietly reversed.
+
+   So they are written down, keyed by slug, with the reason attached,
+   and this file is in git while data/harvest/ is not. `refile` forces
+   the primary specialty and skips the category-versus-prose hold --
+   that hold exists to ask a person, and a person has answered.
+   `reject` drops the row before any of it runs.
+
+   Comment lines let the file explain itself, which is the point of
+   keeping it in the repo rather than in a migration. */
+function readDecisions() {
+  const file = path.join(BACKEND, "data", "listing-decisions.csv");
+  if (!fs.existsSync(file)) return new Map();
+  const text = fs
+    .readFileSync(file, "utf8")
+    .split("\n")
+    .filter((line) => !/^\s*#/.test(line))
+    .join("\n");
+  const out = new Map();
+  for (const r of parseCsv(text).rows) {
+    const slug = String(r.slug ?? "").trim();
+    const action = String(r.action ?? "").trim().toLowerCase();
+    if (!slug || !action) continue;
+    out.set(slug, { action, primary: String(r.primary ?? "").trim(), reason: String(r.reason ?? "").trim() });
+  }
+  return out;
 }
 
 const csvCell = (v) => {
@@ -476,6 +518,10 @@ async function main() {
 
   const mapped = [];
   const unmapped = [];
+  const DECISIONS = readDecisions();
+  const decisionsUsed = new Set();
+  const rejectedByDecision = [];
+  const refiled = [];
   let conflicts = 0;
   const professionKept = []; // a stated profession outranked a mentioned specialty
   const primaryTally = {};
@@ -486,6 +532,20 @@ async function main() {
     const liveCategory = String(row.category ?? "").trim();
     const key = liveCategory.toLowerCase();
 
+    /* A settled decision comes before any matching. */
+    const decided = DECISIONS.get(String(row.slug ?? "").trim());
+    if (decided) decisionsUsed.add(String(row.slug ?? "").trim());
+    if (decided?.action === "reject") {
+      rejectedByDecision.push({
+        slug: row.slug,
+        name: row.name,
+        category: liveCategory,
+        url: row.url,
+        reason: decided.reason,
+      });
+      continue;
+    }
+
     // The specialty words in the URL are often more precise than the
     // category — "/orthopaedic-surgeon/" and "/birmingham-uk/ent-specialist/".
     const slugWords = String(row.url ?? "").replace(/^\//, "").split("/").slice(0, -1).join(" ").replace(/-/g, " ");
@@ -494,6 +554,7 @@ async function main() {
 
     // --- primary: one of the six, or held ---
     let topSlug = PRIMARY_ALIASES.get(key);
+    if (decided?.action === "refile" && decided.primary) topSlug = decided.primary;
     if (!topSlug) {
       // The category may not be in the alias table but its words may
       // still name one of the six outright.
@@ -527,6 +588,9 @@ async function main() {
     const professed = professionStatedIn(row.description);
     const rootByText = best(tops, haystack, haystackStems);
     if (
+      /* The hold below exists to put a question to a person. For a
+         refiled row, a person has already answered it. */
+      !decided &&
       rootByText &&
       rootByText.confidence === "exact" &&
       rootByText.pick.slug !== topSlug &&
@@ -560,6 +624,7 @@ async function main() {
       continue;
     }
     primaryTally[top.name] = (primaryTally[top.name] ?? 0) + 1;
+    if (decided?.action === "refile") refiled.push({ name: row.name, from: liveCategory, to: top.name });
 
     // --- sub: the second level under that parent, only ---
     const subs = childrenOf(top.id);
@@ -672,7 +737,30 @@ async function main() {
 
   // ---- report ----
   console.log(`  mapped   ${mapped.length}`);
-  console.log(`  unmapped ${unmapped.length}\n`);
+  console.log(`  unmapped ${unmapped.length}`);
+  if (rejectedByDecision.length) console.log(`  rejected ${rejectedByDecision.length}  (decided in data/listing-decisions.csv)`);
+  console.log("");
+
+  /* A decided slug that matched no listing is a typo, and a typo here is
+     silent — the row is neither refiled nor rejected and nothing fails.
+     So it is an error, printed first. */
+  const strayDecisions = [...DECISIONS.keys()].filter((k) => !decisionsUsed.has(k));
+  if (strayDecisions.length) {
+    console.log(`  ! ${strayDecisions.length} slug(s) in data/listing-decisions.csv match no listing — check the spelling:`);
+    for (const k of strayDecisions) console.log(`      ${k}`);
+    console.log("");
+  }
+
+  if (refiled.length) {
+    console.log(`  ${refiled.length} listing(s) refiled by decision, against the old site's category:`);
+    for (const r of refiled) console.log(`      ${r.name.slice(0, 46).padEnd(46)} ${r.from || "(no category)"} → ${r.to}`);
+    console.log("");
+  }
+  if (rejectedByDecision.length) {
+    console.log(`  ${rejectedByDecision.length} listing(s) rejected by decision — not imported, and they will not come back:`);
+    for (const r of rejectedByDecision) console.log(`      ${r.name.slice(0, 46).padEnd(46)} ${r.reason}`);
+    console.log("");
+  }
 
   if (Object.keys(primaryTally).length) {
     console.log("  primary specialty resolved (includes rows later held on subcategory):");
@@ -736,8 +824,14 @@ async function main() {
       ["unmappedReason", "suggestedPrimary", "suggestedSub", "url", "name", "category", "description"],
       unmapped
     );
+    writeCsv(
+      path.join(OUT, "rejected-by-decision.csv"),
+      ["slug", "name", "category", "url", "reason"],
+      rejectedByDecision
+    );
     console.log(`\n  → ${path.relative(BACKEND, path.join(OUT, "mapped.csv"))}`);
     console.log(`  → ${path.relative(BACKEND, path.join(OUT, "unmapped.csv"))}`);
+    console.log(`  → ${path.relative(BACKEND, path.join(OUT, "rejected-by-decision.csv"))}`);
   } else {
     console.log("\n  (report only — pass --write to produce mapped.csv and unmapped.csv)");
   }
