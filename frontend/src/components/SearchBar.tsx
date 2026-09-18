@@ -131,6 +131,12 @@ export function SearchBar({
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<PanelResponse | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
+  /* Whether a panel request is in flight with nothing yet to show. On a
+     warm instance this is ~100ms and nobody sees it. On a cold Render
+     instance it is several seconds of a control that looks like a plain
+     text box -- which is exactly how this was reported, three times,
+     each time on a preview that had just woken up. */
+  const [panelLoading, setPanelLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The button spins from the moment it is pressed until the results
   // have actually rendered, so a slow query looks like work happening
@@ -171,6 +177,7 @@ export function SearchBar({
 
     const run = async (): Promise<void> => {
       attempts += 1;
+      setPanelLoading(true);
       try {
         const res = await fetch(
           `${API_URL}/search/panel?q=${encodeURIComponent(term)}&type=${tab}`,
@@ -180,6 +187,7 @@ export function SearchBar({
         const data: PanelResponse = await res.json();
         setPanel(data);
         setPanelError(null);
+        setPanelLoading(false);
         if (data.placeholder) setPlaceholder(data.placeholder);
       } catch (err) {
         if (controller.signal.aborted) return; // superseded by a newer keystroke
@@ -191,6 +199,7 @@ export function SearchBar({
           return run();
         }
         setPanelError(err instanceof Error ? err.message : "request failed");
+        setPanelLoading(false);
       }
     };
 
@@ -592,6 +601,18 @@ export function SearchBar({
       {/* A panel, or -- if the request failed -- the reason. Silence is
           the one thing this must never do: it is indistinguishable from
           the control not being a combobox at all. */}
+      {open && !panel && !panelError && panelLoading && (
+        <Dropdown anchorRef={formRef} maxWidth={460}>
+          <div className="flex items-center gap-3 rounded-3xl bg-white px-5 py-4 shadow-[0_40px_80px_-24px_rgba(6,22,38,0.45)] ring-1 ring-black/5">
+            <span
+              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line border-t-teal-600"
+              aria-hidden
+            />
+            <p className="text-[13.5px] text-ink-muted">Looking for matches…</p>
+          </div>
+        </Dropdown>
+      )}
+
       {open && !panel && panelError && (
         <Dropdown anchorRef={formRef} maxWidth={460}>
           <div className="rounded-3xl bg-white p-5 shadow-[0_40px_80px_-24px_rgba(6,22,38,0.45)] ring-1 ring-black/5">
