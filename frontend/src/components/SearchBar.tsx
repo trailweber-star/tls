@@ -130,6 +130,7 @@ export function SearchBar({
   const [location, setLocation] = useState(defaultLocation);
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<PanelResponse | null>(null);
+  const [panelError, setPanelError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // The button spins from the moment it is pressed until the results
   // have actually rendered, so a slow query looks like work happening
@@ -148,24 +149,52 @@ export function SearchBar({
 
   /* ----------------------------------------------------------- panel */
   // Debounced so a fast typist makes one request, not eight.
+  /* A FAILED REQUEST USED TO BE INVISIBLE.
+     `panel` starts null and the dropdown renders on `open && panel`, so
+     a request that did not come back left the control looking like a
+     plain text box -- no panel, no message, no spinner, nothing to
+     retry. The preview's own console had seven 502s on this endpoint in
+     one sitting, which is what a free Render instance does, and each one
+     silently turned the combobox into a text field. Worse, the effect
+     only re-runs on [term, tab, open]: type five characters, have the
+     last request fail, stop typing, and it stays blank until you touch
+     the field again.
+
+     So: a failure is now recorded, retried once on its own, and says so
+     if the retry fails too. `keepalive` state is deliberate -- the last
+     good panel stays on screen while a newer request is in flight, so
+     refining a query never blanks what you are reading. */
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    const timer = setTimeout(async () => {
+    let attempts = 0;
+
+    const run = async (): Promise<void> => {
+      attempts += 1;
       try {
         const res = await fetch(
           `${API_URL}/search/panel?q=${encodeURIComponent(term)}&type=${tab}`,
           { signal: controller.signal }
         );
-        if (res.ok) {
-          const data: PanelResponse = await res.json();
-          setPanel(data);
-          if (data.placeholder) setPlaceholder(data.placeholder);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: PanelResponse = await res.json();
+        setPanel(data);
+        setPanelError(null);
+        if (data.placeholder) setPlaceholder(data.placeholder);
+      } catch (err) {
+        if (controller.signal.aborted) return; // superseded by a newer keystroke
+        if (attempts < 2) {
+          // One retry, after a beat. A cold Render instance answers the
+          // second request having failed the first.
+          await new Promise((r) => setTimeout(r, 600));
+          if (controller.signal.aborted) return;
+          return run();
         }
-      } catch {
-        /* aborted or offline — the panel simply doesn't update */
+        setPanelError(err instanceof Error ? err.message : "request failed");
       }
-    }, term ? 160 : 0);
+    };
+
+    const timer = setTimeout(run, term ? 160 : 0);
     return () => {
       clearTimeout(timer);
       controller.abort();
@@ -543,9 +572,38 @@ export function SearchBar({
       )}
 
       {/* ================================================= the panel */}
+      {/* A panel, or -- if the request failed -- the reason. Silence is
+          the one thing this must never do: it is indistinguishable from
+          the control not being a combobox at all. */}
+      {open && !panel && panelError && (
+        <Dropdown anchorRef={formRef} maxWidth={460}>
+          <div className="rounded-3xl bg-white p-5 shadow-[0_40px_80px_-24px_rgba(6,22,38,0.45)] ring-1 ring-black/5">
+            <p className="text-[14px] font-semibold text-ink">Suggestions aren&rsquo;t loading.</p>
+            <p className="mt-1 text-[13px] text-ink-muted">
+              You can still type and press Search.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setPanelError(null);
+                setOpen(false);
+                setTimeout(() => setOpen(true), 0);
+              }}
+              className="mt-3 rounded-full bg-ink px-4 py-1.5 text-[13px] font-semibold text-white"
+            >
+              Try again
+            </button>
+          </div>
+        </Dropdown>
+      )}
+
       {open && panel && (
         <Dropdown anchorRef={formRef} maxWidth={columns.length > 1 ? undefined : 460}>
-          <div className="overflow-hidden rounded-3xl bg-white shadow-[0_40px_80px_-24px_rgba(6,22,38,0.45)] ring-1 ring-black/5">
+          {/* max-h + scroll because the columns STACK below md: three of
+              them came to 1009px inside an 825px viewport, and the
+              wrapper is position:fixed, so ~780px of it could not be
+              scrolled to by any means. */}
+          <div className="max-h-[70vh] overflow-y-auto overscroll-contain rounded-3xl bg-white shadow-[0_40px_80px_-24px_rgba(6,22,38,0.45)] ring-1 ring-black/5 md:max-h-none md:overflow-hidden">
           {panel.empty ? (
             <EmptyPanel
               term={term}
