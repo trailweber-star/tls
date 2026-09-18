@@ -22,7 +22,8 @@
     "push:test": "node scripts/push-test.mjs",
     "articles:test": "node scripts/articles-workflow-test.mjs",
     "clinwell:test": "node scripts/clinwell-test.mjs",
-    "organisations:test": "node scripts/organisations-test.mjs"
+    "organisations:test": "node scripts/organisations-test.mjs",
+    "pins:audit": "node scripts/audit-pins.mjs"
   },
   "keywords": [],
   "author": "",

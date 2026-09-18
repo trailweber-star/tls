@@ -826,6 +826,7 @@ for (const [index, row] of rows.entries()) {
     confidence: facts?.confidence ?? "",
     town: city?.name ?? "(none)",
     pinned: coords ? "yes" : "no",
+    pin: coords ? `${coords.lat},${coords.lng}` : "",
     newCity: city?.__new ? "new" : "",
   });
 
@@ -1010,8 +1011,35 @@ if (preview.length <= 60) {
   show("specialty", tally((p) => p.specialty));
   show("how the specialty was reached", tally((p) => p.confidence), 8);
   show("town", tally((p) => p.town), 10);
-  console.log(`\n  pinned to their own address  ${preview.filter((p) => p.pinned === "yes").length}`);
-  console.log(`  placed on the town centre    ${preview.filter((p) => p.pinned !== "yes").length}`);
+  /* ------------------------------------------------------------------ *
+   * What a coordinate pair actually tells you
+   *
+   * This used to print "pinned to their own address" for every row that
+   * arrived with coordinates, which was wrong and flattering. The old
+   * site geocoded most of its members to their TOWN, not their address:
+   * 2,182 of 2,401 listings share a pin with at least one other, 274 of
+   * them on one point in Birmingham and 116 on Charing Cross. A pin that
+   * 274 clinicians sit on is a town centre with extra decimal places.
+   *
+   * Two listings can legitimately share a pin — partners at one clinic,
+   * a hospital with several consultants — so a shared pin is a flag, not
+   * a verdict. But it is the flag geotag.mjs acts on (a location sitting
+   * exactly on its city's centroid is treated as un-geocoded and
+   * refined from its postcode), and the report should say the same thing
+   * the next step is about to do about it. */
+  const pinShare = new Map();
+  for (const p of preview) if (p.pin) pinShare.set(p.pin, (pinShare.get(p.pin) ?? 0) + 1);
+  const ownPin = preview.filter((p) => p.pin && pinShare.get(p.pin) === 1).length;
+  const sharedPin = preview.filter((p) => p.pin && pinShare.get(p.pin) > 1).length;
+  const crowded = [...pinShare.values()].filter((n) => n >= 20).length;
+
+  console.log(`\n  a pin of their own           ${ownPin}`);
+  console.log(`  a pin shared with others     ${sharedPin}${crowded ? `  (${crowded} points carry 20+ listings each — the old site's town-centre fallback)` : ""}`);
+  console.log(`  no pin at all                ${preview.filter((p) => !p.pin).length}`);
+  if (sharedPin) {
+    console.log(`\n  geotag.mjs refines a shared pin from the listing's postcode, so run it`);
+    console.log(`  straight after this: those are town-level pins, not addresses.`);
+  }
   console.log(`  towns that do not exist yet  ${new Set(preview.filter((p) => p.newCity).map((p) => p.town)).size}`);
   console.log("\n  a sample, to read properly:");
   const step = Math.ceil(preview.length / 12);
