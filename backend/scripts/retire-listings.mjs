@@ -122,6 +122,17 @@ console.log(`\n${decisions.length} rejected listing(s) in data/listing-decisions
 
 /* --------------------------------------------------------- the lookup */
 
+/* SAY WHICH DATABASE THIS IS.
+
+   backend/.env points at localhost, and the live data is on Render, so
+   the normal way to run anything against production is to export the
+   external URL in one shell. Run this in a shell where that did not
+   happen and it reads an 18-row local database, finds none of the
+   rejected listings in it, and prints "Nothing rejected is in the
+   database" -- a clean bill of health for the wrong machine.
+
+   So the host and the row count go on screen before any answer does.
+   "localhost - 18 listing(s)" is its own error message. */
 const rows = await db
   .select({
     id: t.specialists.id,
@@ -132,6 +143,10 @@ const rows = await db
     claimed: t.specialists.claimed,
   })
   .from(t.specialists);
+
+let host = "(unparseable DATABASE_URL)";
+try { host = new URL(url).hostname; } catch { /* keep the placeholder */ }
+console.log(`${c.dim}database  ${host} — ${rows.length} listing(s)${c.off}\n`);
 
 const bySourceUrl = new Map(rows.filter((r) => r.sourceUrl).map((r) => [r.sourceUrl, r]));
 
