@@ -38,6 +38,10 @@ const TITLES = {
   "aesthetics-specialists": ["Aesthetic Medicine Doctor", "Consultant Plastic Surgeon", "Aesthetic Practitioner"],
   ent: ["Consultant ENT Surgeon", "ENT Surgeon", "Consultant Otolaryngologist"],
   gynaecology: ["Consultant Gynaecologist", "Gynaecologist", "Consultant Obstetrician & Gynaecologist"],
+  psychology: ["Consultant Clinical Psychologist", "Psychologist", "Psychotherapist"],
+  "general-practice": ["Private GP", "General Practitioner", "GP — Private Practice"],
+  neurosurgery: ["Consultant Neurosurgeon", "Neurosurgeon", "Consultant Spinal Neurosurgeon"],
+  paediatrics: ["Consultant Paediatrician", "Paediatrician", "Consultant Neonatologist"],
 };
 
 // Typical private consultation price band per specialty, in minor units.
@@ -48,6 +52,10 @@ const PRICE_BANDS = {
   "aesthetics-specialists": [15000, 32000],
   ent: [14000, 24000],
   gynaecology: [16000, 28000],
+  psychology: [8000, 18000],
+  "general-practice": [6000, 14000],
+  neurosurgery: [20000, 35000],
+  paediatrics: [15000, 28000],
 };
 
 const CLINIC_SUFFIX = {
@@ -57,6 +65,10 @@ const CLINIC_SUFFIX = {
   "aesthetics-specialists": "Aesthetic Clinic",
   ent: "ENT Clinic",
   gynaecology: "Women's Health Clinic",
+  psychology: "Psychology Practice",
+  "general-practice": "Private GP Surgery",
+  neurosurgery: "Neurosurgery Centre",
+  paediatrics: "Children's Clinic",
 };
 
 // A plausible street per city so addresses read like real listings.
@@ -139,6 +151,10 @@ const REGULATOR_FOR = {
   "aesthetics-specialists": "reg-gmc",
   ent: "reg-gmc",
   gynaecology: "reg-gmc",
+  psychology: "reg-hcpc",
+  "general-practice": "reg-gmc",
+  neurosurgery: "reg-gmc",
+  paediatrics: "reg-gmc",
 };
 
 /**

@@ -1566,6 +1566,60 @@
             "slug": "thigh-lift"
           }
         ]
+      },
+      {
+        "name": "Dermatology",
+        "slug": "aesthetics-specialists-dermatology",
+        "children": [
+          {
+            "name": "Acne",
+            "slug": "acne"
+          },
+          {
+            "name": "Rosacea",
+            "slug": "rosacea"
+          },
+          {
+            "name": "Eczema & Dermatitis",
+            "slug": "eczema-dermatitis"
+          },
+          {
+            "name": "Psoriasis",
+            "slug": "psoriasis"
+          },
+          {
+            "name": "Mole Check",
+            "slug": "mole-check"
+          },
+          {
+            "name": "Skin Cancer Screening",
+            "slug": "skin-cancer-screening"
+          },
+          {
+            "name": "Hair Loss & Scalp Disorders",
+            "slug": "hair-loss-scalp-disorders"
+          },
+          {
+            "name": "Nail Disorders",
+            "slug": "nail-disorders"
+          },
+          {
+            "name": "Skin Surgery",
+            "slug": "skin-surgery"
+          },
+          {
+            "name": "Warts & Verrucas",
+            "slug": "warts-verrucas"
+          },
+          {
+            "name": "Vitiligo",
+            "slug": "vitiligo"
+          },
+          {
+            "name": "Skin Allergy Testing",
+            "slug": "skin-allergy-testing"
+          }
+        ]
       }
     ]
   },
@@ -2014,6 +2068,830 @@
           {
             "name": "Gynaecological Cancer Assessment",
             "slug": "gynaecological-cancer-assessment"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Psychology",
+    "slug": "psychology",
+    "children": [
+      {
+        "name": "Anxiety & Stress",
+        "slug": "psychology-anxiety-stress",
+        "children": [
+          {
+            "name": "Generalised Anxiety Disorder",
+            "slug": "generalised-anxiety-disorder"
+          },
+          {
+            "name": "Panic Attacks",
+            "slug": "panic-attacks"
+          },
+          {
+            "name": "Social Anxiety",
+            "slug": "social-anxiety"
+          },
+          {
+            "name": "Phobias",
+            "slug": "phobias"
+          },
+          {
+            "name": "Health Anxiety",
+            "slug": "health-anxiety"
+          },
+          {
+            "name": "Work-related Stress",
+            "slug": "work-related-stress"
+          },
+          {
+            "name": "Burnout",
+            "slug": "burnout"
+          }
+        ]
+      },
+      {
+        "name": "Depression & Mood",
+        "slug": "psychology-depression-mood",
+        "children": [
+          {
+            "name": "Depression",
+            "slug": "depression"
+          },
+          {
+            "name": "Low Mood",
+            "slug": "low-mood"
+          },
+          {
+            "name": "Bipolar Disorder",
+            "slug": "bipolar-disorder"
+          },
+          {
+            "name": "Seasonal Affective Disorder",
+            "slug": "seasonal-affective-disorder"
+          },
+          {
+            "name": "Postnatal Depression",
+            "slug": "postnatal-depression"
+          }
+        ]
+      },
+      {
+        "name": "Trauma & PTSD",
+        "slug": "psychology-trauma-ptsd",
+        "children": [
+          {
+            "name": "Post-traumatic Stress Disorder",
+            "slug": "post-traumatic-stress-disorder"
+          },
+          {
+            "name": "Complex PTSD",
+            "slug": "complex-ptsd"
+          },
+          {
+            "name": "EMDR",
+            "slug": "emdr"
+          },
+          {
+            "name": "Childhood Trauma",
+            "slug": "childhood-trauma"
+          },
+          {
+            "name": "Bereavement & Grief",
+            "slug": "bereavement-grief"
+          }
+        ]
+      },
+      {
+        "name": "Relationships & Family",
+        "slug": "psychology-relationships-family",
+        "children": [
+          {
+            "name": "Couples Therapy",
+            "slug": "couples-therapy"
+          },
+          {
+            "name": "Family Therapy",
+            "slug": "family-therapy"
+          },
+          {
+            "name": "Relationship Counselling",
+            "slug": "relationship-counselling"
+          },
+          {
+            "name": "Separation & Divorce",
+            "slug": "separation-divorce"
+          },
+          {
+            "name": "Parenting Support",
+            "slug": "parenting-support"
+          }
+        ]
+      },
+      {
+        "name": "Child & Adolescent",
+        "slug": "psychology-child-adolescent",
+        "children": [
+          {
+            "name": "Child Therapy",
+            "slug": "child-therapy"
+          },
+          {
+            "name": "Adolescent Therapy",
+            "slug": "adolescent-therapy"
+          },
+          {
+            "name": "ADHD Assessment",
+            "slug": "adhd-assessment"
+          },
+          {
+            "name": "Autism Assessment",
+            "slug": "autism-assessment"
+          },
+          {
+            "name": "Behavioural Difficulties",
+            "slug": "behavioural-difficulties"
+          },
+          {
+            "name": "School Refusal",
+            "slug": "school-refusal"
+          }
+        ]
+      },
+      {
+        "name": "Talking Therapies",
+        "slug": "psychology-talking-therapies",
+        "children": [
+          {
+            "name": "Cognitive Behavioural Therapy",
+            "slug": "cognitive-behavioural-therapy"
+          },
+          {
+            "name": "Dialectical Behaviour Therapy",
+            "slug": "dialectical-behaviour-therapy"
+          },
+          {
+            "name": "Acceptance & Commitment Therapy",
+            "slug": "acceptance-commitment-therapy"
+          },
+          {
+            "name": "Psychodynamic Therapy",
+            "slug": "psychodynamic-therapy"
+          },
+          {
+            "name": "Person-centred Counselling",
+            "slug": "person-centred-counselling"
+          },
+          {
+            "name": "Integrative Therapy",
+            "slug": "integrative-therapy"
+          },
+          {
+            "name": "Hypnotherapy",
+            "slug": "hypnotherapy"
+          }
+        ]
+      },
+      {
+        "name": "Neuropsychology",
+        "slug": "psychology-neuropsychology",
+        "children": [
+          {
+            "name": "Cognitive Assessment",
+            "slug": "cognitive-assessment"
+          },
+          {
+            "name": "Memory Assessment",
+            "slug": "memory-assessment"
+          },
+          {
+            "name": "Brain Injury Rehabilitation",
+            "slug": "brain-injury-rehabilitation"
+          },
+          {
+            "name": "Dementia Assessment",
+            "slug": "dementia-assessment"
+          }
+        ]
+      },
+      {
+        "name": "Workplace & Performance",
+        "slug": "psychology-workplace-performance",
+        "children": [
+          {
+            "name": "Occupational Psychology",
+            "slug": "occupational-psychology"
+          },
+          {
+            "name": "Executive Coaching",
+            "slug": "executive-coaching"
+          },
+          {
+            "name": "Sports Psychology",
+            "slug": "sports-psychology"
+          },
+          {
+            "name": "Stress Management",
+            "slug": "stress-management"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "General Practice",
+    "slug": "general-practice",
+    "children": [
+      {
+        "name": "Private GP Services",
+        "slug": "general-practice-private-gp-services",
+        "children": [
+          {
+            "name": "Same-day GP Appointment",
+            "slug": "same-day-gp-appointment"
+          },
+          {
+            "name": "Video Consultation",
+            "slug": "video-consultation"
+          },
+          {
+            "name": "GP Home Visit",
+            "slug": "gp-home-visit"
+          },
+          {
+            "name": "Repeat Prescriptions",
+            "slug": "repeat-prescriptions"
+          },
+          {
+            "name": "Medical Letters & Sick Notes",
+            "slug": "medical-letters-sick-notes"
+          }
+        ]
+      },
+      {
+        "name": "Health Screening",
+        "slug": "general-practice-health-screening",
+        "children": [
+          {
+            "name": "Full Health Check",
+            "slug": "full-health-check"
+          },
+          {
+            "name": "Private Blood Tests",
+            "slug": "private-blood-tests"
+          },
+          {
+            "name": "Well Man Check",
+            "slug": "well-man-check"
+          },
+          {
+            "name": "Well Woman Check",
+            "slug": "well-woman-check"
+          },
+          {
+            "name": "Cardiac Screening",
+            "slug": "cardiac-screening"
+          }
+        ]
+      },
+      {
+        "name": "Travel Health",
+        "slug": "general-practice-travel-health",
+        "children": [
+          {
+            "name": "Travel Vaccinations",
+            "slug": "travel-vaccinations"
+          },
+          {
+            "name": "Yellow Fever Vaccination",
+            "slug": "yellow-fever-vaccination"
+          },
+          {
+            "name": "Malaria Prevention",
+            "slug": "malaria-prevention"
+          },
+          {
+            "name": "Travel Health Advice",
+            "slug": "travel-health-advice"
+          }
+        ]
+      },
+      {
+        "name": "Vaccinations",
+        "slug": "general-practice-vaccinations",
+        "children": [
+          {
+            "name": "Flu Vaccination",
+            "slug": "flu-vaccination"
+          },
+          {
+            "name": "Childhood Immunisations",
+            "slug": "childhood-immunisations"
+          },
+          {
+            "name": "HPV Vaccination",
+            "slug": "hpv-vaccination"
+          },
+          {
+            "name": "Shingles Vaccination",
+            "slug": "shingles-vaccination"
+          }
+        ]
+      },
+      {
+        "name": "Sexual Health",
+        "slug": "general-practice-sexual-health",
+        "children": [
+          {
+            "name": "STI Testing",
+            "slug": "sti-testing"
+          },
+          {
+            "name": "Contraception",
+            "slug": "contraception"
+          },
+          {
+            "name": "Coil & Implant Fitting",
+            "slug": "coil-implant-fitting"
+          },
+          {
+            "name": "Sexual Health Screening",
+            "slug": "sexual-health-screening"
+          }
+        ]
+      },
+      {
+        "name": "Men's Health",
+        "slug": "general-practice-men-s-health",
+        "children": [
+          {
+            "name": "Prostate Screening",
+            "slug": "prostate-screening"
+          },
+          {
+            "name": "Testosterone Testing",
+            "slug": "testosterone-testing"
+          },
+          {
+            "name": "Erectile Dysfunction",
+            "slug": "erectile-dysfunction"
+          },
+          {
+            "name": "Male Fertility Testing",
+            "slug": "male-fertility-testing"
+          }
+        ]
+      },
+      {
+        "name": "Women's Health",
+        "slug": "general-practice-women-s-health",
+        "children": [
+          {
+            "name": "Cervical Screening",
+            "slug": "cervical-screening"
+          },
+          {
+            "name": "Menopause Advice",
+            "slug": "menopause-advice"
+          },
+          {
+            "name": "Contraception Advice",
+            "slug": "contraception-advice"
+          },
+          {
+            "name": "Breast Examination",
+            "slug": "breast-examination"
+          }
+        ]
+      },
+      {
+        "name": "Minor Surgery",
+        "slug": "general-practice-minor-surgery",
+        "children": [
+          {
+            "name": "Mole & Cyst Removal",
+            "slug": "mole-cyst-removal"
+          },
+          {
+            "name": "Skin Tag Removal",
+            "slug": "skin-tag-removal"
+          },
+          {
+            "name": "Joint Injections",
+            "slug": "joint-injections"
+          },
+          {
+            "name": "Ingrown Toenail Surgery",
+            "slug": "ingrown-toenail-surgery"
+          }
+        ]
+      },
+      {
+        "name": "Occupational Health",
+        "slug": "general-practice-occupational-health",
+        "children": [
+          {
+            "name": "Pre-employment Medical",
+            "slug": "pre-employment-medical"
+          },
+          {
+            "name": "Fitness to Work Assessment",
+            "slug": "fitness-to-work-assessment"
+          },
+          {
+            "name": "Driver Medical",
+            "slug": "driver-medical"
+          },
+          {
+            "name": "Health Surveillance",
+            "slug": "health-surveillance"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Neurosurgery",
+    "slug": "neurosurgery",
+    "children": [
+      {
+        "name": "Spinal Neurosurgery",
+        "slug": "neurosurgery-spinal-neurosurgery",
+        "children": [
+          {
+            "name": "Spinal Cord Tumours",
+            "slug": "spinal-cord-tumours"
+          },
+          {
+            "name": "Spinal Cord Stimulation",
+            "slug": "spinal-cord-stimulation"
+          },
+          {
+            "name": "Cauda Equina Syndrome",
+            "slug": "cauda-equina-syndrome"
+          },
+          {
+            "name": "Syringomyelia",
+            "slug": "syringomyelia"
+          },
+          {
+            "name": "Cervical Myelopathy",
+            "slug": "cervical-myelopathy"
+          },
+          {
+            "name": "Spinal Cord Injury",
+            "slug": "spinal-cord-injury"
+          }
+        ]
+      },
+      {
+        "name": "Brain Tumours",
+        "slug": "neurosurgery-brain-tumours",
+        "children": [
+          {
+            "name": "Glioma Surgery",
+            "slug": "glioma-surgery"
+          },
+          {
+            "name": "Meningioma Surgery",
+            "slug": "meningioma-surgery"
+          },
+          {
+            "name": "Pituitary Surgery",
+            "slug": "pituitary-surgery"
+          },
+          {
+            "name": "Awake Craniotomy",
+            "slug": "awake-craniotomy"
+          }
+        ]
+      },
+      {
+        "name": "Functional Neurosurgery",
+        "slug": "neurosurgery-functional-neurosurgery",
+        "children": [
+          {
+            "name": "Deep Brain Stimulation",
+            "slug": "deep-brain-stimulation"
+          },
+          {
+            "name": "Epilepsy Surgery",
+            "slug": "epilepsy-surgery"
+          },
+          {
+            "name": "Trigeminal Neuralgia",
+            "slug": "trigeminal-neuralgia"
+          },
+          {
+            "name": "Movement Disorder Surgery",
+            "slug": "movement-disorder-surgery"
+          }
+        ]
+      },
+      {
+        "name": "Peripheral Nerve Surgery",
+        "slug": "neurosurgery-peripheral-nerve-surgery",
+        "children": [
+          {
+            "name": "Carpal Tunnel Release",
+            "slug": "carpal-tunnel-release"
+          },
+          {
+            "name": "Ulnar Nerve Decompression",
+            "slug": "ulnar-nerve-decompression"
+          },
+          {
+            "name": "Nerve Repair",
+            "slug": "nerve-repair"
+          },
+          {
+            "name": "Peripheral Nerve Tumours",
+            "slug": "peripheral-nerve-tumours"
+          }
+        ]
+      },
+      {
+        "name": "Vascular Neurosurgery",
+        "slug": "neurosurgery-vascular-neurosurgery",
+        "children": [
+          {
+            "name": "Aneurysm Surgery",
+            "slug": "aneurysm-surgery"
+          },
+          {
+            "name": "Arteriovenous Malformation",
+            "slug": "arteriovenous-malformation"
+          },
+          {
+            "name": "Cavernoma Surgery",
+            "slug": "cavernoma-surgery"
+          }
+        ]
+      },
+      {
+        "name": "Hydrocephalus & CSF",
+        "slug": "neurosurgery-hydrocephalus-csf",
+        "children": [
+          {
+            "name": "Shunt Surgery",
+            "slug": "shunt-surgery"
+          },
+          {
+            "name": "Endoscopic Third Ventriculostomy",
+            "slug": "endoscopic-third-ventriculostomy"
+          },
+          {
+            "name": "Chiari Malformation",
+            "slug": "chiari-malformation"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Neurosurgery",
+        "slug": "neurosurgery-paediatric-neurosurgery",
+        "children": [
+          {
+            "name": "Craniosynostosis",
+            "slug": "craniosynostosis"
+          },
+          {
+            "name": "Paediatric Hydrocephalus",
+            "slug": "paediatric-hydrocephalus"
+          },
+          {
+            "name": "Spina Bifida",
+            "slug": "spina-bifida"
+          },
+          {
+            "name": "Paediatric Brain Tumours",
+            "slug": "paediatric-brain-tumours"
+          }
+        ]
+      },
+      {
+        "name": "Head Injury",
+        "slug": "neurosurgery-head-injury",
+        "children": [
+          {
+            "name": "Traumatic Brain Injury",
+            "slug": "traumatic-brain-injury"
+          },
+          {
+            "name": "Skull Fracture",
+            "slug": "skull-fracture"
+          },
+          {
+            "name": "Chronic Subdural Haematoma",
+            "slug": "chronic-subdural-haematoma"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Paediatrics",
+    "slug": "paediatrics",
+    "children": [
+      {
+        "name": "General Paediatrics",
+        "slug": "paediatrics-general-paediatrics",
+        "children": [
+          {
+            "name": "Childhood Infections",
+            "slug": "childhood-infections"
+          },
+          {
+            "name": "Growth & Development",
+            "slug": "growth-development"
+          },
+          {
+            "name": "Feeding Difficulties",
+            "slug": "feeding-difficulties"
+          },
+          {
+            "name": "Persistent Childhood Fever",
+            "slug": "persistent-childhood-fever"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Cardiology",
+        "slug": "paediatrics-paediatric-cardiology",
+        "children": [
+          {
+            "name": "Congenital Heart Disease",
+            "slug": "congenital-heart-disease"
+          },
+          {
+            "name": "Heart Murmur",
+            "slug": "heart-murmur"
+          },
+          {
+            "name": "Paediatric Arrhythmia",
+            "slug": "paediatric-arrhythmia"
+          },
+          {
+            "name": "Kawasaki Disease",
+            "slug": "kawasaki-disease"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Respiratory",
+        "slug": "paediatrics-paediatric-respiratory",
+        "children": [
+          {
+            "name": "Childhood Asthma",
+            "slug": "childhood-asthma"
+          },
+          {
+            "name": "Bronchiolitis",
+            "slug": "bronchiolitis"
+          },
+          {
+            "name": "Chronic Cough in Children",
+            "slug": "chronic-cough-in-children"
+          },
+          {
+            "name": "Sleep-disordered Breathing",
+            "slug": "sleep-disordered-breathing"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Gastroenterology",
+        "slug": "paediatrics-paediatric-gastroenterology",
+        "children": [
+          {
+            "name": "Infant Reflux",
+            "slug": "infant-reflux"
+          },
+          {
+            "name": "Childhood Constipation",
+            "slug": "childhood-constipation"
+          },
+          {
+            "name": "Coeliac Disease",
+            "slug": "coeliac-disease"
+          },
+          {
+            "name": "Paediatric Inflammatory Bowel Disease",
+            "slug": "paediatric-inflammatory-bowel-disease"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Allergy",
+        "slug": "paediatrics-paediatric-allergy",
+        "children": [
+          {
+            "name": "Food Allergy",
+            "slug": "food-allergy"
+          },
+          {
+            "name": "Allergic Eczema",
+            "slug": "allergic-eczema"
+          },
+          {
+            "name": "Hay Fever in Children",
+            "slug": "hay-fever-in-children"
+          },
+          {
+            "name": "Anaphylaxis",
+            "slug": "anaphylaxis"
+          },
+          {
+            "name": "Allergy Testing",
+            "slug": "allergy-testing"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Neurology",
+        "slug": "paediatrics-paediatric-neurology",
+        "children": [
+          {
+            "name": "Childhood Epilepsy",
+            "slug": "childhood-epilepsy"
+          },
+          {
+            "name": "Headache & Migraine in Children",
+            "slug": "headache-migraine-in-children"
+          },
+          {
+            "name": "Developmental Delay",
+            "slug": "developmental-delay"
+          },
+          {
+            "name": "Cerebral Palsy",
+            "slug": "cerebral-palsy"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Endocrinology",
+        "slug": "paediatrics-paediatric-endocrinology",
+        "children": [
+          {
+            "name": "Growth Disorders",
+            "slug": "growth-disorders"
+          },
+          {
+            "name": "Type 1 Diabetes",
+            "slug": "type-1-diabetes"
+          },
+          {
+            "name": "Paediatric Thyroid Disorders",
+            "slug": "paediatric-thyroid-disorders"
+          },
+          {
+            "name": "Early Puberty",
+            "slug": "early-puberty"
+          }
+        ]
+      },
+      {
+        "name": "Neonatology",
+        "slug": "paediatrics-neonatology",
+        "children": [
+          {
+            "name": "Newborn Check",
+            "slug": "newborn-check"
+          },
+          {
+            "name": "Prematurity Follow-up",
+            "slug": "prematurity-follow-up"
+          },
+          {
+            "name": "Neonatal Jaundice",
+            "slug": "neonatal-jaundice"
+          },
+          {
+            "name": "Newborn Feeding Support",
+            "slug": "newborn-feeding-support"
+          }
+        ]
+      },
+      {
+        "name": "Paediatric Dermatology",
+        "slug": "paediatrics-paediatric-dermatology",
+        "children": [
+          {
+            "name": "Childhood Eczema",
+            "slug": "childhood-eczema"
+          },
+          {
+            "name": "Birthmarks",
+            "slug": "birthmarks"
+          },
+          {
+            "name": "Childhood Rashes",
+            "slug": "childhood-rashes"
+          },
+          {
+            "name": "Paediatric Acne",
+            "slug": "paediatric-acne"
           }
         ]
       }

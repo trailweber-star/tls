@@ -1,0 +1,557 @@
+#!/usr/bin/env node
+/* ------------------------------------------------------------------ *
+ * Mapping harvested listings onto this site's specialty tree
+ *
+ *   node scripts/map-taxonomy.mjs                 # report only
+ *   node scripts/map-taxonomy.mjs --write         # write the CSVs
+ *   node scripts/map-taxonomy.mjs --explain knee  # show how one matched
+ *
+ * Reads  data/harvest/listings.csv  and  data/harvest/review.csv
+ * Writes data/harvest/mapped.csv    and  data/harvest/unmapped.csv
+ *
+ * WHY THIS IS NOT IN THE HARVESTER. The harvester's job is to get what
+ * the old site says, faithfully, over the network. This one's job is to
+ * decide what that means in terms of a taxonomy that lives in this
+ * database. Different inputs, different failure modes, and only this
+ * half needs DATABASE_URL. Keeping them apart means a taxonomy rethink
+ * never costs another 2,750 HTTP requests.
+ *
+ * THE TOP LEVEL IS PREDEFINED and this script never adds to it. It
+ * resolves a live category to one of the roots in the database or it
+ * holds the row; it does not force a listing into the nearest plausible
+ * branch.
+ *
+ * That list started at six, and the first pass showed what six cost:
+ * Psychologist (190 listings on the live site), General Practitioners
+ * (85), Dermatologist (46) and Neurosurgery (3) had nowhere to go — 324
+ * listings held back. So the taxonomy was extended rather than the
+ * listings dropped: Psychology, General Practice, Neurosurgery and
+ * Paediatrics are now roots of their own, and Dermatology sits under
+ * Aesthetics Specialists rather than becoming an eleventh root, because
+ * a private dermatologist and an aesthetic doctor are treating the same
+ * patient about the same skin and that branch already had Skin
+ * Treatments next door. Ten roots, 679 nodes. sync-taxonomy.mjs is what
+ * gets them into a database that has already been seeded.
+ *
+ * SUB- AND SUB-SUB-CATEGORIES are matched against what is already
+ * there, never invented. Matching runs at two levels, because a listing
+ * almost never names its own subcategory — it names what the person
+ * does. "Botox, dermal fillers and lip fillers" says nothing about
+ * "Facial Aesthetics", but Dermal Fillers is a leaf under it. So the
+ * second level is tried first and the 426 leaves second, taking the
+ * parent of whatever wins.
+ *
+ * ON NOT GUESSING. A confident wrong subcategory is the worst outcome
+ * here, worse than no subcategory: a hip surgeon filed under Knee is
+ * invisible to the patients looking for a hip. So a match has to be
+ * earned — the specialty's own distinctive words have to appear — a
+ * near-miss is a question rather than a decision, and a genuine tie is
+ * neither. "Hip and knee arthroplasty" names two subspecialties because
+ * the surgeon does two, and the schema already allows for it: one
+ * primary_specialty_id beside a many-to-many specialty_links table. Ties
+ * are returned in full and marked "multiple".
+ * ------------------------------------------------------------------ */
+
+import fs from "node:fs";
+import path from "node:path";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
+
+const BACKEND = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+dotenv.config({ path: path.join(BACKEND, ".env") });
+
+const OUT = path.join(BACKEND, "data", "harvest");
+const argv = process.argv.slice(2);
+const has = (f) => argv.includes(f);
+const val = (f) => {
+  const i = argv.indexOf(f);
+  return i >= 0 ? argv[i + 1] : null;
+};
+
+/* ------------------------------------------------------------------ *
+ * The live site's categories, mapped to the roots that exist here
+ *
+ * A category absent from this table is not guessed at — it is reported
+ * by name, so the next unknown one is a decision rather than a default.
+ * ------------------------------------------------------------------ */
+
+const PRIMARY_ALIASES = new Map(
+  Object.entries({
+    // live category (lowercased)      → predefined top-level slug
+    "orthopaedics": "orthopaedics",
+    "orthopaedic surgeon": "orthopaedics",
+    "orthopaedic surgery": "orthopaedics",
+    "anaesthetist orthopaedic surgeon": "orthopaedics",
+    "paediatric surgeon": "orthopaedics",
+    "dentistry": "dentistry",
+    "dentist": "dentistry",
+    "ent surgeon": "ent",
+    "ent specialist": "ent",
+    "ent": "ent",
+    "gynaecology": "gynaecology",
+    "gynaecologist": "gynaecology",
+    "physiotherapist": "physiotherapy",
+    "physiotherapy": "physiotherapy",
+    "aesthetic doctors": "aesthetics-specialists",
+    "aesthetic doctor": "aesthetics-specialists",
+    "aesthetics": "aesthetics-specialists",
+
+    /* Added after the first pass, when holding 324 listings back turned
+       out to cost more than extending the taxonomy. Four new top-level
+       specialties, and Dermatology as a subcategory of Aesthetics
+       Specialists rather than a tenth root — a private dermatologist and
+       an aesthetic doctor are treating the same patient about the same
+       skin, and the branch already had Skin Treatments next door. */
+    "psychologist": "psychology",
+    "psychology": "psychology",
+    "psychotherapist": "psychology",
+    "psychotherapy": "psychology",
+    "counsellor": "psychology",
+    "counselling": "psychology",
+    "clinical psychologist": "psychology",
+    "general practioners": "general-practice", // the live site's own spelling
+    "general practitioners": "general-practice",
+    "general practitioner": "general-practice",
+    "private gp": "general-practice",
+    "gp": "general-practice",
+    "neurosurgery": "neurosurgery",
+    "neurosurgeon": "neurosurgery",
+    "paediatrics": "paediatrics",
+    "paediatrician": "paediatrics",
+    "paediatric": "paediatrics",
+    "dermatologist": "aesthetics-specialists",
+    "dermatology": "aesthetics-specialists",
+  })
+);
+
+/* Categories that would map to a root that does not exist. Empty now
+   that the taxonomy has been extended — kept because the next unknown
+   category from the live site lands here rather than in the nearest
+   plausible branch, and the report names it. */
+const NO_HOME = new Set([]);
+
+/* A live category whose listings should land in a particular
+   subcategory regardless of what the description says, because the
+   category IS the subcategory. Without this a dermatologist whose blurb
+   says "acne" would match the Dermatology branch correctly, but one
+   whose blurb says nothing would be held for review. */
+const FORCED_SUB = new Map(
+  Object.entries({
+    "dermatologist": "aesthetics-specialists-dermatology",
+    "dermatology": "aesthetics-specialists-dermatology",
+  })
+);
+
+/* ------------------------------------------------------------------ *
+ * Matching
+ *
+ * A specialty is matched on its own distinctive words. "Shoulder &
+ * Elbow" contributes "shoulder" and "elbow"; both are specific enough
+ * that finding one in a listing means something. Words that appear all
+ * over a medical directory carry no signal and are dropped, or every
+ * orthopaedic listing would match "Paediatric Orthopaedics" on the word
+ * "orthopaedics" alone.
+ * ------------------------------------------------------------------ */
+
+const STOPWORDS = new Set([
+  "and", "the", "of", "or", "general", "other", "surgery", "surgeon", "surgical",
+  "medicine", "medical", "clinic", "specialist", "consultant", "treatment",
+  "treatments", "conditions", "health", "care", "service", "services",
+  // the root names themselves: present on every child, so useless
+  // for telling one child from another
+  "orthopaedics", "dentistry", "ent", "gynaecology", "physiotherapy",
+  "aesthetics", "aesthetic", "dental", "physio",
+  "psychology", "paediatrics", "paediatric", "neurosurgery", "practice",
+]);
+
+const tokens = (s) =>
+  String(s ?? "")
+    .toLowerCase()
+    .replace(/[&/,()'’-]/g, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+
+/** Singular/plural and the -ic/-ics wobble, so "fibroid" matches "Fibroids". */
+const stem = (w) =>
+  w
+    .replace(/ies$/, "y")
+    .replace(/ics$/, "ic")
+    .replace(/s$/, "");
+
+const stemSet = (s) => new Set(tokens(s).map(stem));
+
+/**
+ * Score one candidate specialty against a listing.
+ *
+ * Verbatim name in the text is as good as it gets. Failing that, the
+ * proportion of the specialty's distinctive words that appear — all of
+ * them is strong, some of them is weak. A specialty whose words are all
+ * stopwords ("General Dentistry" → nothing) can only ever match
+ * verbatim, which is correct: there is nothing distinctive to match on.
+ */
+/* Escape a specialty name for use in a regex, and allow the separators
+   to drift: "Shoulder & Elbow" should still match "shoulder and elbow"
+   and "Hand & Wrist" should match "hand/wrist". */
+const nameToRegex = (name) => {
+  const body = name
+    .toLowerCase()
+    .split(/\s*[&/]\s*|\s+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("(?:\\s*(?:&|and|/)\\s*|\\s+)");
+  return new RegExp(`(?<![a-z])${body}(?![a-z])`, "i");
+};
+
+function score(candidate, haystack, haystackStems) {
+  /* Word boundaries, not substring. "ENT" is three letters that sit
+     inside treatment, dental, patient, centre, independent and
+     assessment, so a plain includes() check filed a dermatologist and a
+     private GP practice under Ear, Nose and Throat. Short specialty
+     names make this failure mode certain rather than unlucky. */
+  if (nameToRegex(candidate.name).test(haystack)) return { score: 100, how: "exact name in text" };
+
+  const want = stemSet(candidate.name);
+  if (!want.size) return { score: 0, how: "no distinctive words" };
+
+  const hit = [...want].filter((w) => haystackStems.has(w));
+  if (!hit.length) return { score: 0, how: "no overlap" };
+
+  const ratio = hit.length / want.size;
+  return {
+    score: Math.round(ratio * 60) + hit.length * 4,
+    how: `matched ${hit.join(", ")} (${hit.length}/${want.size} of its words)`,
+  };
+}
+
+/** Best candidate, and whether it is clearly ahead of the runner-up. */
+function best(candidates, haystack, haystackStems) {
+  const ranked = candidates
+    .map((c) => ({ c, ...score(c, haystack, haystackStems) }))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!ranked.length) return null;
+  const [first, second] = ranked;
+
+  /* A tie is not one answer, and it is not a failure either.
+     "Hip and knee arthroplasty" names two subspecialties because the
+     surgeon does two, and the schema already says so: specialists have
+     a many-to-many specialty_links table alongside one
+     primary_specialty_id. So every candidate that scores as highly as
+     the winner is returned, the winner leads, and the row is marked
+     "multiple" so nobody reads it as a confident single answer.
+
+     What must never happen is the first draft's behaviour: Hip and Knee
+     both scoring 100 and Knee winning because it sorted first. A
+     hip-and-knee surgeon filed under Knee alone is invisible to the
+     patients looking for a hip. */
+  const tied = ranked.filter((r) => r.score >= first.score - 4);
+  const clear = tied.length === 1;
+
+  return {
+    pick: first.c,
+    all: tied.map((r) => r.c),
+    score: first.score,
+    how:
+      tied.length > 1
+        ? `${tied.map((r) => r.c.name).join(" + ")} all match — tagged with each`
+        : first.how,
+    runnerUp: clear ? "" : (second?.c.name ?? ""),
+    confidence: !clear
+      ? "multiple"
+      : first.score >= 100
+        ? "exact"
+        : first.score >= 60
+          ? "strong"
+          : "weak",
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * CSV in, CSV out. Minimal reader — the files are ours and well-formed,
+ * but quoted commas are everywhere in the description column so this
+ * still has to be a real parser rather than a split(",").
+ * ------------------------------------------------------------------ */
+
+function readCsv(file) {
+  if (!fs.existsSync(file)) return { header: [], rows: [] };
+  const text = fs.readFileSync(file, "utf8");
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i += 1; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ",") { row.push(cell); cell = ""; }
+    else if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (ch !== "\r") cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+
+  const header = rows.shift() ?? [];
+  return {
+    header,
+    rows: rows
+      .filter((r) => r.some((c) => c.trim()))
+      .map((r) => Object.fromEntries(header.map((h, i) => [h, r[i] ?? ""]))),
+  };
+}
+
+const csvCell = (v) => {
+  const s = String(v ?? "").replace(/\r?\n/g, " ").trim();
+  return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+const writeCsv = (file, header, rows) =>
+  fs.writeFileSync(
+    file,
+    [header.join(","), ...rows.map((r) => header.map((h) => csvCell(r[h])).join(","))].join("\n") + "\n"
+  );
+
+/* ------------------------------------------------------------------ */
+
+async function main() {
+  const { db, t } = await loadDb();
+
+  const all = await db.select().from(t.specialties);
+  const byId = new Map(all.map((s) => [s.id, s]));
+  const bySlug = new Map(all.map((s) => [s.slug, s]));
+  const childrenOf = (id) => all.filter((s) => s.parentId === id);
+  const tops = all.filter((s) => !s.parentId);
+
+  console.log(`taxonomy: ${all.length} specialties — ${tops.length} top level`);
+  console.log(`  ${tops.map((s) => s.name).join(", ")}\n`);
+
+  if (val("--explain")) return explain(val("--explain"), all, childrenOf, tops);
+
+  const listings = readCsv(path.join(OUT, "listings.csv"));
+  const held = readCsv(path.join(OUT, "review.csv"));
+
+  /* Rows the harvester held ONLY because subCategory was missing are
+     exactly the rows this script exists to rescue — it is the thing
+     that was missing. Rows held for anything else stay held. */
+  const rescuable = held.rows.filter((r) => /^missing: subCategory$/.test(r.reviewReason ?? ""));
+  const input = [...listings.rows, ...rescuable];
+
+  if (!input.length) {
+    console.log("Nothing to map. Run the harvester first (--urls, --fetch, --csv).");
+    process.exit(0);
+  }
+  console.log(`${input.length} listings to map (${listings.rows.length} ready, ${rescuable.length} rescued from review)\n`);
+
+  const mapped = [];
+  const unmapped = [];
+  const primaryTally = {};
+  const noHomeTally = {};
+  const confTally = {};
+
+  for (const row of input) {
+    const liveCategory = String(row.category ?? "").trim();
+    const key = liveCategory.toLowerCase();
+
+    // The specialty words in the URL are often more precise than the
+    // category — "/orthopaedic-surgeon/" and "/birmingham-uk/ent-specialist/".
+    const slugWords = String(row.url ?? "").replace(/^\//, "").split("/").slice(0, -1).join(" ").replace(/-/g, " ");
+    const haystack = `${row.name} ${liveCategory} ${slugWords} ${row.description ?? ""}`.toLowerCase();
+    const haystackStems = new Set(tokens(haystack).map(stem));
+
+    // --- primary: one of the six, or held ---
+    let topSlug = PRIMARY_ALIASES.get(key);
+    if (!topSlug) {
+      // The category may not be in the alias table but its words may
+      // still name one of the six outright.
+      const t2 = best(tops, haystack, haystackStems);
+      if (t2 && t2.confidence === "exact") topSlug = t2.pick.slug;
+    }
+
+    if (!topSlug) {
+      const reason = NO_HOME.has(key)
+        ? `"${liveCategory}" has no predefined top-level specialty on this site`
+        : liveCategory
+          ? `"${liveCategory}" does not map to any of the six predefined specialties`
+          : "no category on the record";
+      noHomeTally[liveCategory || "(blank)"] = (noHomeTally[liveCategory || "(blank)"] ?? 0) + 1;
+      unmapped.push({ ...row, unmappedReason: reason, suggestedPrimary: "", suggestedSub: "" });
+      continue;
+    }
+
+    const top = bySlug.get(topSlug);
+    if (!top) {
+      unmapped.push({ ...row, unmappedReason: `alias points at "${topSlug}", which is not in the taxonomy`, suggestedPrimary: "", suggestedSub: "" });
+      continue;
+    }
+    primaryTally[top.name] = (primaryTally[top.name] ?? 0) + 1;
+
+    // --- sub: the second level under that parent, only ---
+    const subs = childrenOf(top.id);
+    const forced = FORCED_SUB.get(key);
+    let sub = forced && bySlug.has(forced)
+      ? { pick: bySlug.get(forced), all: [bySlug.get(forced)], score: 100, how: `"${liveCategory}" maps straight to this subcategory`, runnerUp: "", confidence: "exact" }
+      : best(subs, haystack, haystackStems);
+
+    /* Second attempt, through the leaves.
+     *
+     * A listing rarely names its subcategory. It names what the person
+     * actually does: "Botox, dermal fillers and lip fillers" says
+     * nothing about "Facial Aesthetics", and "individual therapy and
+     * counselling" says nothing about "Talking Therapies" — but Botox,
+     * Dermal Fillers and Person-centred Counselling are all leaves in
+     * this tree. So when the second level does not produce a confident
+     * answer, search the 426 leaves instead and take the parent of
+     * whatever wins. The leaves are where the vocabulary people
+     * actually write in lives. */
+    if (!sub || sub.confidence === "weak" || sub.confidence === "multiple") {
+      const leaves = subs.flatMap((s) => childrenOf(s.id));
+      const viaLeaf = best(leaves, haystack, haystackStems);
+      /* The leaf has to have been matched on something substantial, not
+         on a word it shares with forty siblings. "Individual therapy and
+         counselling" hits the word "therapy" in Couples Therapy, Family
+         Therapy and Child Therapy equally, and tagging a psychologist
+         with all three because of it is not a match — it is noise
+         wearing a match's clothes. 60 is the all-its-words threshold. */
+      if (viaLeaf && viaLeaf.score >= 60) {
+        const parents = [...new Set(viaLeaf.all.map((l) => byId.get(l.parentId)).filter(Boolean))];
+        if (parents.length) {
+          const better = {
+            pick: parents[0],
+            all: parents,
+            score: viaLeaf.score,
+            how: `via ${viaLeaf.all.map((l) => l.name).join(" + ")}`,
+            runnerUp: "",
+            confidence: parents.length > 1 ? "multiple" : viaLeaf.confidence,
+          };
+          // Only replace a weaker level-2 answer, never a confident one.
+          if (!sub || sub.confidence === "weak" || better.confidence !== "multiple") sub = better;
+        }
+      }
+    }
+
+    if (!sub || sub.confidence === "weak") {
+      confTally[sub ? sub.confidence : "none"] = (confTally[sub ? sub.confidence : "none"] ?? 0) + 1;
+      unmapped.push({
+        ...row,
+        unmappedReason: sub
+          ? `subcategory ${sub.confidence}: ${sub.how}${sub.runnerUp ? `, against "${sub.runnerUp}"` : ""}`
+          : "nothing in the listing names a subcategory",
+        suggestedPrimary: top.slug,
+        suggestedSub: sub?.pick.slug ?? "",
+      });
+      continue;
+    }
+    confTally[sub.confidence] = (confTally[sub.confidence] ?? 0) + 1;
+
+    // --- sub-sub: optional, only the children of the chosen sub ---
+    const subSubs = childrenOf(sub.pick.id);
+    const subSub = subSubs.length ? best(subSubs, haystack, haystackStems) : null;
+    const takeSubSub = subSub && (subSub.confidence === "exact" || subSub.confidence === "strong");
+
+    mapped.push({
+      ...row,
+      primarySpecialtySlug: top.slug,
+      primarySpecialtyName: top.name,
+      subSpecialtySlug: sub.pick.slug,
+      subSpecialtyName: sub.pick.name,
+      /* Every subcategory this listing belongs to, not just the leading
+         one. The import writes these to specialist_specialties; the
+         single subSpecialtySlug above is the primary. */
+      subSpecialtySlugsAll: (sub.all ?? [sub.pick]).map((s) => s.slug).join(" "),
+      subSubSpecialtySlug: takeSubSub ? subSub.pick.slug : "",
+      subSubSpecialtyName: takeSubSub ? subSub.pick.name : "",
+      taxonomyConfidence: sub.confidence,
+      taxonomyEvidence: sub.how,
+    });
+  }
+
+  // ---- report ----
+  console.log(`  mapped   ${mapped.length}`);
+  console.log(`  unmapped ${unmapped.length}\n`);
+
+  if (Object.keys(primaryTally).length) {
+    console.log("  primary specialty resolved (includes rows later held on subcategory):");
+    for (const [k, v] of Object.entries(primaryTally).sort((a, b) => b[1] - a[1])) {
+      console.log(`    ${String(v).padStart(5)}  ${k}`);
+    }
+  }
+  if (Object.keys(confTally).length) {
+    console.log("\n  subcategory match quality:");
+    for (const [k, v] of Object.entries(confTally).sort((a, b) => b[1] - a[1])) {
+      const note = { exact: "the name appears verbatim", strong: "all its distinctive words matched", weak: "one word matched — held", ambiguous: "two candidates too close — held", none: "nothing matched — held" }[k] ?? "";
+      console.log(`    ${String(v).padStart(5)}  ${k.padEnd(10)} ${note}`);
+    }
+  }
+  if (Object.keys(noHomeTally).length) {
+    console.log("\n  categories with no predefined home (held back, as agreed):");
+    let total = 0;
+    for (const [k, v] of Object.entries(noHomeTally).sort((a, b) => b[1] - a[1])) {
+      console.log(`    ${String(v).padStart(5)}  ${k}`);
+      total += v;
+    }
+    console.log(`    ${String(total).padStart(5)}  in total — these need a new top-level specialty before they can migrate`);
+  }
+
+  if (has("--write")) {
+    const header = [
+      ...listings.header.filter((h) => h !== "subCategory"),
+      "primarySpecialtySlug", "primarySpecialtyName",
+      "subSpecialtySlug", "subSpecialtyName", "subSpecialtySlugsAll",
+      "subSubSpecialtySlug", "subSubSpecialtyName",
+      "taxonomyConfidence", "taxonomyEvidence",
+    ];
+    writeCsv(path.join(OUT, "mapped.csv"), header, mapped);
+    writeCsv(
+      path.join(OUT, "unmapped.csv"),
+      ["unmappedReason", "suggestedPrimary", "suggestedSub", "url", "name", "category", "description"],
+      unmapped
+    );
+    console.log(`\n  → ${path.relative(BACKEND, path.join(OUT, "mapped.csv"))}`);
+    console.log(`  → ${path.relative(BACKEND, path.join(OUT, "unmapped.csv"))}`);
+  } else {
+    console.log("\n  (report only — pass --write to produce mapped.csv and unmapped.csv)");
+  }
+
+  process.exit(0);
+}
+
+/** Show the full ranking for one search term, for when a mapping looks wrong. */
+function explain(term, all, childrenOf, tops) {
+  const haystack = term.toLowerCase();
+  const haystackStems = new Set(tokens(haystack).map(stem));
+  console.log(`how "${term}" scores against the tree\n`);
+  for (const top of tops) {
+    const subs = childrenOf(top.id);
+    const ranked = subs
+      .map((c) => ({ name: c.name, ...score(c, haystack, haystackStems) }))
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4);
+    if (!ranked.length) continue;
+    console.log(`  ${top.name}`);
+    for (const r of ranked) console.log(`    ${String(r.score).padStart(4)}  ${r.name.padEnd(34)} ${r.how}`);
+  }
+  process.exit(0);
+}
+
+async function loadDb() {
+  const { getDb, isDbConfigured } = await import("../src/db/client.js");
+  if (!isDbConfigured()) {
+    console.error(
+      "No database configured — this script reads the specialty tree from it.\n" +
+      "Set DATABASE_URL to the same database you are importing into."
+    );
+    process.exit(1);
+  }
+  const t = await import("../src/db/schema.js");
+  return { db: getDb(), t };
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
