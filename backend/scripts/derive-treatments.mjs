@@ -59,6 +59,19 @@ const has = (f) => args.includes(f);
 const FROM_CSV = has("--from-csv");
 const WRITE = has("--write");
 const WRITE_KINDS = has("--kinds");
+
+/* --replace: clear what a previous run of THIS script put on a listing
+   before writing again.
+
+   Without it the write only adds, so a guard added after the fact --
+   like the CV-sentence one below -- cannot take anything back, and a
+   correction is invisible. With it, a re-run is the state the current
+   rules produce rather than the union of every run ever made.
+
+   It only ever clears UNCLAIMED listings. Once a clinician has taken
+   ownership, what is on their profile may be theirs rather than
+   derived, and no script should quietly delete it. */
+const REPLACE = has("--replace");
 const LIMIT = (() => {
   const hit = args.find((a) => a.startsWith("--sample="));
   return hit ? Number(hit.split("=")[1]) : 12;
@@ -208,6 +221,22 @@ const matchers = leaves
     return { ...l, rx: new RegExp(`\\b(?:${rx.join("|")})\\b`, "i") };
   });
 
+/* A CONDITION NAMED IN A SENTENCE ABOUT SOMEBODY'S CV.
+ *
+ * "She also gained an MD for her research thesis on ovarian cancer"
+ * names ovarian cancer and says nothing about whether she treats it.
+ * Tania Adib's profile produced exactly that, and it is the most
+ * plausible-looking wrong answer this script can give: the word is
+ * really there, in her own words, in her own branch. A research
+ * interest, a paper, a lecture and a doctorate are all claims about
+ * expertise, not about a service a patient can book.
+ *
+ * So an academic sentence cannot be the ONLY evidence. If another
+ * sentence names the same thing plainly, it still counts -- most
+ * surgeons who publish on knee replacement also perform it, and their
+ * profiles say so somewhere else. */
+const ACADEMIC = /\b(thesis|doctorate|\bphd\b|research(ed|ing)?\s+(into|on|in)\b|research\s+(interest|fellow|thesis|prize)|published|publication|papers?\s+on\b|lectur\w+\s+(on|in)\b|dissertation|trials?\s+(on|of|into)\b|presented\b)/i;
+
 /* A procedure named in order to say it is NOT on offer. */
 const NEGATED = /\b(do(es)? not|don'?t|no longer|never|cannot|can'?t|unable to|refer(red|s|ral)? (on|out|elsewhere)|does not (perform|offer|treat)|not (perform|offer|treat|available))\b/i;
 
@@ -265,6 +294,7 @@ const found = new Map();      // person id -> [{ leaf, sentence }]
 const crossBranch = [];
 let negatedHits = 0;
 let redundant = 0;
+let academicOnly = 0;
 let withBio = 0;
 
 for (const p of people) {
@@ -277,8 +307,18 @@ for (const p of people) {
       if (!m.rx.test(s)) continue;
       if (negated) { negatedHits += 1; continue; }
       if (m.root !== p.root) { crossBranch.push({ person: p.name, leaf: m.name, theirs: p.root, its: m.root }); continue; }
-      if (!picks.has(m.slug)) picks.set(m.slug, { leaf: m, sentence: s.trim() });
+      const academic = ACADEMIC.test(s);
+      if (!picks.has(m.slug)) picks.set(m.slug, { leaf: m, sentence: s.trim(), academic });
+      else if (!academic) {
+        // A plain sentence beats the CV sentence that got here first.
+        const seen = picks.get(m.slug);
+        if (seen.academic) { seen.academic = false; seen.sentence = s.trim(); }
+      }
     }
+  }
+
+  for (const [slug, v] of [...picks]) {
+    if (v.academic) { picks.delete(slug); academicOnly += 1; }
   }
 
   /* One sentence can satisfy two leaves where one contains the other.
@@ -309,6 +349,7 @@ console.log(`  mean per listing                   ${(all.length / Math.max(found
 if (negatedHits) console.log(`  ${c.warn}skipped, named to say it is NOT offered   ${negatedHits}${c.off}`);
 if (crossBranch.length) console.log(`  ${c.warn}skipped, outside the listing's own branch ${crossBranch.length}${c.off}`);
 if (redundant) console.log(`  ${c.dim}dropped, a more specific name covered it     ${redundant}${c.off}`);
+if (academicOnly) console.log(`  ${c.warn}dropped, only named in a sentence about their CV  ${academicOnly}${c.off}`);
 
 const tally = (xs) => {
   const m = new Map();
@@ -335,6 +376,35 @@ if (LIMIT > 0 && found.size) {
     shown += 1;
   }
 }
+
+/* WHY THERE IS NO "THIS LISTING IS MISFILED" REPORT HERE.
+ *
+ * There was, twice. The branch guard looked like a free diagnostic:
+ * when a listing keeps naming procedures from one other branch, surely
+ * the listing is the thing that is wrong? Mr Benjamin Davis is filed
+ * under Gynaecology and opens "I am a Consultant in Trauma,
+ * Orthopaedics and Limb Reconstruction", and he named six orthopaedic
+ * procedures before anything noticed.
+ *
+ * The first version flagged 41 listings, of which about one was wrong.
+ * A physiotherapist naming knee replacement, ACL reconstruction and
+ * rotator cuff repair is not misfiled: that is what they rehabilitate.
+ * An ENT surgeon naming rhinoplasty is not misfiled either.
+ *
+ * The second version added "and named nothing from their own branch",
+ * on the theory that a real physio's bio would name physiotherapy. It
+ * flagged 25, still mostly physiotherapists -- because the
+ * Physiotherapy branch's leaves are named "General Physiotherapy" and
+ * "Musculoskeletal Physiotherapy", which is not how anybody writes
+ * about themselves. The absence proved something about the taxonomy,
+ * not about the listing.
+ *
+ * The signal that does work is the one map-taxonomy.mjs already has:
+ * the prose STATES a profession. Saying "I am a Consultant in
+ * Orthopaedics" is evidence; naming an operation is not. That check
+ * belongs there, next to the category it contradicts, and a report
+ * that is wrong 24 times out of 25 is worse than no report, because
+ * the next person stops reading it. Hence: none here. */
 
 if (crossBranch.length) {
   console.log(`\n  ${c.warn}not applied — named a procedure from another branch:${c.off}`);
@@ -376,7 +446,25 @@ const ensure = async (table, leaf) => {
   return made;
 };
 
-let madeTreatments = 0, madeConditions = 0, links = 0;
+let madeTreatments = 0, madeConditions = 0, links = 0, cleared = 0;
+
+if (REPLACE) {
+  const ids = [...found.keys()];
+  const claimed = new Set(
+    (await db.select({ id: t.specialists.id }).from(t.specialists).where(eq(t.specialists.claimed, true))).map((r) => r.id)
+  );
+  const clearable = ids.filter((id) => !claimed.has(id));
+  for (const id of clearable) {
+    await db.delete(t.specialistTreatments).where(eq(t.specialistTreatments.specialistId, id));
+    await db.delete(t.specialistConditions).where(eq(t.specialistConditions.specialistId, id));
+    cleared += 1;
+  }
+  const skipped = ids.length - clearable.length;
+  console.log(`${c.dim}cleared the previous derivation on ${cleared} unclaimed listing(s)` +
+    (skipped ? `, left ${skipped} claimed one(s) alone` : "") + `${c.off}`);
+}
+
+
 for (const [personId, picks] of found) {
   for (const { leaf } of picks) {
     if (leaf.kind === "treatment") {
