@@ -250,9 +250,20 @@ function score(candidate, haystack, haystackStems) {
   if (!hit.length) return { score: 0, how: "no overlap" };
 
   const ratio = hit.length / want.size;
+  /* One word is not a match, however complete a fraction of the name it
+     is. Adding the root names to STOPWORDS left some specialties with a
+     single distinctive word — "Sports Psychology" reduces to "sports" —
+     and a lone common word then scored as highly as a full name. That
+     filed Livewell Health, a sports massage and physiotherapy business,
+     under Psychology > Workplace & Performance on the word "Sports".
+     A verbatim name still scores 100 above, so "Knee" and "Hip" are
+     unaffected; this only caps what ONE partial word can earn. */
+  const capped = hit.length === 1 && want.size <= 2;
+  const raw = Math.round(ratio * 60) + hit.length * 4;
   return {
-    score: Math.round(ratio * 60) + hit.length * 4,
-    how: `matched ${hit.join(", ")} (${hit.length}/${want.size} of its words)`,
+    score: capped ? Math.min(raw, 40) : raw,
+    how: `matched ${hit.join(", ")} (${hit.length}/${want.size} of its words)` +
+      (capped ? " — one word only, not enough on its own" : ""),
   };
 }
 
@@ -391,6 +402,7 @@ async function main() {
 
   const mapped = [];
   const unmapped = [];
+  let conflicts = 0;
   const primaryTally = {};
   const noHomeTally = {};
   const confTally = {};
@@ -422,6 +434,37 @@ async function main() {
           : "no category on the record";
       noHomeTally[liveCategory || "(blank)"] = (noHomeTally[liveCategory || "(blank)"] ?? 0) + 1;
       unmapped.push({ ...row, unmappedReason: reason, suggestedPrimary: "", suggestedSub: "" });
+      continue;
+    }
+
+    /* The live category is admin-set and usually right, but it is not
+     * always right, and it had been treated as beyond question.
+     * "Livewell" is filed on the old site under Psychologist and its own
+     * description says "Sports Massage, Soft Tissue Services and
+     * Physiotherapy… Team GB". Trusting the category there produces a
+     * physiotherapy business in the psychology directory — and on 2,750
+     * records off a directory this untidy, that will not be the only one.
+     *
+     * So: after the category picks a root, check whether the listing's
+     * own words name a DIFFERENT root outright. If they do, that is a
+     * contradiction between two sources of evidence and a person should
+     * settle it. Neither side is overridden silently. */
+    const rootByText = best(tops, haystack, haystackStems);
+    if (
+      rootByText &&
+      rootByText.confidence === "exact" &&
+      rootByText.pick.slug !== topSlug &&
+      !PRIMARY_ALIASES.get(key)?.includes(rootByText.pick.slug)
+    ) {
+      unmapped.push({
+        ...row,
+        unmappedReason:
+          `category says ${liveCategory} but the listing reads as ${rootByText.pick.name}` +
+          ` — the old site may have it filed wrong`,
+        suggestedPrimary: rootByText.pick.slug,
+        suggestedSub: "",
+      });
+      conflicts += 1;
       continue;
     }
 
@@ -566,6 +609,14 @@ async function main() {
       total += v;
     }
     console.log(`    ${String(total).padStart(5)}  in total — these need a new top-level specialty before they can migrate`);
+  }
+
+  if (conflicts) {
+    console.log(
+      `\n  ${conflicts} listing(s) where the old site's category contradicts the listing's own\n` +
+      `  words. Those are in unmapped.csv with both candidates named — the old site has\n` +
+      `  them filed wrong, or the wording is misleading, and only a person can say which.`
+    );
   }
 
   const rescuableByDefault = unmapped.filter(
