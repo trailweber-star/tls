@@ -427,26 +427,84 @@ if (FROM_CSV || !WRITE) {
 /* ---------------------------------------------------------- the write */
 
 const { db, t, disconnectDb } = globalThis.__db;
-const { eq, and } = await import("drizzle-orm");
+const { eq, inArray } = await import("drizzle-orm");
 const { newId } = t;
 
 const specialties = await db.select().from(t.specialties);
 const specialtyBySlug = new Map(specialties.map((s) => [s.slug, s]));
 
-/* The taxonomy rows themselves, created on demand. conditions.slug and
-   treatments.slug are unique, so this is idempotent: run it twice and
-   the second run inserts nothing. */
-const ensure = async (table, leaf) => {
-  const [existing] = await db.select().from(table).where(eq(table.slug, leaf.slug)).limit(1);
-  if (existing) return existing;
-  const [made] = await db
-    .insert(table)
-    .values({ id: newId(table === t.treatments ? "trt" : "cnd"), slug: leaf.slug, name: leaf.name, specialtyId: specialtyBySlug.get(leaf.root)?.id ?? null })
-    .returning();
-  return made;
+/* ONE ROUND TRIP PER LEAF, NOT PER LINK.
+ *
+ * The first version of this did a SELECT and an INSERT for every one of
+ * the 3,500 links, serially, against a database in Frankfurt. At the
+ * ~200ms a round trip actually costs from a laptop that is about twenty
+ * minutes of silence with no progress output, which is indistinguishable
+ * from a hang -- and the first real run was cut short partway, leaving
+ * the treatments and conditions tables populated and not one link
+ * written. A half-applied migration is the worst outcome available here,
+ * because everything looks like it worked until you open a profile.
+ *
+ * So: resolve the distinct leaves once (a few hundred, not 3,500), then
+ * insert the links in batches. Roughly 7,000 round trips becomes a few
+ * dozen, and the whole thing finishes while you are still looking at it. */
+
+const distinctLeaves = new Map();
+for (const picks of found.values()) {
+  for (const { leaf } of picks) if (!distinctLeaves.has(leaf.slug)) distinctLeaves.set(leaf.slug, leaf);
+}
+
+const [existingTreatments, existingConditions] = await Promise.all([
+  db.select({ id: t.treatments.id, slug: t.treatments.slug }).from(t.treatments),
+  db.select({ id: t.conditions.id, slug: t.conditions.slug }).from(t.conditions),
+]);
+const idBySlug = {
+  treatment: new Map(existingTreatments.map((r) => [r.slug, r.id])),
+  condition: new Map(existingConditions.map((r) => [r.slug, r.id])),
 };
 
-let madeTreatments = 0, madeConditions = 0, links = 0, cleared = 0;
+const toCreate = { treatment: [], condition: [] };
+for (const leaf of distinctLeaves.values()) {
+  if (idBySlug[leaf.kind].has(leaf.slug)) continue;
+  toCreate[leaf.kind].push({
+    id: newId(leaf.kind === "treatment" ? "trt" : "cnd"),
+    slug: leaf.slug,
+    name: leaf.name,
+    specialtyId: specialtyBySlug.get(leaf.root)?.id ?? null,
+  });
+}
+for (const [kind, table] of [["treatment", t.treatments], ["condition", t.conditions]]) {
+  const rows = toCreate[kind];
+  if (!rows.length) continue;
+  for (let i = 0; i < rows.length; i += 200) {
+    await db.insert(table).values(rows.slice(i, i + 200)).onConflictDoNothing();
+  }
+}
+
+/* Re-read rather than trusting .returning(). onConflictDoNothing()
+   returns nothing for a row that conflicted, so a slug that already
+   existed under a different id would be missing from the map and its
+   links would be dropped without a word. Two round trips buys the
+   guarantee that every leaf we are about to link has an id. */
+const [allTreatments, allConditions] = await Promise.all([
+  db.select({ id: t.treatments.id, slug: t.treatments.slug }).from(t.treatments),
+  db.select({ id: t.conditions.id, slug: t.conditions.slug }).from(t.conditions),
+]);
+idBySlug.treatment = new Map(allTreatments.map((r) => [r.slug, r.id]));
+idBySlug.condition = new Map(allConditions.map((r) => [r.slug, r.id]));
+
+const unresolved = [...distinctLeaves.values()].filter((l) => !idBySlug[l.kind].has(l.slug));
+if (unresolved.length) {
+  console.error(
+    `\n${c.bad}${unresolved.length} leaf/leaves have no taxonomy row after the insert.${c.off}\n` +
+      `Nothing has been linked. This is a bug, not a data problem — the slugs are:\n` +
+      unresolved.map((l) => `  ${l.kind}  ${l.slug}`).join("\n") +
+      `\n`
+  );
+  await disconnectDb();
+  process.exit(1);
+}
+
+let cleared = 0;
 
 if (REPLACE) {
   const ids = [...found.keys()];
@@ -454,31 +512,46 @@ if (REPLACE) {
     (await db.select({ id: t.specialists.id }).from(t.specialists).where(eq(t.specialists.claimed, true))).map((r) => r.id)
   );
   const clearable = ids.filter((id) => !claimed.has(id));
-  for (const id of clearable) {
-    await db.delete(t.specialistTreatments).where(eq(t.specialistTreatments.specialistId, id));
-    await db.delete(t.specialistConditions).where(eq(t.specialistConditions.specialistId, id));
-    cleared += 1;
+  for (let i = 0; i < clearable.length; i += 200) {
+    const chunk = clearable.slice(i, i + 200);
+    await db.delete(t.specialistTreatments).where(inArray(t.specialistTreatments.specialistId, chunk));
+    await db.delete(t.specialistConditions).where(inArray(t.specialistConditions.specialistId, chunk));
+    cleared += chunk.length;
   }
   const skipped = ids.length - clearable.length;
   console.log(`${c.dim}cleared the previous derivation on ${cleared} unclaimed listing(s)` +
     (skipped ? `, left ${skipped} claimed one(s) alone` : "") + `${c.off}`);
 }
 
-
+const treatmentLinks = [];
+const conditionLinks = [];
 for (const [personId, picks] of found) {
   for (const { leaf } of picks) {
-    if (leaf.kind === "treatment") {
-      const row = await ensure(t.treatments, leaf);
-      madeTreatments += 1;
-      await db.insert(t.specialistTreatments).values({ specialistId: personId, treatmentId: row.id }).onConflictDoNothing();
-    } else {
-      const row = await ensure(t.conditions, leaf);
-      madeConditions += 1;
-      await db.insert(t.specialistConditions).values({ specialistId: personId, conditionId: row.id }).onConflictDoNothing();
-    }
-    links += 1;
+    const id = idBySlug[leaf.kind].get(leaf.slug);
+    if (!id) continue;
+    if (leaf.kind === "treatment") treatmentLinks.push({ specialistId: personId, treatmentId: id });
+    else conditionLinks.push({ specialistId: personId, conditionId: id });
   }
 }
+/* Say something on every batch. The previous run's silence is the whole
+   reason it got killed halfway. */
+for (const [label, table, rows] of [
+  ["procedure", t.specialistTreatments, treatmentLinks],
+  ["condition", t.specialistConditions, conditionLinks],
+]) {
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500);
+    await db.insert(table).values(chunk).onConflictDoNothing();
+    console.log(`${c.dim}  ${label} links ${Math.min(i + chunk.length, rows.length)}/${rows.length}${c.off}`);
+  }
+}
+
+const madeTreatments = treatmentLinks.length;
+const madeConditions = conditionLinks.length;
+const links = madeTreatments + madeConditions;
+console.log(
+  `${c.dim}created ${toCreate.treatment.length} new procedure and ${toCreate.condition.length} new condition row(s) in the taxonomy${c.off}`
+);
 
 console.log(
   `\n${c.good}Done.${c.off} ${links} link(s) across ${found.size} listing(s) — ` +
