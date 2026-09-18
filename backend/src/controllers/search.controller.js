@@ -156,7 +156,16 @@ export async function searchPanel(req, res) {
   const typeKey = type.key;
   const raw = String(req.query.q ?? "");
   const needle = norm(raw);
-  const popular = needle.length < 2;
+  /* ONE CHARACTER IS ALREADY A QUERY.
+     This used to be `needle.length < 2`, so typing "w" was treated the
+     same as typing nothing and answered with the popular list -- the
+     panel appeared to ignore the first keystroke and then jump, instead
+     of narrowing from the first letter the way an autocomplete should.
+     A single letter is a perfectly good filter over a 705-node taxonomy,
+     and the columns are capped and ranked anyway, so there is nothing to
+     protect against by holding it back. Only a genuinely empty box means
+     "show me what is popular". */
+  const popular = needle.length < 1;
 
   const data = await loadAll();
   const specialtyById = new Map(data.specialties.map((s) => [s.id, s]));
