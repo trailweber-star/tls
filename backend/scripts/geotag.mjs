@@ -5,6 +5,8 @@
  *   node scripts/geotag.mjs --dry-run
  *   node scripts/geotag.mjs
  *   node scripts/geotag.mjs --all        # re-do rows that already have them
+ *   node scripts/geotag.mjs --refine=1000  # re-do ONLY pins that disagree
+ *                                          # with their own postcode by >1km
  *
  * WHY THIS IS A SEPARATE SCRIPT. The importers geocode as they go, and
  * when they can reach postcodes.io that is the end of it. But a geocoder
@@ -67,6 +69,36 @@ const args = process.argv.slice(2);
 const DRY = args.includes("--dry-run");
 const ALL = args.includes("--all");
 const OFFLINE = args.includes("--offline");
+
+/* --refine[=metres]: re-derive a pin that already exists, but ONLY where
+   it disagrees with its own postcode by more than this far. --all is the
+   blunt version and overwrites every pin it can, which is a real loss
+   where the old site geocoded an actual rooftop: a rooftop 60m from its
+   postcode centroid is BETTER than the centroid, and --all would flatten
+   it onto the centroid anyway. A pin 13km from its own postcode is a
+   different matter — that is a town centroid standing in for an address,
+   and the postcode wins. Default 1000m: below that the pin and the
+   postcode are describing the same place. */
+const refineArg = args.find((a) => a === "--refine" || a.startsWith("--refine="));
+const REFINE = refineArg ? Number(refineArg.split("=")[1] ?? 1000) : null;
+if (refineArg && (!Number.isFinite(REFINE) || REFINE <= 0)) {
+  console.error(`--refine needs a distance in metres, e.g. --refine=1000 (got "${refineArg}")`);
+  process.exit(1);
+}
+
+/* Great-circle metres. Same maths as audit-pins.mjs, which is the script
+   that reports on what this one writes. */
+function metres(a, b) {
+  if (a?.lat == null || b?.lat == null) return null;
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const t2 =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(t2)));
+}
 
 const CACHE_PATH = path.join(BACKEND, "data", "geocache.json");
 
@@ -194,8 +226,10 @@ async function main() {
     return cp?.lat != null && l.lat === cp.lat && l.lng === cp.lng;
   };
 
+  /* --refine cannot decide what to touch until the postcodes are in
+     hand, so it admits every row with one here and measures in step 4. */
   const needLoc = locations.filter(
-    (l) => l.postcode && (ALL || l.lat == null || l.lng == null || inherited(l))
+    (l) => l.postcode && (ALL || REFINE || l.lat == null || l.lng == null || inherited(l))
   );
   const noPostcode = locations.filter((l) => !l.postcode && (l.lat == null || l.lng == null));
 
@@ -203,6 +237,8 @@ async function main() {
    * 2. The cities that need them, and the facilities table too —
    *    it carries its own addresses.
    * ---------------------------------------------------------------- */
+  /* --refine is a claim about location pins, not about town centroids,
+     so it does not drag all 186 cities into a rewrite. --all still does. */
   const needCity = cities.filter((x) => ALL || x.lat == null || x.lng == null);
 
   let facilities = [];
@@ -289,9 +325,29 @@ async function main() {
   }
 
   let wroteLoc = 0;
+  let leftAlone = 0;
   for (const l of needLoc) {
     const hit = cache.postcodes.get(key(l.postcode));
     if (!hit) continue;
+    /* The whole point of --refine: a pin that already agrees with its
+       postcode is left exactly as it is, because it may be better than
+       the centroid and can only be made worse by being replaced. */
+    if (REFINE && l.lat != null && l.lng != null && !inherited(l)) {
+      const off = metres({ lat: l.lat, lng: l.lng }, hit);
+      if (off != null && off <= REFINE) {
+        leftAlone += 1;
+        continue;
+      }
+      dim(`  ${l.postcode.padEnd(9)} → ${hit.lat}, ${hit.lng}   ${hit.district ?? ""}  ${c.warn}was ${(off / 1000).toFixed(1)}km out${c.off}`);
+      if (!DRY) {
+        await db
+          .update(t.clinicLocations)
+          .set({ lat: hit.lat, lng: hit.lng })
+          .where(sql`${t.clinicLocations.id} = ${l.id}`);
+      }
+      wroteLoc += 1;
+      continue;
+    }
     dim(`  ${l.postcode.padEnd(9)} → ${hit.lat}, ${hit.lng}   ${hit.district ?? ""}`);
     if (!DRY) {
       await db
@@ -302,6 +358,9 @@ async function main() {
     wroteLoc += 1;
   }
   good(`${wroteLoc} location${wroteLoc === 1 ? "" : "s"} geotagged`);
+  if (leftAlone) {
+    dim(`  ${leftAlone} left alone — already within ${REFINE}m of their own postcode`);
+  }
 
   let wroteFac = 0;
   for (const f of needFac) {
@@ -360,9 +419,25 @@ async function main() {
          strength: same county, then same region. A hit that agrees with
          neither is a different town of the same name, and is ignored. */
       const agrees = (p, field, set) => set.size > 0 && p[field] && set.has(p[field]);
+      /* AGREEMENT IS THE ENTRY REQUIREMENT, not a score. An earlier
+         version summed agreement together with an exact-name bonus and
+         admitted anything scoring 2, which let a place that CONTRADICTS
+         the postcodes in every field win on its name alone: "Newport"
+         went to a suburb of Middlesbrough while its postcodes said NP20,
+         and "Springfield" went to the Highlands while its postcodes said
+         Chelmsford. Two towns share a name far more often than the place
+         index is wrong, so a candidate that agrees with nothing is a
+         different town and must not be considered at all.
+
+         The place index also answers with at most ten places, and for a
+         common name ("Sutton", ten of them) the one we mean may not be
+         among them. That is the same case: nothing agrees, so we use the
+         mean of the city's own postcodes, which cannot be in the wrong
+         county because it is derived from the addresses themselves. */
       const ranked = places
         .map((p) => ({
           p,
+          placed: agrees(p, "county", e.counties) || agrees(p, "region", e.regions),
           score:
             (agrees(p, "county", e.counties) ? 4 : 0) +
             (agrees(p, "region", e.regions) ? 2 : 0) +
@@ -372,7 +447,7 @@ async function main() {
             (p.name?.trim().toLowerCase() === city.name.trim().toLowerCase() ? 2 : 0) +
             (["City", "Town", "Suburban Area", "Other Settlement"].includes(p.type) ? 1 : 0),
         }))
-        .filter((x) => x.score >= 2)
+        .filter((x) => x.placed)
         .sort((a, b) => b.score - a.score);
       if (ranked.length) {
         chosen = { lat: ranked[0].p.lat, lng: ranked[0].p.lng };
@@ -380,6 +455,10 @@ async function main() {
         if (places.length > 1) {
           dim(`    ${city.name}: ${places.length} places of that name, took the one in ${ranked[0].p.county ?? ranked[0].p.region}`);
         }
+      } else if (places.length) {
+        /* Worth saying out loud: the index knew the name and we threw
+           every answer away, so the mean below is doing the work. */
+        dim(`    ${city.name}: ${places.length} place(s) of that name, none in ${[...e.counties, ...e.regions].join("/") || "the region its postcodes report"} — using its own postcodes`);
       }
     }
 
