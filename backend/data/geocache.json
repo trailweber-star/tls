@@ -13,6 +13,16 @@
       "ward": "Hazlehead/Queens Cross/Countesswells",
       "town": null
     },
+    "AL13YS": {
+      "postcode": "AL1 3YS",
+      "lat": 51.751616,
+      "lng": -0.338064,
+      "district": "St Albans",
+      "county": "Hertfordshire",
+      "region": "East of England",
+      "ward": "St Peters",
+      "town": null
+    },
     "AL35PN": {
       "postcode": "AL3 5PN",
       "lat": 51.76008,
@@ -33,10 +43,491 @@
       "ward": "Harpenden North & Rural",
       "town": null
     },
+    "B100UF": {
+      "postcode": "B10 0UF",
+      "lat": 52.471356,
+      "lng": -1.861969,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley Green",
+      "town": null
+    },
+    "B100UT": {
+      "postcode": "B10 0UT",
+      "lat": 52.467604,
+      "lng": -1.851618,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Small Heath",
+      "town": null
+    },
+    "B111TB": {
+      "postcode": "B11 1TB",
+      "lat": 52.465083,
+      "lng": -1.880388,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sparkbrook & Balsall Heath East",
+      "town": null
+    },
+    "B114AP": {
+      "postcode": "B11 4AP",
+      "lat": 52.45006,
+      "lng": -1.86308,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sparkhill",
+      "town": null
+    },
+    "B11NB": {
+      "postcode": "B1 1NB",
+      "lat": 52.473483,
+      "lng": -1.903552,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B11PE": {
+      "postcode": "B1 1PE",
+      "lat": 52.473097,
+      "lng": -1.903965,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B11RE": {
+      "postcode": "B1 1RE",
+      "lat": 52.476127,
+      "lng": -1.904327,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B11TX": {
+      "postcode": "B1 1TX",
+      "lat": 52.474952,
+      "lng": -1.908319,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B120LD": {
+      "postcode": "B12 0LD",
+      "lat": 52.474669,
+      "lng": -1.882644,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley & Highgate",
+      "town": null
+    },
+    "B120NS": {
+      "postcode": "B12 0NS",
+      "lat": 52.472026,
+      "lng": -1.882739,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley & Highgate",
+      "town": null
+    },
+    "B129LX": {
+      "postcode": "B12 9LX",
+      "lat": 52.457895,
+      "lng": -1.894123,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Balsall Heath West",
+      "town": null
+    },
+    "B12RT": {
+      "postcode": "B1 2RT",
+      "lat": 52.481492,
+      "lng": -1.91315,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B130QS": {
+      "postcode": "B13 0QS",
+      "lat": 52.421399,
+      "lng": -1.87899,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Billesley",
+      "town": null
+    },
+    "B138JS": {
+      "postcode": "B13 8JS",
+      "lat": 52.446456,
+      "lng": -1.889574,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Moseley",
+      "town": null
+    },
+    "B138NJ": {
+      "postcode": "B13 8NJ",
+      "lat": 52.445804,
+      "lng": -1.904936,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Moseley",
+      "town": null
+    },
+    "B139TS": {
+      "postcode": "B13 9TS",
+      "lat": 52.438201,
+      "lng": -1.888035,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B13EA": {
+      "postcode": "B1 3EA",
+      "lat": 52.484925,
+      "lng": -1.912789,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B13LD": {
+      "postcode": "B1 3LD",
+      "lat": 52.484467,
+      "lng": -1.912746,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B13NJ": {
+      "postcode": "B1 3NJ",
+      "lat": 52.48611,
+      "lng": -1.909651,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B13RB": {
+      "postcode": "B1 3RB",
+      "lat": 52.484129,
+      "lng": -1.917312,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B145JQ": {
+      "postcode": "B14 5JQ",
+      "lat": 52.404914,
+      "lng": -1.882077,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Highter's Heath",
+      "town": null
+    },
+    "B146DR": {
+      "postcode": "B14 6DR",
+      "lat": 52.422698,
+      "lng": -1.892574,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B146DT": {
+      "postcode": "B14 6DT",
+      "lat": 52.423731,
+      "lng": -1.891645,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Billesley",
+      "town": null
+    },
+    "B146EN": {
+      "postcode": "B14 6EN",
+      "lat": 52.420522,
+      "lng": -1.891976,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B146NA": {
+      "postcode": "B14 6NA",
+      "lat": 52.418196,
+      "lng": -1.906391,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B147AJ": {
+      "postcode": "B14 7AJ",
+      "lat": 52.43787,
+      "lng": -1.889845,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B147DS": {
+      "postcode": "B14 7DS",
+      "lat": 52.435828,
+      "lng": -1.88863,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B147EU": {
+      "postcode": "B14 7EU",
+      "lat": 52.433336,
+      "lng": -1.886591,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B147JB": {
+      "postcode": "B14 7JB",
+      "lat": 52.430346,
+      "lng": -1.89004,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B147NH": {
+      "postcode": "B14 7NH",
+      "lat": 52.427609,
+      "lng": -1.90668,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B147RA": {
+      "postcode": "B14 7RA",
+      "lat": 52.432166,
+      "lng": -1.895066,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brandwood & King's Heath",
+      "town": null
+    },
+    "B151DT": {
+      "postcode": "B15 1DT",
+      "lat": 52.472936,
+      "lng": -1.916979,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B151EN": {
+      "postcode": "B15 1EN",
+      "lat": 52.472674,
+      "lng": -1.916126,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B151JP": {
+      "postcode": "B15 1JP",
+      "lat": 52.469267,
+      "lng": -1.916442,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151LD": {
+      "postcode": "B15 1LD",
+      "lat": 52.472199,
+      "lng": -1.91729,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151LZ": {
+      "postcode": "B15 1LZ",
+      "lat": 52.472642,
+      "lng": -1.908471,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B151NP": {
+      "postcode": "B15 1NP",
+      "lat": 52.470795,
+      "lng": -1.914908,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151PJ": {
+      "postcode": "B15 1PJ",
+      "lat": 52.468665,
+      "lng": -1.915677,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151PL": {
+      "postcode": "B15 1PL",
+      "lat": 52.471477,
+      "lng": -1.913832,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151QP": {
+      "postcode": "B15 1QP",
+      "lat": 52.472091,
+      "lng": -1.918026,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151RP": {
+      "postcode": "B15 1RP",
+      "lat": 52.469414,
+      "lng": -1.919768,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151TH": {
+      "postcode": "B15 1TH",
+      "lat": 52.470151,
+      "lng": -1.920429,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B151TS": {
+      "postcode": "B15 1TS",
+      "lat": 52.468875,
+      "lng": -1.921226,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B152FQ": {
+      "postcode": "B15 2FQ",
+      "lat": 52.459652,
+      "lng": -1.921611,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B152QQ": null,
+    "B152QU": {
+      "postcode": "B15 2QU",
+      "lat": 52.456371,
+      "lng": -1.938054,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
     "B152TQ": {
       "postcode": "B15 2TQ",
       "lat": 52.452669,
       "lng": -1.941076,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153AU": {
+      "postcode": "B15 3AU",
+      "lat": 52.469874,
+      "lng": -1.922181,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153DP": {
+      "postcode": "B15 3DP",
+      "lat": 52.469281,
+      "lng": -1.923066,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153EB": {
+      "postcode": "B15 3EB",
+      "lat": 52.46974,
+      "lng": -1.924419,
       "district": "Birmingham",
       "county": null,
       "region": "West Midlands",
@@ -53,6 +544,886 @@
       "ward": "Edgbaston",
       "town": null
     },
+    "B153ES": {
+      "postcode": "B15 3ES",
+      "lat": 52.470328,
+      "lng": -1.9301,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153HG": {
+      "postcode": "B15 3HG",
+      "lat": 52.470102,
+      "lng": -1.92751,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153HN": {
+      "postcode": "B15 3HN",
+      "lat": 52.468693,
+      "lng": -1.931207,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153JX": {
+      "postcode": "B15 3JX",
+      "lat": 52.461894,
+      "lng": -1.943551,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B153JY": {
+      "postcode": "B15 3JY",
+      "lat": 52.46272,
+      "lng": -1.942667,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B153TQ": {
+      "postcode": "B15 3TQ",
+      "lat": 52.467131,
+      "lng": -1.935507,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B160AE": {
+      "postcode": "B16 0AE",
+      "lat": 52.482419,
+      "lng": -1.928859,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B168AB": {
+      "postcode": "B16 8AB",
+      "lat": 52.478546,
+      "lng": -1.917941,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B168AE": {
+      "postcode": "B16 8AE",
+      "lat": 52.479157,
+      "lng": -1.917527,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B168LA": {
+      "postcode": "B16 8LA",
+      "lat": 52.472419,
+      "lng": -1.92437,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B168LU": {
+      "postcode": "B16 8LU",
+      "lat": 52.471631,
+      "lng": -1.928155,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B168PF": {
+      "postcode": "B16 8PF",
+      "lat": 52.471719,
+      "lng": -1.925888,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B168QG": {
+      "postcode": "B16 8QG",
+      "lat": 52.472526,
+      "lng": -1.922618,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B168SP": {
+      "postcode": "B16 8SP",
+      "lat": 52.473218,
+      "lng": -1.922838,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B169HN": {
+      "postcode": "B16 9HN",
+      "lat": 52.473075,
+      "lng": -1.938502,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "North Edgbaston",
+      "town": null
+    },
+    "B169NB": {
+      "postcode": "B16 9NB",
+      "lat": 52.472099,
+      "lng": -1.947395,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B169NX": {
+      "postcode": "B16 9NX",
+      "lat": 52.471591,
+      "lng": -1.936767,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B170AT": {
+      "postcode": "B17 0AT",
+      "lat": 52.456002,
+      "lng": -1.956714,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B170DR": {
+      "postcode": "B17 0DR",
+      "lat": 52.457223,
+      "lng": -1.95271,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B178PY": {
+      "postcode": "B17 8PY",
+      "lat": 52.467743,
+      "lng": -1.955952,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B179AA": {
+      "postcode": "B17 9AA",
+      "lat": 52.460042,
+      "lng": -1.968631,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Quinton",
+      "town": null
+    },
+    "B179JT": {
+      "postcode": "B17 9JT",
+      "lat": 52.459882,
+      "lng": -1.947733,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B179NN": {
+      "postcode": "B17 9NN",
+      "lat": 52.459091,
+      "lng": -1.947278,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B179NS": {
+      "postcode": "B17 9NS",
+      "lat": 52.46042,
+      "lng": -1.945348,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B179NT": {
+      "postcode": "B17 9NT",
+      "lat": 52.460977,
+      "lng": -1.943847,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Harborne",
+      "town": null
+    },
+    "B184HJ": {
+      "postcode": "B18 4HJ",
+      "lat": 52.486698,
+      "lng": -1.944211,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "North Edgbaston",
+      "town": null
+    },
+    "B186AQ": {
+      "postcode": "B18 6AQ",
+      "lat": 52.488859,
+      "lng": -1.907141,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Newtown",
+      "town": null
+    },
+    "B186BA": {
+      "postcode": "B18 6BA",
+      "lat": 52.490615,
+      "lng": -1.911468,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B186DA": {
+      "postcode": "B18 6DA",
+      "lat": 52.489833,
+      "lng": -1.91169,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B186EX": {
+      "postcode": "B18 6EX",
+      "lat": 52.49093,
+      "lng": -1.911717,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B186HA": {
+      "postcode": "B18 6HA",
+      "lat": 52.4904,
+      "lng": -1.912175,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B186NF": {
+      "postcode": "B18 6NF",
+      "lat": 52.487604,
+      "lng": -1.911989,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B186NG": {
+      "postcode": "B18 6NG",
+      "lat": 52.486859,
+      "lng": -1.913905,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B186NN": {
+      "postcode": "B18 6NN",
+      "lat": 52.487272,
+      "lng": -1.913624,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B187AP": {
+      "postcode": "B18 7AP",
+      "lat": 52.485629,
+      "lng": -1.930091,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "North Edgbaston",
+      "town": null
+    },
+    "B187BA": {
+      "postcode": "B18 7BA",
+      "lat": 52.482794,
+      "lng": -1.924117,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B187BH": {
+      "postcode": "B18 7BH",
+      "lat": 52.48548,
+      "lng": -1.921123,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B187QH": {
+      "postcode": "B18 7QH",
+      "lat": 52.488642,
+      "lng": -1.932501,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B191LL": {
+      "postcode": "B19 1LL",
+      "lat": 52.507374,
+      "lng": -1.902521,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Aston",
+      "town": null
+    },
+    "B192ER": {
+      "postcode": "B19 2ER",
+      "lat": 52.497676,
+      "lng": -1.904118,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Newtown",
+      "town": null
+    },
+    "B202ES": {
+      "postcode": "B20 2ES",
+      "lat": 52.513048,
+      "lng": -1.928191,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Handsworth",
+      "town": null
+    },
+    "B219BN": {
+      "postcode": "B21 9BN",
+      "lat": 52.50216,
+      "lng": -1.927796,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Handsworth",
+      "town": null
+    },
+    "B219SA": {
+      "postcode": "B21 9SA",
+      "lat": 52.50355,
+      "lng": -1.936618,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B235TN": {
+      "postcode": "B23 5TN",
+      "lat": 52.53451,
+      "lng": -1.827479,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Erdington",
+      "town": null
+    },
+    "B236HP": {
+      "postcode": "B23 6HP",
+      "lat": 52.525121,
+      "lng": -1.858395,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Stockland Green",
+      "town": null
+    },
+    "B236LR": {
+      "postcode": "B23 6LR",
+      "lat": 52.528776,
+      "lng": -1.841255,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Erdington",
+      "town": null
+    },
+    "B236TP": {
+      "postcode": "B23 6TP",
+      "lat": 52.522755,
+      "lng": -1.842883,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Erdington",
+      "town": null
+    },
+    "B237JN": {
+      "postcode": "B23 7JN",
+      "lat": 52.521852,
+      "lng": -1.861059,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Stockland Green",
+      "town": null
+    },
+    "B249QR": {
+      "postcode": "B24 9QR",
+      "lat": 52.511081,
+      "lng": -1.826761,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Pype Hayes",
+      "town": null
+    },
+    "B24JD": {
+      "postcode": "B2 4JD",
+      "lat": 52.478954,
+      "lng": -1.899329,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B258QS": {
+      "postcode": "B25 8QS",
+      "lat": 52.470066,
+      "lng": -1.824303,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Yardley West & Stechford",
+      "town": null
+    },
+    "B258TH": {
+      "postcode": "B25 8TH",
+      "lat": 52.466909,
+      "lng": -1.812142,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "South Yardley",
+      "town": null
+    },
+    "B25AR": {
+      "postcode": "B2 5AR",
+      "lat": 52.480256,
+      "lng": -1.896912,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B25BG": {
+      "postcode": "B2 5BG",
+      "lat": 52.479413,
+      "lng": -1.899093,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B25EN": {
+      "postcode": "B2 5EN",
+      "lat": 52.480328,
+      "lng": -1.897486,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B25HG": {
+      "postcode": "B2 5HG",
+      "lat": 52.48164,
+      "lng": -1.89654,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B25QJ": {
+      "postcode": "B2 5QJ",
+      "lat": 52.479476,
+      "lng": -1.900035,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B25RS": {
+      "postcode": "B2 5RS",
+      "lat": 52.479746,
+      "lng": -1.90055,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B25TB": {
+      "postcode": "B2 5TB",
+      "lat": 52.479738,
+      "lng": -1.901669,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B261PB": {
+      "postcode": "B26 1PB",
+      "lat": 52.460429,
+      "lng": -1.802014,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sheldon",
+      "town": null
+    },
+    "B261PG": {
+      "postcode": "B26 1PG",
+      "lat": 52.462263,
+      "lng": -1.801888,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sheldon",
+      "town": null
+    },
+    "B263HD": {
+      "postcode": "B26 3HD",
+      "lat": 52.453095,
+      "lng": -1.782269,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sheldon",
+      "town": null
+    },
+    "B263JH": {
+      "postcode": "B26 3JH",
+      "lat": 52.451868,
+      "lng": -1.780303,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sheldon",
+      "town": null
+    },
+    "B276BH": {
+      "postcode": "B27 6BH",
+      "lat": 52.446608,
+      "lng": -1.822409,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Acocks Green",
+      "town": null
+    },
+    "B276LG": {
+      "postcode": "B27 6LG",
+      "lat": 52.45222,
+      "lng": -1.817869,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Acocks Green",
+      "town": null
+    },
+    "B277AH": {
+      "postcode": "B27 7AH",
+      "lat": 52.435496,
+      "lng": -1.816437,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Olton",
+      "town": null
+    },
+    "B277PU": {
+      "postcode": "B27 7PU",
+      "lat": 52.441653,
+      "lng": -1.833565,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Acocks Green",
+      "town": null
+    },
+    "B277UW": {
+      "postcode": "B27 7UW",
+      "lat": 52.445853,
+      "lng": -1.828371,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Acocks Green",
+      "town": null
+    },
+    "B280EL": {
+      "postcode": "B28 0EL",
+      "lat": 52.428495,
+      "lng": -1.843203,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B280LG": {
+      "postcode": "B28 0LG",
+      "lat": 52.423917,
+      "lng": -1.848131,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green South",
+      "town": null
+    },
+    "B288AB": {
+      "postcode": "B28 8AB",
+      "lat": 52.436815,
+      "lng": -1.846543,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B288AE": {
+      "postcode": "B28 8AE",
+      "lat": 52.438912,
+      "lng": -1.847698,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B288BG": {
+      "postcode": "B28 8BG",
+      "lat": 52.440946,
+      "lng": -1.849706,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B288JG": {
+      "postcode": "B28 8JG",
+      "lat": 52.43487,
+      "lng": -1.843916,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B288PA": {
+      "postcode": "B28 8PA",
+      "lat": 52.432809,
+      "lng": -1.835496,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Acocks Green",
+      "town": null
+    },
+    "B288TD": {
+      "postcode": "B28 8TD",
+      "lat": 52.442356,
+      "lng": -1.848995,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B289ET": {
+      "postcode": "B28 9ET",
+      "lat": 52.421598,
+      "lng": -1.835008,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B289HA": {
+      "postcode": "B28 9HA",
+      "lat": 52.420364,
+      "lng": -1.833277,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Hall Green North",
+      "town": null
+    },
+    "B296BQ": {
+      "postcode": "B29 6BQ",
+      "lat": 52.444718,
+      "lng": -1.934613,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bournbrook & Selly Park",
+      "town": null
+    },
+    "B296SS": {
+      "postcode": "B29 6SS",
+      "lat": 52.444597,
+      "lng": -1.943838,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Weoley & Selly Oak",
+      "town": null
+    },
+    "B296TZ": {
+      "postcode": "B29 6TZ",
+      "lat": 52.435064,
+      "lng": -1.936186,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bournville & Cotteridge",
+      "town": null
+    },
+    "B297NR": {
+      "postcode": "B29 7NR",
+      "lat": 52.444696,
+      "lng": -1.914678,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bournbrook & Selly Park",
+      "town": null
+    },
+    "B301QN": {
+      "postcode": "B30 1QN",
+      "lat": 52.426513,
+      "lng": -1.952375,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bournville & Cotteridge",
+      "town": null
+    },
+    "B302AA": {
+      "postcode": "B30 2AA",
+      "lat": 52.431142,
+      "lng": -1.933132,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bournville & Cotteridge",
+      "town": null
+    },
+    "B302AE": {
+      "postcode": "B30 2AE",
+      "lat": 52.431872,
+      "lng": -1.935735,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bournville & Cotteridge",
+      "town": null
+    },
+    "B302JY": {
+      "postcode": "B30 2JY",
+      "lat": 52.428637,
+      "lng": -1.923341,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Stirchley",
+      "town": null
+    },
+    "B302NT": {
+      "postcode": "B30 2NT",
+      "lat": 52.42549,
+      "lng": -1.921685,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Stirchley",
+      "town": null
+    },
+    "B303DJ": {
+      "postcode": "B30 3DJ",
+      "lat": 52.416441,
+      "lng": -1.929023,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bournville & Cotteridge",
+      "town": null
+    },
     "B312AP": {
       "postcode": "B31 2AP",
       "lat": 52.420088,
@@ -63,6 +1434,96 @@
       "ward": "Northfield",
       "town": null
     },
+    "B312SU": {
+      "postcode": "B31 2SU",
+      "lat": 52.39867,
+      "lng": -1.986177,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Northfield",
+      "town": null
+    },
+    "B313HD": {
+      "postcode": "B31 3HD",
+      "lat": 52.402162,
+      "lng": -1.961013,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Longbridge & West Heath",
+      "town": null
+    },
+    "B313JS": {
+      "postcode": "B31 3JS",
+      "lat": 52.398224,
+      "lng": -1.959826,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Longbridge & West Heath",
+      "town": null
+    },
+    "B314RE": {
+      "postcode": "B31 4RE",
+      "lat": 52.393814,
+      "lng": -1.973276,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Longbridge & West Heath",
+      "town": null
+    },
+    "B31EH": {
+      "postcode": "B3 1EH",
+      "lat": 52.484533,
+      "lng": -1.904794,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B31RS": {
+      "postcode": "B3 1RS",
+      "lat": 52.488157,
+      "lng": -1.906701,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B31TH": {
+      "postcode": "B3 1TH",
+      "lat": 52.485668,
+      "lng": -1.908635,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B321LR": {
+      "postcode": "B32 1LR",
+      "lat": 52.455497,
+      "lng": -1.99555,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Quinton",
+      "town": null
+    },
+    "B322DY": {
+      "postcode": "B32 2DY",
+      "lat": 52.460396,
+      "lng": -1.981671,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Quinton",
+      "town": null
+    },
     "B32QD": {
       "postcode": "B3 2QD",
       "lat": 52.482099,
@@ -71,6 +1532,396 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Ladywood",
+      "town": null
+    },
+    "B32RT": {
+      "postcode": "B3 2RT",
+      "lat": 52.482911,
+      "lng": -1.900778,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B33AS": {
+      "postcode": "B3 3AS",
+      "lat": 52.481222,
+      "lng": -1.902063,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B33LP": {
+      "postcode": "B3 3LP",
+      "lat": 52.481925,
+      "lng": -1.904623,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Jewellery Quarter",
+      "town": null
+    },
+    "B33QR": {
+      "postcode": "B3 3QR",
+      "lat": 52.482175,
+      "lng": -1.90262,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B33RB": {
+      "postcode": "B3 3RB",
+      "lat": 52.482311,
+      "lng": -1.903003,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B357PR": {
+      "postcode": "B35 7PR",
+      "lat": 52.52117,
+      "lng": -1.784039,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Castle Vale",
+      "town": null
+    },
+    "B360ET": {
+      "postcode": "B36 0ET",
+      "lat": 52.501863,
+      "lng": -1.76703,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Castle Bromwich",
+      "town": null
+    },
+    "B360LN": {
+      "postcode": "B36 0LN",
+      "lat": 52.492307,
+      "lng": -1.741071,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Kingshurst & Smith's Wood",
+      "town": null
+    },
+    "B368AA": {
+      "postcode": "B36 8AA",
+      "lat": 52.494173,
+      "lng": -1.816223,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bromford & Hodge Hill",
+      "town": null
+    },
+    "B369AB": {
+      "postcode": "B36 9AB",
+      "lat": 52.501658,
+      "lng": -1.777078,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Castle Bromwich",
+      "town": null
+    },
+    "B376BA": {
+      "postcode": "B37 6BA",
+      "lat": 52.493712,
+      "lng": -1.750415,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Kingshurst & Smith's Wood",
+      "town": null
+    },
+    "B377TR": {
+      "postcode": "B37 7TR",
+      "lat": 52.478355,
+      "lng": -1.728918,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Chelmsley Wood",
+      "town": null
+    },
+    "B388RH": {
+      "postcode": "B38 8RH",
+      "lat": 52.403202,
+      "lng": -1.933953,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "King's Norton South",
+      "town": null
+    },
+    "B388RS": {
+      "postcode": "B38 8RS",
+      "lat": 52.407837,
+      "lng": -1.928433,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "King's Norton North",
+      "town": null
+    },
+    "B389BB": {
+      "postcode": "B38 9BB",
+      "lat": 52.398639,
+      "lng": -1.926522,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "King's Norton South",
+      "town": null
+    },
+    "B421LR": {
+      "postcode": "B42 1LR",
+      "lat": 52.53361,
+      "lng": -1.917588,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Perry Barr",
+      "town": null
+    },
+    "B435BB": {
+      "postcode": "B43 5BB",
+      "lat": 52.538842,
+      "lng": -1.950014,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Newton & Valley",
+      "town": null
+    },
+    "B435JS": {
+      "postcode": "B43 5JS",
+      "lat": 52.541923,
+      "lng": -1.944142,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Newton & Valley",
+      "town": null
+    },
+    "B436HU": {
+      "postcode": "B43 6HU",
+      "lat": 52.545704,
+      "lng": -1.955566,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Charlemont & Grove Vale",
+      "town": null
+    },
+    "B436NR": {
+      "postcode": "B43 6NR",
+      "lat": 52.546899,
+      "lng": -1.93486,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Great Barr, Tamebridge & Yew Tree",
+      "town": null
+    },
+    "B437AP": {
+      "postcode": "B43 7AP",
+      "lat": 52.558524,
+      "lng": -1.936908,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Great Barr, Tamebridge & Yew Tree",
+      "town": null
+    },
+    "B440HH": {
+      "postcode": "B44 0HH",
+      "lat": 52.53426,
+      "lng": -1.879271,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Kingstanding",
+      "town": null
+    },
+    "B448LD": {
+      "postcode": "B44 8LD",
+      "lat": 52.540992,
+      "lng": -1.886359,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Kingstanding",
+      "town": null
+    },
+    "B448TB": {
+      "postcode": "B44 8TB",
+      "lat": 52.543352,
+      "lng": -1.90216,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Oscott",
+      "town": null
+    },
+    "B458NE": {
+      "postcode": "B45 8NE",
+      "lat": 52.361398,
+      "lng": -1.990505,
+      "district": "Bromsgrove",
+      "county": "Worcestershire",
+      "region": "West Midlands",
+      "ward": "Barnt Green & Hopwood",
+      "town": null
+    },
+    "B461RD": {
+      "postcode": "B46 1RD",
+      "lat": 52.515996,
+      "lng": -1.736983,
+      "district": "North Warwickshire",
+      "county": "Warwickshire",
+      "region": "West Midlands",
+      "ward": "Water Orton",
+      "town": null
+    },
+    "B461SR": {
+      "postcode": "B46 1SR",
+      "lat": 52.5183,
+      "lng": -1.742201,
+      "district": "North Warwickshire",
+      "county": "Warwickshire",
+      "region": "West Midlands",
+      "ward": "Water Orton",
+      "town": null
+    },
+    "B463AD": {
+      "postcode": "B46 3AD",
+      "lat": 52.49948,
+      "lng": -1.705764,
+      "district": "North Warwickshire",
+      "county": "Warwickshire",
+      "region": "West Midlands",
+      "ward": "Coleshill South",
+      "town": null
+    },
+    "B46AG": {
+      "postcode": "B4 6AG",
+      "lat": 52.481899,
+      "lng": -1.895259,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B46BN": {
+      "postcode": "B4 6BN",
+      "lat": 52.483005,
+      "lng": -1.895315,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B476ET": {
+      "postcode": "B47 6ET",
+      "lat": 52.377993,
+      "lng": -1.869044,
+      "district": "Bromsgrove",
+      "county": "Worcestershire",
+      "region": "West Midlands",
+      "ward": "Wythall East",
+      "town": null
+    },
+    "B47LA": {
+      "postcode": "B4 7LA",
+      "lat": 52.482078,
+      "lng": -1.893432,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B47QE": {
+      "postcode": "B4 7QE",
+      "lat": 52.495968,
+      "lng": -1.894209,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Newtown",
+      "town": null
+    },
+    "B54TT": {
+      "postcode": "B5 4TT",
+      "lat": 52.473163,
+      "lng": -1.89787,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley & Highgate",
+      "town": null
+    },
+    "B55BB": {
+      "postcode": "B5 5BB",
+      "lat": 52.476908,
+      "lng": -1.893121,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ladywood",
+      "town": null
+    },
+    "B55TH": {
+      "postcode": "B5 5TH",
+      "lat": 52.4774,
+      "lng": -1.890558,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley & Highgate",
+      "town": null
+    },
+    "B56BJ": {
+      "postcode": "B5 6BJ",
+      "lat": 52.476286,
+      "lng": -1.891562,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley & Highgate",
+      "town": null
+    },
+    "B57EG": {
+      "postcode": "B5 7EG",
+      "lat": 52.45037,
+      "lng": -1.916521,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Edgbaston",
+      "town": null
+    },
+    "B57NX": {
+      "postcode": "B5 7NX",
+      "lat": 52.463646,
+      "lng": -1.900909,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Balsall Heath West",
       "town": null
     },
     "B57UG": {
@@ -113,6 +1964,16 @@
       "ward": "Belle Vale",
       "town": null
     },
+    "B633LH": {
+      "postcode": "B63 3LH",
+      "lat": 52.450508,
+      "lng": -2.045961,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Halesowen South",
+      "town": null
+    },
     "B647HU": {
       "postcode": "B64 7HU",
       "lat": 52.470594,
@@ -121,6 +1982,16 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Cradley Heath & Old Hill",
+      "town": null
+    },
+    "B64NE": {
+      "postcode": "B6 4NE",
+      "lat": 52.493653,
+      "lng": -1.889074,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Newtown",
       "town": null
     },
     "B658JP": {
@@ -153,6 +2024,16 @@
       "ward": "Bearwood",
       "town": null
     },
+    "B664BX": {
+      "postcode": "B66 4BX",
+      "lat": 52.476252,
+      "lng": -1.969989,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bearwood",
+      "town": null
+    },
     "B664EY": {
       "postcode": "B66 4EY",
       "lat": 52.47947,
@@ -161,6 +2042,16 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Bearwood",
+      "town": null
+    },
+    "B664SY": {
+      "postcode": "B66 4SY",
+      "lat": 52.485425,
+      "lng": -1.95215,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Soho & Victoria",
       "town": null
     },
     "B675DG": {
@@ -173,6 +2064,26 @@
       "ward": "Bearwood",
       "town": null
     },
+    "B675PP": {
+      "postcode": "B67 5PP",
+      "lat": 52.481171,
+      "lng": -1.97829,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Smethwick",
+      "town": null
+    },
+    "B680BS": {
+      "postcode": "B68 0BS",
+      "lat": 52.463427,
+      "lng": -1.999347,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Old Warley",
+      "town": null
+    },
     "B680DL": {
       "postcode": "B68 0DL",
       "lat": 52.464703,
@@ -183,6 +2094,16 @@
       "ward": "Old Warley",
       "town": null
     },
+    "B692JQ": {
+      "postcode": "B69 2JQ",
+      "lat": 52.506204,
+      "lng": -2.03777,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tividale",
+      "town": null
+    },
     "B693DB": {
       "postcode": "B69 3DB",
       "lat": 52.50424,
@@ -191,6 +2112,46 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Oldbury",
+      "town": null
+    },
+    "B694DS": {
+      "postcode": "B69 4DS",
+      "lat": 52.503737,
+      "lng": -2.014815,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Oldbury",
+      "town": null
+    },
+    "B706JX": {
+      "postcode": "B70 6JX",
+      "lat": 52.512745,
+      "lng": -1.98439,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "West Bromwich Central",
+      "town": null
+    },
+    "B706PJ": {
+      "postcode": "B70 6PJ",
+      "lat": 52.513581,
+      "lng": -1.98495,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "West Bromwich Central",
+      "town": null
+    },
+    "B708ET": {
+      "postcode": "B70 8ET",
+      "lat": 52.518877,
+      "lng": -1.996237,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "West Bromwich Central",
       "town": null
     },
     "B709QG": {
@@ -213,6 +2174,176 @@
       "ward": "Charlemont & Grove Vale",
       "town": null
     },
+    "B714AT": {
+      "postcode": "B71 4AT",
+      "lat": 52.522913,
+      "lng": -1.986008,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "West Bromwich Central",
+      "town": null
+    },
+    "B721QP": {
+      "postcode": "B72 1QP",
+      "lat": 52.556364,
+      "lng": -1.826788,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B721RN": {
+      "postcode": "B72 1RN",
+      "lat": 52.559131,
+      "lng": -1.825568,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B721RT": {
+      "postcode": "B72 1RT",
+      "lat": 52.560035,
+      "lng": -1.822408,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B721UJ": {
+      "postcode": "B72 1UJ",
+      "lat": 52.566508,
+      "lng": -1.823046,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B721UP": {
+      "postcode": "B72 1UP",
+      "lat": 52.566059,
+      "lng": -1.822856,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B721XA": {
+      "postcode": "B72 1XA",
+      "lat": 52.565104,
+      "lng": -1.821901,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B735HW": {
+      "postcode": "B73 5HW",
+      "lat": 52.537754,
+      "lng": -1.832744,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Vesey",
+      "town": null
+    },
+    "B735NB": {
+      "postcode": "B73 5NB",
+      "lat": 52.538109,
+      "lng": -1.829322,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Wylde Green",
+      "town": null
+    },
+    "B736HN": {
+      "postcode": "B73 6HN",
+      "lat": 52.554577,
+      "lng": -1.828285,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B736LB": {
+      "postcode": "B73 6LB",
+      "lat": 52.554704,
+      "lng": -1.835172,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Vesey",
+      "town": null
+    },
+    "B742DH": {
+      "postcode": "B74 2DH",
+      "lat": 52.563803,
+      "lng": -1.881239,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Vesey",
+      "town": null
+    },
+    "B742NJ": {
+      "postcode": "B74 2NJ",
+      "lat": 52.56827,
+      "lng": -1.822434,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Trinity",
+      "town": null
+    },
+    "B742UG": {
+      "postcode": "B74 2UG",
+      "lat": 52.586169,
+      "lng": -1.829018,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Mere Green",
+      "town": null
+    },
+    "B743BF": {
+      "postcode": "B74 3BF",
+      "lat": 52.60096,
+      "lng": -1.874333,
+      "district": "Lichfield",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Little Aston & Stonnall",
+      "town": null
+    },
+    "B743EH": {
+      "postcode": "B74 3EH",
+      "lat": 52.586843,
+      "lng": -1.871096,
+      "district": "Lichfield",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Little Aston & Stonnall",
+      "town": null
+    },
+    "B743RN": {
+      "postcode": "B74 3RN",
+      "lat": 52.581357,
+      "lng": -1.89719,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Streetly",
+      "town": null
+    },
     "B743UP": {
       "postcode": "B74 3UP",
       "lat": 52.599622,
@@ -221,6 +2352,316 @@
       "county": "Staffordshire",
       "region": "West Midlands",
       "ward": "Little Aston & Stonnall",
+      "town": null
+    },
+    "B744BZ": {
+      "postcode": "B74 4BZ",
+      "lat": 52.588537,
+      "lng": -1.831282,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Mere Green",
+      "town": null
+    },
+    "B755BL": {
+      "postcode": "B75 5BL",
+      "lat": 52.587841,
+      "lng": -1.828776,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Mere Green",
+      "town": null
+    },
+    "B756DX": {
+      "postcode": "B75 6DX",
+      "lat": 52.57737,
+      "lng": -1.806681,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Roughley",
+      "town": null
+    },
+    "B761NQ": {
+      "postcode": "B76 1NQ",
+      "lat": 52.540204,
+      "lng": -1.800798,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Walmley & Minworth",
+      "town": null
+    },
+    "B761RF": {
+      "postcode": "B76 1RF",
+      "lat": 52.542399,
+      "lng": -1.801481,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sutton Walmley & Minworth",
+      "town": null
+    },
+    "B82AW": {
+      "postcode": "B8 2AW",
+      "lat": 52.492001,
+      "lng": -1.818117,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ward End",
+      "town": null
+    },
+    "B82EP": {
+      "postcode": "B8 2EP",
+      "lat": 52.49372,
+      "lng": -1.81973,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ward End",
+      "town": null
+    },
+    "B901UA": {
+      "postcode": "B90 1UA",
+      "lat": 52.385002,
+      "lng": -1.836935,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Blythe",
+      "town": null
+    },
+    "B901UB": {
+      "postcode": "B90 1UB",
+      "lat": 52.385091,
+      "lng": -1.836465,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Blythe",
+      "town": null
+    },
+    "B902HA": {
+      "postcode": "B90 2HA",
+      "lat": 52.41162,
+      "lng": -1.835456,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley West",
+      "town": null
+    },
+    "B903BB": {
+      "postcode": "B90 3BB",
+      "lat": 52.414487,
+      "lng": -1.82883,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley West",
+      "town": null
+    },
+    "B903BZ": {
+      "postcode": "B90 3BZ",
+      "lat": 52.404758,
+      "lng": -1.815873,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley South",
+      "town": null
+    },
+    "B903DN": {
+      "postcode": "B90 3DN",
+      "lat": 52.4062,
+      "lng": -1.823996,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley South",
+      "town": null
+    },
+    "B903HJ": {
+      "postcode": "B90 3HJ",
+      "lat": 52.411776,
+      "lng": -1.819534,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley East & Sharmans Cross",
+      "town": null
+    },
+    "B903JW": {
+      "postcode": "B90 3JW",
+      "lat": 52.412231,
+      "lng": -1.82284,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley East & Sharmans Cross",
+      "town": null
+    },
+    "B903LP": {
+      "postcode": "B90 3LP",
+      "lat": 52.416395,
+      "lng": -1.830322,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley West",
+      "town": null
+    },
+    "B903RP": {
+      "postcode": "B90 3RP",
+      "lat": 52.408993,
+      "lng": -1.810196,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley East & Sharmans Cross",
+      "town": null
+    },
+    "B904SB": {
+      "postcode": "B90 4SB",
+      "lat": 52.400606,
+      "lng": -1.805087,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley South",
+      "town": null
+    },
+    "B911AA": {
+      "postcode": "B91 1AA",
+      "lat": 52.416891,
+      "lng": -1.781873,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B911BB": {
+      "postcode": "B91 1BB",
+      "lat": 52.424819,
+      "lng": -1.796069,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B911BE": {
+      "postcode": "B91 1BE",
+      "lat": 52.426161,
+      "lng": -1.797578,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B911BJ": {
+      "postcode": "B91 1BJ",
+      "lat": 52.4275,
+      "lng": -1.797307,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B911BQ": {
+      "postcode": "B91 1BQ",
+      "lat": 52.429272,
+      "lng": -1.797873,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B911HT": {
+      "postcode": "B91 1HT",
+      "lat": 52.414907,
+      "lng": -1.809185,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley East & Sharmans Cross",
+      "town": null
+    },
+    "B911RD": {
+      "postcode": "B91 1RD",
+      "lat": 52.417571,
+      "lng": -1.795088,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley East & Sharmans Cross",
+      "town": null
+    },
+    "B911TH": {
+      "postcode": "B91 1TH",
+      "lat": 52.404966,
+      "lng": -1.805053,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Shirley East & Sharmans Cross",
+      "town": null
+    },
+    "B912AT": {
+      "postcode": "B91 2AT",
+      "lat": 52.422218,
+      "lng": -1.779494,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B912HH": {
+      "postcode": "B91 2HH",
+      "lat": 52.42243,
+      "lng": -1.777434,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B912JF": {
+      "postcode": "B91 2JF",
+      "lat": 52.431672,
+      "lng": -1.782624,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B912JL": {
+      "postcode": "B91 2JL",
+      "lat": 52.417138,
+      "lng": -1.774358,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B912NX": {
+      "postcode": "B91 2NX",
+      "lat": 52.421041,
+      "lng": -1.76578,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
       "town": null
     },
     "B912PP": {
@@ -233,6 +2674,76 @@
       "ward": "Silhill",
       "town": null
     },
+    "B912PY": {
+      "postcode": "B91 2PY",
+      "lat": 52.417188,
+      "lng": -1.763198,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B913DA": {
+      "postcode": "B91 3DA",
+      "lat": 52.415048,
+      "lng": -1.776883,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B913DX": {
+      "postcode": "B91 3DX",
+      "lat": 52.414797,
+      "lng": -1.777311,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Alphege with Monkspath & Hillfield",
+      "town": null
+    },
+    "B913EJ": {
+      "postcode": "B91 3EJ",
+      "lat": 52.411275,
+      "lng": -1.769081,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B913EN": {
+      "postcode": "B91 3EN",
+      "lat": 52.411108,
+      "lng": -1.766083,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Silhill",
+      "town": null
+    },
+    "B913NY": {
+      "postcode": "B91 3NY",
+      "lat": 52.405706,
+      "lng": -1.78572,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Alphege with Monkspath & Hillfield",
+      "town": null
+    },
+    "B913PX": {
+      "postcode": "B91 3PX",
+      "lat": 52.411767,
+      "lng": -1.777047,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Alphege with Monkspath & Hillfield",
+      "town": null
+    },
     "B913QG": {
       "postcode": "B91 3QG",
       "lat": 52.414289,
@@ -241,6 +2752,356 @@
       "county": null,
       "region": "West Midlands",
       "ward": "St Alphege",
+      "town": null
+    },
+    "B913QJ": {
+      "postcode": "B91 3QJ",
+      "lat": 52.412272,
+      "lng": -1.782837,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Alphege with Monkspath & Hillfield",
+      "town": null
+    },
+    "B913SB": {
+      "postcode": "B91 3SB",
+      "lat": 52.414399,
+      "lng": -1.780533,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Alphege with Monkspath & Hillfield",
+      "town": null
+    },
+    "B913TB": {
+      "postcode": "B91 3TB",
+      "lat": 52.413524,
+      "lng": -1.779052,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Alphege with Monkspath & Hillfield",
+      "town": null
+    },
+    "B920AY": {
+      "postcode": "B92 0AY",
+      "lat": 52.425552,
+      "lng": -1.701108,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Meriden & Arden",
+      "town": null
+    },
+    "B920JJ": {
+      "postcode": "B92 0JJ",
+      "lat": 52.409328,
+      "lng": -1.713037,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B920PL": {
+      "postcode": "B92 0PL",
+      "lat": 52.430856,
+      "lng": -1.755713,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Elmdon",
+      "town": null
+    },
+    "B927AW": {
+      "postcode": "B92 7AW",
+      "lat": 52.43715,
+      "lng": -1.804692,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Olton",
+      "town": null
+    },
+    "B927NG": {
+      "postcode": "B92 7NG",
+      "lat": 52.451229,
+      "lng": -1.805586,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Lyndon",
+      "town": null
+    },
+    "B927RN": {
+      "postcode": "B92 7RN",
+      "lat": 52.440999,
+      "lng": -1.805705,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Olton",
+      "town": null
+    },
+    "B928AW": {
+      "postcode": "B92 8AW",
+      "lat": 52.433366,
+      "lng": -1.794677,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Olton",
+      "town": null
+    },
+    "B928DL": {
+      "postcode": "B92 8DL",
+      "lat": 52.438532,
+      "lng": -1.797948,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Lyndon",
+      "town": null
+    },
+    "B928RL": {
+      "postcode": "B92 8RL",
+      "lat": 52.437333,
+      "lng": -1.796174,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Lyndon",
+      "town": null
+    },
+    "B928SY": {
+      "postcode": "B92 8SY",
+      "lat": 52.438149,
+      "lng": -1.784843,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Lyndon",
+      "town": null
+    },
+    "B929JF": {
+      "postcode": "B92 9JF",
+      "lat": 52.443384,
+      "lng": -1.776829,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Elmdon",
+      "town": null
+    },
+    "B929LD": {
+      "postcode": "B92 9LD",
+      "lat": 52.430252,
+      "lng": -1.763967,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Elmdon",
+      "town": null
+    },
+    "B930HN": {
+      "postcode": "B93 0HN",
+      "lat": 52.386216,
+      "lng": -1.737004,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B930HT": {
+      "postcode": "B93 0HT",
+      "lat": 52.386939,
+      "lng": -1.734737,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B930HZ": {
+      "postcode": "B93 0HZ",
+      "lat": 52.38751,
+      "lng": -1.732588,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B930LL": {
+      "postcode": "B93 0LL",
+      "lat": 52.389988,
+      "lng": -1.73538,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B930LY": {
+      "postcode": "B93 0LY",
+      "lat": 52.387702,
+      "lng": -1.734027,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B930QA": {
+      "postcode": "B93 0QA",
+      "lat": 52.379814,
+      "lng": -1.744754,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B938DA": {
+      "postcode": "B93 8DA",
+      "lat": 52.375365,
+      "lng": -1.758103,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Dorridge & Hockley Heath",
+      "town": null
+    },
+    "B938DD": {
+      "postcode": "B93 8DD",
+      "lat": 52.374179,
+      "lng": -1.75407,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Dorridge & Hockley Heath",
+      "town": null
+    },
+    "B938HE": {
+      "postcode": "B93 8HE",
+      "lat": 52.373576,
+      "lng": -1.753662,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Dorridge & Hockley Heath",
+      "town": null
+    },
+    "B938HH": {
+      "postcode": "B93 8HH",
+      "lat": 52.373343,
+      "lng": -1.753957,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Dorridge & Hockley Heath",
+      "town": null
+    },
+    "B938HP": {
+      "postcode": "B93 8HP",
+      "lat": 52.373055,
+      "lng": -1.753665,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Dorridge & Hockley Heath",
+      "town": null
+    },
+    "B938JA": {
+      "postcode": "B93 8JA",
+      "lat": 52.372775,
+      "lng": -1.753079,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Dorridge & Hockley Heath",
+      "town": null
+    },
+    "B939LF": {
+      "postcode": "B93 9LF",
+      "lat": 52.392218,
+      "lng": -1.739422,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B939PP": {
+      "postcode": "B93 9PP",
+      "lat": 52.393172,
+      "lng": -1.744105,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Knowle",
+      "town": null
+    },
+    "B945LS": {
+      "postcode": "B94 5LS",
+      "lat": 52.369477,
+      "lng": -1.837418,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Blythe",
+      "town": null
+    },
+    "B946EA": {
+      "postcode": "B94 6EA",
+      "lat": 52.365656,
+      "lng": -1.781537,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Dorridge & Hockley Heath",
+      "town": null
+    },
+    "B94AR": {
+      "postcode": "B9 4AR",
+      "lat": 52.476431,
+      "lng": -1.88286,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley & Highgate",
+      "town": null
+    },
+    "B94AT": {
+      "postcode": "B9 4AT",
+      "lat": 52.474958,
+      "lng": -1.884587,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bordesley & Highgate",
+      "town": null
+    },
+    "B95PA": {
+      "postcode": "B9 5PA",
+      "lat": 52.47864,
+      "lng": -1.841922,
+      "district": "Birmingham",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Heartlands",
+      "town": null
+    },
+    "BA27BR": {
+      "postcode": "BA2 7BR",
+      "lat": 51.364276,
+      "lng": -2.332034,
+      "district": "Bath and North East Somerset",
+      "county": null,
+      "region": "South West",
+      "ward": "Combe Down",
       "town": null
     },
     "BA28SQ": {
@@ -273,6 +3134,16 @@
       "ward": "Poole Town",
       "town": null
     },
+    "BN112AA": {
+      "postcode": "BN11 2AA",
+      "lat": 50.819326,
+      "lng": -0.364575,
+      "district": "Worthing",
+      "county": "West Sussex",
+      "region": "South East",
+      "ward": "Central",
+      "town": null
+    },
     "BN125AT": {
       "postcode": "BN12 5AT",
       "lat": 50.811381,
@@ -281,6 +3152,16 @@
       "county": "West Sussex",
       "region": "South East",
       "ward": "Goring",
+      "town": null
+    },
+    "BN25BE": {
+      "postcode": "BN2 5BE",
+      "lat": 50.819462,
+      "lng": -0.118149,
+      "district": "Brighton and Hove",
+      "county": null,
+      "region": "South East",
+      "ward": "Whitehawk & Marina",
       "town": null
     },
     "BN26DX": {
@@ -313,6 +3194,16 @@
       "ward": "Bromley Town",
       "town": null
     },
+    "BR13RS": {
+      "postcode": "BR1 3RS",
+      "lat": 51.409006,
+      "lng": 0.009327,
+      "district": "Bromley",
+      "county": null,
+      "region": "London",
+      "ward": "Bromley Town",
+      "town": null
+    },
     "BR67RG": {
       "postcode": "BR6 7RG",
       "lat": 51.358469,
@@ -333,6 +3224,16 @@
       "ward": "Redland",
       "town": null
     },
+    "CB21LR": {
+      "postcode": "CB2 1LR",
+      "lat": 52.195288,
+      "lng": 0.12828,
+      "district": "Cambridge",
+      "county": "Cambridgeshire",
+      "region": "East of England",
+      "ward": "Market",
+      "town": null
+    },
     "CB249EL": {
       "postcode": "CB24 9EL",
       "lat": 52.244778,
@@ -341,6 +3242,16 @@
       "county": "Cambridgeshire",
       "region": "East of England",
       "ward": "Histon & Impington",
+      "town": null
+    },
+    "CB28AF": {
+      "postcode": "CB2 8AF",
+      "lat": 52.190043,
+      "lng": 0.123962,
+      "district": "Cambridge",
+      "county": "Cambridgeshire",
+      "region": "East of England",
+      "ward": "Trumpington",
       "town": null
     },
     "CF238XL": {
@@ -403,6 +3314,16 @@
       "ward": "Sawbridgeworth",
       "town": null
     },
+    "CM28FR": {
+      "postcode": "CM2 8FR",
+      "lat": 51.708084,
+      "lng": 0.501334,
+      "district": "Chelmsford",
+      "county": "Essex",
+      "region": "East of England",
+      "ward": "Great Baddow East",
+      "town": null
+    },
     "CO45XR": {
       "postcode": "CO4 5XR",
       "lat": 51.906312,
@@ -413,6 +3334,16 @@
       "ward": "Mile End",
       "town": null
     },
+    "CR02RD": {
+      "postcode": "CR0 2RD",
+      "lat": 51.379541,
+      "lng": -0.101436,
+      "district": "Croydon",
+      "county": null,
+      "region": "London",
+      "ward": "Fairfield",
+      "town": null
+    },
     "CR36DP": {
       "postcode": "CR3 6DP",
       "lat": 51.273555,
@@ -421,6 +3352,16 @@
       "county": "Surrey",
       "region": "South East",
       "ward": "Harestone",
+      "town": null
+    },
+    "CR77YE": {
+      "postcode": "CR7 7YE",
+      "lat": 51.389128,
+      "lng": -0.108758,
+      "district": "Croydon",
+      "county": null,
+      "region": "London",
+      "ward": "West Thornton",
       "town": null
     },
     "CR98AB": {
@@ -623,6 +3564,26 @@
       "ward": "St Michael's",
       "town": null
     },
+    "CV15QP": {
+      "postcode": "CV1 5QP",
+      "lat": 52.407208,
+      "lng": -1.506119,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Michael's",
+      "town": null
+    },
+    "CV21BW": {
+      "postcode": "CV2 1BW",
+      "lat": 52.432164,
+      "lng": -1.466261,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Henley",
+      "town": null
+    },
     "CV21JR": {
       "postcode": "CV2 1JR",
       "lat": 52.441909,
@@ -713,6 +3674,16 @@
       "ward": "Upper Stoke",
       "town": null
     },
+    "CV24HU": {
+      "postcode": "CV2 4HU",
+      "lat": 52.410795,
+      "lng": -1.484968,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Upper Stoke",
+      "town": null
+    },
     "CV24QS": {
       "postcode": "CV2 4QS",
       "lat": 52.419331,
@@ -721,6 +3692,16 @@
       "county": null,
       "region": "West Midlands",
       "ward": "St Michael's",
+      "town": null
+    },
+    "CV25BJ": {
+      "postcode": "CV2 5BJ",
+      "lat": 52.415847,
+      "lng": -1.450666,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Wyken",
       "town": null
     },
     "CV25FB": {
@@ -791,6 +3772,16 @@
       "county": "Warwickshire",
       "region": "West Midlands",
       "ward": "Warwick Saltisford",
+      "town": null
+    },
+    "CV345QN": {
+      "postcode": "CV34 5QN",
+      "lat": 52.287915,
+      "lng": -1.563226,
+      "district": "Warwick",
+      "county": "Warwickshire",
+      "region": "West Midlands",
+      "ward": "Warwick All Saints & Woodloes",
       "town": null
     },
     "CV34FJ": {
@@ -943,6 +3934,16 @@
       "ward": "Tile Hill & Canley",
       "town": null
     },
+    "CV56EJ": {
+      "postcode": "CV5 6EJ",
+      "lat": 52.398696,
+      "lng": -1.533036,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Earlsdon",
+      "town": null
+    },
     "CV56ET": {
       "postcode": "CV5 6ET",
       "lat": 52.39912,
@@ -993,10 +3994,30 @@
       "ward": "Woodlands",
       "town": null
     },
+    "CV57BA": {
+      "postcode": "CV5 7BA",
+      "lat": 52.413091,
+      "lng": -1.58684,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Woodlands",
+      "town": null
+    },
     "CV58DQ": {
       "postcode": "CV5 8DQ",
       "lat": 52.407328,
       "lng": -1.535767,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Whoberley",
+      "town": null
+    },
+    "CV58EY": {
+      "postcode": "CV5 8EY",
+      "lat": 52.409085,
+      "lng": -1.548347,
       "district": "Coventry",
       "county": null,
       "region": "West Midlands",
@@ -1011,6 +4032,16 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Meriden & Arden",
+      "town": null
+    },
+    "CV59BN": {
+      "postcode": "CV5 9BN",
+      "lat": 52.423685,
+      "lng": -1.567623,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bablake",
       "town": null
     },
     "CV59GT": {
@@ -1057,6 +4088,16 @@
       "postcode": "CV6 1GG",
       "lat": 52.423339,
       "lng": -1.540157,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sherbourne",
+      "town": null
+    },
+    "CV62AP": {
+      "postcode": "CV6 2AP",
+      "lat": 52.428819,
+      "lng": -1.53238,
       "district": "Coventry",
       "county": null,
       "region": "West Midlands",
@@ -1123,6 +4164,16 @@
       "ward": "Foleshill",
       "town": null
     },
+    "CV65BL": {
+      "postcode": "CV6 5BL",
+      "lat": 52.428161,
+      "lng": -1.496694,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Foleshill",
+      "town": null
+    },
     "CV65BN": {
       "postcode": "CV6 5BN",
       "lat": 52.427228,
@@ -1143,6 +4194,26 @@
       "ward": "Foleshill",
       "town": null
     },
+    "CV66BX": {
+      "postcode": "CV6 6BX",
+      "lat": 52.452323,
+      "lng": -1.489679,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Longford",
+      "town": null
+    },
+    "CV66DR": {
+      "postcode": "CV6 6DR",
+      "lat": 52.44995,
+      "lng": -1.485543,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Longford",
+      "town": null
+    },
     "CV77FD": {
       "postcode": "CV7 7FD",
       "lat": 52.39166,
@@ -1153,6 +4224,46 @@
       "ward": "Balsall & Berkswell",
       "town": null
     },
+    "CV77GE": {
+      "postcode": "CV7 7GE",
+      "lat": 52.386148,
+      "lng": -1.642351,
+      "district": "Solihull",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Balsall & Berkswell",
+      "town": null
+    },
+    "CV78JJ": {
+      "postcode": "CV7 8JJ",
+      "lat": 52.450802,
+      "lng": -1.549245,
+      "district": "Coventry",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bablake",
+      "town": null
+    },
+    "CV81LY": {
+      "postcode": "CV8 1LY",
+      "lat": 52.34968,
+      "lng": -1.583333,
+      "district": "Warwick",
+      "county": "Warwickshire",
+      "region": "West Midlands",
+      "ward": "Kenilworth Abbey & Arden",
+      "town": null
+    },
+    "CV81LZ": {
+      "postcode": "CV8 1LZ",
+      "lat": 52.349879,
+      "lng": -1.583639,
+      "district": "Warwick",
+      "county": "Warwickshire",
+      "region": "West Midlands",
+      "ward": "Kenilworth Abbey & Arden",
+      "town": null
+    },
     "CV81NP": {
       "postcode": "CV8 1NP",
       "lat": 52.355024,
@@ -1161,6 +4272,16 @@
       "county": "Warwickshire",
       "region": "West Midlands",
       "ward": "Kenilworth Abbey & Arden",
+      "town": null
+    },
+    "CV83FW": {
+      "postcode": "CV8 3FW",
+      "lat": 52.383277,
+      "lng": -1.40642,
+      "district": "Rugby",
+      "county": "Warwickshire",
+      "region": "West Midlands",
+      "ward": "Wolston and the Lawfords",
       "town": null
     },
     "CV91LQ": {
@@ -1223,6 +4344,47 @@
       "ward": "Dorchester East",
       "town": null
     },
+    "DY12HQ": {
+      "postcode": "DY1 2HQ",
+      "lat": 52.501908,
+      "lng": -2.117684,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St. James's",
+      "town": null
+    },
+    "DY13AT": {
+      "postcode": "DY1 3AT",
+      "lat": 52.515474,
+      "lng": -2.097591,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St. James's",
+      "town": null
+    },
+    "DY14EH": {
+      "postcode": "DY1 4EH",
+      "lat": 52.521289,
+      "lng": -2.088157,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Castle & Priory",
+      "town": null
+    },
+    "DY20PS": null,
+    "DY27DJ": {
+      "postcode": "DY2 7DJ",
+      "lat": 52.506078,
+      "lng": -2.074691,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St. Thomas's",
+      "town": null
+    },
     "DY29NJ": {
       "postcode": "DY2 9NJ",
       "lat": 52.481699,
@@ -1233,6 +4395,66 @@
       "ward": "Quarry Bank & Dudley Wood",
       "town": null
     },
+    "DY31JA": {
+      "postcode": "DY3 1JA",
+      "lat": 52.542675,
+      "lng": -2.119695,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sedgley",
+      "town": null
+    },
+    "DY31SR": {
+      "postcode": "DY3 1SR",
+      "lat": 52.538747,
+      "lng": -2.119449,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sedgley",
+      "town": null
+    },
+    "DY32PW": {
+      "postcode": "DY3 2PW",
+      "lat": 52.513583,
+      "lng": -2.120427,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St. James's",
+      "town": null
+    },
+    "DY33QY": {
+      "postcode": "DY3 3QY",
+      "lat": 52.548048,
+      "lng": -2.131006,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Sedgley",
+      "town": null
+    },
+    "DY34BB": {
+      "postcode": "DY3 4BB",
+      "lat": 52.535891,
+      "lng": -2.148381,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Himley & Swindon",
+      "town": null
+    },
+    "DY34DB": {
+      "postcode": "DY3 4DB",
+      "lat": 52.522338,
+      "lng": -2.15258,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Himley & Swindon",
+      "town": null
+    },
     "DY47PE": {
       "postcode": "DY4 7PE",
       "lat": 52.526203,
@@ -1241,6 +4463,36 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Great Bridge",
+      "town": null
+    },
+    "DY47RG": {
+      "postcode": "DY4 7RG",
+      "lat": 52.517783,
+      "lng": -2.059281,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tipton Green",
+      "town": null
+    },
+    "DY51QX": {
+      "postcode": "DY5 1QX",
+      "lat": 52.483512,
+      "lng": -2.110243,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Brierley Hill & Wordsley South",
+      "town": null
+    },
+    "DY52AA": {
+      "postcode": "DY5 2AA",
+      "lat": 52.472469,
+      "lng": -2.103855,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Quarry Bank & Dudley Wood",
       "town": null
     },
     "DY52PR": {
@@ -1263,6 +4515,16 @@
       "ward": "Brierley Hill & Wordsley South",
       "town": null
     },
+    "DY81RF": {
+      "postcode": "DY8 1RF",
+      "lat": 52.448489,
+      "lng": -2.141995,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Norton",
+      "town": null
+    },
     "DY81UX": {
       "postcode": "DY8 1UX",
       "lat": 52.459938,
@@ -1273,7 +4535,228 @@
       "ward": "Wollaston & Stourbridge Town",
       "town": null
     },
+    "DY83UR": {
+      "postcode": "DY8 3UR",
+      "lat": 52.452971,
+      "lng": -2.159138,
+      "district": "Dudley",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Wollaston & Stourbridge Town",
+      "town": null
+    },
+    "E11BZ": null,
+    "E144HD": {
+      "postcode": "E14 4HD",
+      "lat": 51.505921,
+      "lng": -0.025535,
+      "district": "Tower Hamlets",
+      "county": null,
+      "region": "London",
+      "ward": "Canary Wharf",
+      "town": null
+    },
+    "E148AS": {
+      "postcode": "E14 8AS",
+      "lat": 51.508843,
+      "lng": -0.027051,
+      "district": "Tower Hamlets",
+      "county": null,
+      "region": "London",
+      "ward": "Limehouse",
+      "town": null
+    },
+    "E14NL": {
+      "postcode": "E1 4NL",
+      "lat": 51.520404,
+      "lng": -0.046717,
+      "district": "Tower Hamlets",
+      "county": null,
+      "region": "London",
+      "ward": "St Dunstan's",
+      "town": null
+    },
+    "E151XH": {
+      "postcode": "E15 1XH",
+      "lat": 51.540931,
+      "lng": 0.000973,
+      "district": "Newham",
+      "county": null,
+      "region": "London",
+      "ward": "Stratford",
+      "town": null
+    },
+    "E161YE": {
+      "postcode": "E16 1YE",
+      "lat": 51.514788,
+      "lng": 0.009959,
+      "district": "Newham",
+      "county": null,
+      "region": "London",
+      "ward": "Canning Town South",
+      "town": null
+    },
+    "E17JF": {
+      "postcode": "E1 7JF",
+      "lat": 51.517948,
+      "lng": -0.078778,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Bishopsgate",
+      "town": null
+    },
+    "EC1A7BE": {
+      "postcode": "EC1A 7BE",
+      "lat": 51.517751,
+      "lng": -0.100379,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Farringdon Without",
+      "town": null
+    },
+    "EC1N7SS": {
+      "postcode": "EC1N 7SS",
+      "lat": 51.518931,
+      "lng": -0.108819,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Holborn & Covent Garden",
+      "town": null
+    },
+    "EC1Y0TQ": {
+      "postcode": "EC1Y 0TQ",
+      "lat": 51.523812,
+      "lng": -0.096436,
+      "district": "Islington",
+      "county": null,
+      "region": "London",
+      "ward": "Bunhill",
+      "town": null
+    },
     "EC1Y2BJ": null,
+    "EC2A2DT": {
+      "postcode": "EC2A 2DT",
+      "lat": 51.522446,
+      "lng": -0.086027,
+      "district": "Islington",
+      "county": null,
+      "region": "London",
+      "ward": "Bunhill",
+      "town": null
+    },
+    "EC2A4NE": {
+      "postcode": "EC2A 4NE",
+      "lat": 51.525617,
+      "lng": -0.083602,
+      "district": "Hackney",
+      "county": null,
+      "region": "London",
+      "ward": "Hoxton East & Shoreditch",
+      "town": null
+    },
+    "EC2M4RB": {
+      "postcode": "EC2M 4RB",
+      "lat": 51.519884,
+      "lng": -0.078394,
+      "district": "Tower Hamlets",
+      "county": null,
+      "region": "London",
+      "ward": "Spitalfields & Banglatown",
+      "town": null
+    },
+    "EC2N1HN": {
+      "postcode": "EC2N 1HN",
+      "lat": 51.515283,
+      "lng": -0.084065,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Cornhill",
+      "town": null
+    },
+    "EC2R7DA": {
+      "postcode": "EC2R 7DA",
+      "lat": 51.515891,
+      "lng": -0.087729,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Broad Street",
+      "town": null
+    },
+    "EC2V8AF": {
+      "postcode": "EC2V 8AF",
+      "lat": 51.51444,
+      "lng": -0.092488,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Cheap",
+      "town": null
+    },
+    "EC3N2JY": {
+      "postcode": "EC3N 2JY",
+      "lat": 51.511761,
+      "lng": -0.076012,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Tower",
+      "town": null
+    },
+    "EC3R8LJ": {
+      "postcode": "EC3R 8LJ",
+      "lat": 51.509681,
+      "lng": -0.085194,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Bridge",
+      "town": null
+    },
+    "EC4A3DE": {
+      "postcode": "EC4A 3DE",
+      "lat": 51.515155,
+      "lng": -0.107765,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Castle Baynard",
+      "town": null
+    },
+    "EC4M9AF": {
+      "postcode": "EC4M 9AF",
+      "lat": 51.513624,
+      "lng": -0.095953,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Bread Street",
+      "town": null
+    },
+    "EC4R0DR": {
+      "postcode": "EC4R 0DR",
+      "lat": 51.510663,
+      "lng": -0.08753,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Candlewick",
+      "town": null
+    },
+    "EN27PR": {
+      "postcode": "EN2 7PR",
+      "lat": 51.659228,
+      "lng": -0.101335,
+      "district": "Enfield",
+      "county": null,
+      "region": "London",
+      "ward": "Ridgeway",
+      "town": null
+    },
     "EN28SD": {
       "postcode": "EN2 8SD",
       "lat": 51.667902,
@@ -1282,6 +4765,16 @@
       "county": null,
       "region": "London",
       "ward": "Ridgeway",
+      "town": null
+    },
+    "EN53DJ": {
+      "postcode": "EN5 3DJ",
+      "lat": 51.650646,
+      "lng": -0.214622,
+      "district": "Barnet",
+      "county": null,
+      "region": "London",
+      "ward": "Underhill",
       "town": null
     },
     "FK79JH": {
@@ -1315,10 +4808,30 @@
       "ward": "Longlevens",
       "town": null
     },
+    "GL516SY": {
+      "postcode": "GL51 6SY",
+      "lat": 51.891933,
+      "lng": -2.129914,
+      "district": "Cheltenham",
+      "county": "Gloucestershire",
+      "region": "South West",
+      "ward": "Benhall, the Reddings & Fiddler's Green",
+      "town": null
+    },
     "GL537AN": {
       "postcode": "GL53 7AN",
       "lat": 51.892128,
       "lng": -2.071875,
+      "district": "Cheltenham",
+      "county": "Gloucestershire",
+      "region": "South West",
+      "ward": "College",
+      "town": null
+    },
+    "GL537AS": {
+      "postcode": "GL53 7AS",
+      "lat": 51.888479,
+      "lng": -2.069864,
       "district": "Cheltenham",
       "county": "Gloucestershire",
       "region": "South West",
@@ -1345,6 +4858,16 @@
       "ward": "Castle",
       "town": null
     },
+    "GU14HD": {
+      "postcode": "GU1 4HD",
+      "lat": 51.237459,
+      "lng": -0.570777,
+      "district": "Guildford",
+      "county": "Surrey",
+      "region": "South East",
+      "ward": "Stoke",
+      "town": null
+    },
     "GU167UJ": {
       "postcode": "GU16 7UJ",
       "lat": 51.319666,
@@ -1365,6 +4888,16 @@
       "ward": "Horsell",
       "town": null
     },
+    "GU27RF": {
+      "postcode": "GU2 7RF",
+      "lat": 51.241648,
+      "lng": -0.612538,
+      "district": "Guildford",
+      "county": "Surrey",
+      "region": "South East",
+      "ward": "Westborough",
+      "town": null
+    },
     "GU71DW": {
       "postcode": "GU7 1DW",
       "lat": 51.185574,
@@ -1373,6 +4906,16 @@
       "county": "Surrey",
       "region": "South East",
       "ward": "Godalming Central & Ockford",
+      "town": null
+    },
+    "GU97DN": {
+      "postcode": "GU9 7DN",
+      "lat": 51.214241,
+      "lng": -0.800539,
+      "district": "Waverley",
+      "county": "Surrey",
+      "region": "South East",
+      "ward": "Farnham Castle",
       "town": null
     },
     "HA13RX": {
@@ -1393,6 +4936,16 @@
       "county": null,
       "region": "London",
       "ward": "Kenton West",
+      "town": null
+    },
+    "HA62JW": {
+      "postcode": "HA6 2JW",
+      "lat": 51.616455,
+      "lng": -0.4465,
+      "district": "Hillingdon",
+      "county": null,
+      "region": "London",
+      "ward": "Northwood",
       "town": null
     },
     "HA74LP": {
@@ -1475,6 +5028,16 @@
       "ward": "Northbury",
       "town": null
     },
+    "IG11XG": {
+      "postcode": "IG1 1XG",
+      "lat": 51.559119,
+      "lng": 0.084292,
+      "district": "Redbridge",
+      "county": null,
+      "region": "London",
+      "ward": "Ilford Town",
+      "town": null
+    },
     "IG45PZ": {
       "postcode": "IG4 5PZ",
       "lat": 51.587155,
@@ -1493,6 +5056,16 @@
       "county": "Essex",
       "region": "East of England",
       "ward": "Buckhurst Hill West",
+      "town": null
+    },
+    "IP13JP": {
+      "postcode": "IP1 3JP",
+      "lat": 52.061828,
+      "lng": 1.152905,
+      "district": "Ipswich",
+      "county": "Suffolk",
+      "region": "East of England",
+      "ward": "Westgate",
       "town": null
     },
     "IP332AA": {
@@ -1555,6 +5128,26 @@
       "ward": "Ashtead Park",
       "town": null
     },
+    "KT27EG": {
+      "postcode": "KT2 7EG",
+      "lat": 51.415693,
+      "lng": -0.254266,
+      "district": "Kingston upon Thames",
+      "county": null,
+      "region": "London",
+      "ward": "Coombe Hill",
+      "town": null
+    },
+    "L181HQ": {
+      "postcode": "L18 1HQ",
+      "lat": 53.385287,
+      "lng": -2.924117,
+      "district": "Liverpool",
+      "county": null,
+      "region": "North West",
+      "ward": "Greenbank Park",
+      "town": null
+    },
     "LE101HW": {
       "postcode": "LE10 1HW",
       "lat": 52.543403,
@@ -1563,6 +5156,36 @@
       "county": "Leicestershire",
       "region": "East Midlands",
       "ward": "Hinckley De Montfort",
+      "town": null
+    },
+    "LE103BE": {
+      "postcode": "LE10 3BE",
+      "lat": 52.537457,
+      "lng": -1.402663,
+      "district": "Hinckley and Bosworth",
+      "county": "Leicestershire",
+      "region": "East Midlands",
+      "ward": "Hinckley Clarendon",
+      "town": null
+    },
+    "LE15WW": {
+      "postcode": "LE1 5WW",
+      "lat": 52.6268,
+      "lng": -1.135953,
+      "district": "Leicester",
+      "county": null,
+      "region": "East Midlands",
+      "ward": "Castle",
+      "town": null
+    },
+    "LE22FF": {
+      "postcode": "LE2 2FF",
+      "lat": 52.614683,
+      "lng": -1.083463,
+      "district": "Oadby and Wigston",
+      "county": "Leicestershire",
+      "region": "East Midlands",
+      "ward": "Oadby Grange",
       "town": null
     },
     "LE51HY": {
@@ -1575,6 +5198,16 @@
       "ward": "Humberstone & Hamilton",
       "town": null
     },
+    "LS13EB": {
+      "postcode": "LS1 3EB",
+      "lat": 53.800671,
+      "lng": -1.554277,
+      "district": "Leeds",
+      "county": null,
+      "region": "Yorkshire and The Humber",
+      "ward": "Little London & Woodhouse",
+      "town": null
+    },
     "LS15JF": {
       "postcode": "LS1 5JF",
       "lat": 53.799042,
@@ -1583,6 +5216,26 @@
       "county": null,
       "region": "Yorkshire and The Humber",
       "ward": "Little London & Woodhouse",
+      "town": null
+    },
+    "LS81NT": {
+      "postcode": "LS8 1NT",
+      "lat": 53.832485,
+      "lng": -1.513933,
+      "district": "Leeds",
+      "county": null,
+      "region": "Yorkshire and The Humber",
+      "ward": "Roundhay",
+      "town": null
+    },
+    "LU40DZ": {
+      "postcode": "LU4 0DZ",
+      "lat": 51.894292,
+      "lng": -0.474153,
+      "district": "Luton",
+      "county": null,
+      "region": "East of England",
+      "ward": "Poets",
       "town": null
     },
     "LU48EY": {
@@ -1645,6 +5298,36 @@
       "ward": "Woughton & Fishermead",
       "town": null
     },
+    "MK77PB": {
+      "postcode": "MK7 7PB",
+      "lat": 52.021897,
+      "lng": -0.691217,
+      "district": "Milton Keynes",
+      "county": null,
+      "region": "South East",
+      "ward": "Walton",
+      "town": null
+    },
+    "N64DJ": {
+      "postcode": "N6 4DJ",
+      "lat": 51.57717,
+      "lng": -0.155862,
+      "district": "Haringey",
+      "county": null,
+      "region": "London",
+      "ward": "Highgate",
+      "town": null
+    },
+    "N65AX": {
+      "postcode": "N6 5AX",
+      "lat": 51.574464,
+      "lng": -0.14167,
+      "district": "Haringey",
+      "county": null,
+      "region": "London",
+      "ward": "Highgate",
+      "town": null
+    },
     "NE21JP": {
       "postcode": "NE2 1JP",
       "lat": 54.98662,
@@ -1663,6 +5346,16 @@
       "county": "Nottinghamshire",
       "region": "East Midlands",
       "ward": "Tollerton",
+      "town": null
+    },
+    "NN15DB": {
+      "postcode": "NN1 5DB",
+      "lat": 52.238355,
+      "lng": -0.878485,
+      "district": "West Northamptonshire",
+      "county": null,
+      "region": "East Midlands",
+      "ward": "Castle",
       "town": null
     },
     "NN15DR": {
@@ -1715,6 +5408,156 @@
       "ward": "Cringleford",
       "town": null
     },
+    "NR47UY": {
+      "postcode": "NR4 7UY",
+      "lat": 52.617567,
+      "lng": 1.221195,
+      "district": "South Norfolk",
+      "county": "Norfolk",
+      "region": "East of England",
+      "ward": "Cringleford",
+      "town": null
+    },
+    "NW10AG": {
+      "postcode": "NW1 0AG",
+      "lat": 51.537774,
+      "lng": -0.140526,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Camden Town",
+      "town": null
+    },
+    "NW117HB": {
+      "postcode": "NW11 7HB",
+      "lat": 51.578083,
+      "lng": -0.197839,
+      "district": "Barnet",
+      "county": null,
+      "region": "London",
+      "ward": "Golders Green",
+      "town": null
+    },
+    "NW12BU": {
+      "postcode": "NW1 2BU",
+      "lat": 51.524893,
+      "lng": -0.136885,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Bloomsbury",
+      "town": null
+    },
+    "NW17DB": {
+      "postcode": "NW1 7DB",
+      "lat": 51.539917,
+      "lng": -0.146928,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Camden Town",
+      "town": null
+    },
+    "NW22DS": {
+      "postcode": "NW2 2DS",
+      "lat": 51.559336,
+      "lng": -0.20979,
+      "district": "Barnet",
+      "county": null,
+      "region": "London",
+      "ward": "Cricklewood",
+      "town": null
+    },
+    "NW32QG": {
+      "postcode": "NW3 2QG",
+      "lat": 51.553227,
+      "lng": -0.165298,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Gospel Oak",
+      "town": null
+    },
+    "NW32RX": {
+      "postcode": "NW3 2RX",
+      "lat": 51.555158,
+      "lng": -0.167456,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Hampstead Town",
+      "town": null
+    },
+    "NW36LU": {
+      "postcode": "NW3 6LU",
+      "lat": 51.547947,
+      "lng": -0.181391,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "West Hampstead",
+      "town": null
+    },
+    "NW41RP": {
+      "postcode": "NW4 1RP",
+      "lat": 51.593715,
+      "lng": -0.224578,
+      "district": "Barnet",
+      "county": null,
+      "region": "London",
+      "ward": "Hendon",
+      "town": null
+    },
+    "NW51TL": {
+      "postcode": "NW5 1TL",
+      "lat": 51.553937,
+      "lng": -0.144728,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Kentish Town North",
+      "town": null
+    },
+    "NW51UE": {
+      "postcode": "NW5 1UE",
+      "lat": 51.554068,
+      "lng": -0.141593,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Kentish Town North",
+      "town": null
+    },
+    "NW65HZ": {
+      "postcode": "NW6 5HZ",
+      "lat": 51.536106,
+      "lng": -0.19086,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Kilburn",
+      "town": null
+    },
+    "NW87JA": {
+      "postcode": "NW8 7JA",
+      "lat": 51.529473,
+      "lng": -0.167941,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Regent's Park",
+      "town": null
+    },
+    "NW89NH": {
+      "postcode": "NW8 9NH",
+      "lat": 51.533475,
+      "lng": -0.175436,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Abbey Road",
+      "town": null
+    },
     "OL114LZ": {
       "postcode": "OL11 4LZ",
       "lat": 53.606519,
@@ -1723,6 +5566,16 @@
       "county": null,
       "region": "North West",
       "ward": "Bamford",
+      "town": null
+    },
+    "OX169FG": {
+      "postcode": "OX16 9FG",
+      "lat": 52.054051,
+      "lng": -1.334585,
+      "district": "Cherwell",
+      "county": "Oxfordshire",
+      "region": "South East",
+      "ward": "Banbury Grimsbury and Hightown",
       "town": null
     },
     "OX169XP": {
@@ -1735,6 +5588,26 @@
       "ward": "Banbury Grimsbury and Hightown",
       "town": null
     },
+    "OX26HA": {
+      "postcode": "OX2 6HA",
+      "lat": 51.759063,
+      "lng": -1.261178,
+      "district": "Oxford",
+      "county": "Oxfordshire",
+      "region": "South East",
+      "ward": "Walton Manor",
+      "town": null
+    },
+    "OX37LD": {
+      "postcode": "OX3 7LD",
+      "lat": 51.754093,
+      "lng": -1.20896,
+      "district": "Oxford",
+      "county": "Oxfordshire",
+      "region": "South East",
+      "ward": "Headington",
+      "town": null
+    },
     "OX37RP": {
       "postcode": "OX3 7RP",
       "lat": 51.760449,
@@ -1743,6 +5616,36 @@
       "county": "Oxfordshire",
       "region": "South East",
       "ward": "Headington",
+      "town": null
+    },
+    "OX39DU": {
+      "postcode": "OX3 9DU",
+      "lat": 51.763867,
+      "lng": -1.219773,
+      "district": "Oxford",
+      "county": "Oxfordshire",
+      "region": "South East",
+      "ward": "Headington Hill & Northway",
+      "town": null
+    },
+    "PE12RA": {
+      "postcode": "PE1 2RA",
+      "lat": 52.575778,
+      "lng": -0.243947,
+      "district": "Peterborough",
+      "county": null,
+      "region": "East of England",
+      "ward": "Central",
+      "town": null
+    },
+    "PE38YA": {
+      "postcode": "PE3 8YA",
+      "lat": 52.60496,
+      "lng": -0.283022,
+      "district": "Peterborough",
+      "county": null,
+      "region": "East of England",
+      "ward": "Bretton",
       "town": null
     },
     "PE39AQ": {
@@ -1763,6 +5666,16 @@
       "county": "West Sussex",
       "region": "South East",
       "ward": "Chichester North",
+      "town": null
+    },
+    "PO305TG": {
+      "postcode": "PO30 5TG",
+      "lat": 50.710832,
+      "lng": -1.301363,
+      "district": "Isle of Wight",
+      "county": null,
+      "region": "South East",
+      "ward": "Parkhurst & Hunnyhill",
       "town": null
     },
     "PO95NP": {
@@ -1793,6 +5706,16 @@
       "county": null,
       "region": "South East",
       "ward": "Newbury Central",
+      "town": null
+    },
+    "RG16NS": {
+      "postcode": "RG1 6NS",
+      "lat": 51.450221,
+      "lng": -0.9868,
+      "district": "Reading",
+      "county": null,
+      "region": "South East",
+      "ward": "Coley",
       "town": null
     },
     "RG20NE": {
@@ -1845,6 +5768,97 @@
       "ward": "Capel, Leigh, Newdigate & Charlwood",
       "town": null
     },
+    "SE10SU": null,
+    "SE12PR": {
+      "postcode": "SE1 2PR",
+      "lat": 51.506373,
+      "lng": -0.085865,
+      "district": "Southwark",
+      "county": null,
+      "region": "London",
+      "ward": "London Bridge & West Bermondsey",
+      "town": null
+    },
+    "SE167BW": {
+      "postcode": "SE16 7BW",
+      "lat": 51.49914,
+      "lng": -0.048593,
+      "district": "Southwark",
+      "county": null,
+      "region": "London",
+      "ward": "Rotherhithe",
+      "town": null
+    },
+    "SE16FJ": {
+      "postcode": "SE1 6FJ",
+      "lat": 51.497076,
+      "lng": -0.09974,
+      "district": "Southwark",
+      "county": null,
+      "region": "London",
+      "ward": "St George's",
+      "town": null
+    },
+    "SE171NQ": {
+      "postcode": "SE17 1NQ",
+      "lat": 51.491102,
+      "lng": -0.095149,
+      "district": "Southwark",
+      "county": null,
+      "region": "London",
+      "ward": "North Walworth",
+      "town": null
+    },
+    "SE18UL": {
+      "postcode": "SE1 8UL",
+      "lat": 51.50275,
+      "lng": -0.110282,
+      "district": "Lambeth",
+      "county": null,
+      "region": "London",
+      "ward": "Waterloo & South Bank",
+      "town": null
+    },
+    "SE19BS": {
+      "postcode": "SE1 9BS",
+      "lat": 51.50444,
+      "lng": -0.086422,
+      "district": "Southwark",
+      "county": null,
+      "region": "London",
+      "ward": "London Bridge & West Bermondsey",
+      "town": null
+    },
+    "SE19RT": {
+      "postcode": "SE1 9RT",
+      "lat": 51.503331,
+      "lng": -0.086771,
+      "district": "Southwark",
+      "county": null,
+      "region": "London",
+      "ward": "London Bridge & West Bermondsey",
+      "town": null
+    },
+    "SE39UD": {
+      "postcode": "SE3 9UD",
+      "lat": 51.463474,
+      "lng": 0.006291,
+      "district": "Lewisham",
+      "county": null,
+      "region": "London",
+      "ward": "Blackheath",
+      "town": null
+    },
+    "SE59RS": {
+      "postcode": "SE5 9RS",
+      "lat": 51.468078,
+      "lng": -0.09389,
+      "district": "Lambeth",
+      "county": null,
+      "region": "London",
+      "ward": "Herne Hill & Loughborough Junction",
+      "town": null
+    },
     "SG49QZ": {
       "postcode": "SG4 9QZ",
       "lat": 51.950305,
@@ -1873,6 +5887,16 @@
       "county": null,
       "region": "North West",
       "ward": "Cheadle West & Gatley",
+      "town": null
+    },
+    "SK91NY": {
+      "postcode": "SK9 1NY",
+      "lat": 53.324671,
+      "lng": -2.234827,
+      "district": "Cheshire East",
+      "county": null,
+      "region": "North West",
+      "ward": "Wilmslow West and Chorley",
       "town": null
     },
     "SL24HL": {
@@ -1915,6 +5939,16 @@
       "ward": "North Cheam",
       "town": null
     },
+    "SN36BB": {
+      "postcode": "SN3 6BB",
+      "lat": 51.538529,
+      "lng": -1.727188,
+      "district": "Swindon",
+      "county": null,
+      "region": "South West",
+      "ward": "Badbury Park, Eldene & Liden",
+      "town": null
+    },
     "SN49DD": {
       "postcode": "SN4 9DD",
       "lat": 51.525326,
@@ -1943,6 +5977,16 @@
       "county": "Hampshire",
       "region": "South East",
       "ward": "St Paul",
+      "town": null
+    },
+    "SP28BJ": {
+      "postcode": "SP2 8BJ",
+      "lat": 51.04394,
+      "lng": -1.789814,
+      "district": "Wiltshire",
+      "county": null,
+      "region": "South West",
+      "ward": "Downton & Ebble Valley",
       "town": null
     },
     "SP54EY": {
@@ -1985,6 +6029,86 @@
       "ward": "Rowley",
       "town": null
     },
+    "ST195DW": {
+      "postcode": "ST19 5DW",
+      "lat": 52.722909,
+      "lng": -2.112329,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Penkridge South & Gailey",
+      "town": null
+    },
+    "SW109NG": {
+      "postcode": "SW10 9NG",
+      "lat": 51.484323,
+      "lng": -0.180222,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Stanley",
+      "town": null
+    },
+    "SW109QL": {
+      "postcode": "SW10 9QL",
+      "lat": 51.486298,
+      "lng": -0.179971,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Stanley",
+      "town": null
+    },
+    "SW111SY": {
+      "postcode": "SW11 1SY",
+      "lat": 51.461284,
+      "lng": -0.173811,
+      "district": "Wandsworth",
+      "county": null,
+      "region": "London",
+      "ward": "Wandsworth Town",
+      "town": null
+    },
+    "SW115TB": {
+      "postcode": "SW11 5TB",
+      "lat": 51.464526,
+      "lng": -0.16035,
+      "district": "Wandsworth",
+      "county": null,
+      "region": "London",
+      "ward": "Lavender",
+      "town": null
+    },
+    "SW151RL": {
+      "postcode": "SW15 1RL",
+      "lat": 51.463266,
+      "lng": -0.2197,
+      "district": "Wandsworth",
+      "county": null,
+      "region": "London",
+      "ward": "Thamesfield",
+      "town": null
+    },
+    "SW152TL": {
+      "postcode": "SW15 2TL",
+      "lat": 51.460102,
+      "lng": -0.215073,
+      "district": "Wandsworth",
+      "county": null,
+      "region": "London",
+      "ward": "East Putney",
+      "town": null
+    },
+    "SW156TQ": {
+      "postcode": "SW15 6TQ",
+      "lat": 51.461679,
+      "lng": -0.219992,
+      "district": "Wandsworth",
+      "county": null,
+      "region": "London",
+      "ward": "West Putney",
+      "town": null
+    },
     "SW194DD": {
       "postcode": "SW19 4DD",
       "lat": 51.420713,
@@ -1993,6 +6117,186 @@
       "county": null,
       "region": "London",
       "ward": "Hillside",
+      "town": null
+    },
+    "SW195DL": {
+      "postcode": "SW19 5DL",
+      "lat": 51.425807,
+      "lng": -0.217085,
+      "district": "Merton",
+      "county": null,
+      "region": "London",
+      "ward": "Village",
+      "town": null
+    },
+    "SW195NX": {
+      "postcode": "SW19 5NX",
+      "lat": 51.43573,
+      "lng": -0.223231,
+      "district": "Merton",
+      "county": null,
+      "region": "London",
+      "ward": "Village",
+      "town": null
+    },
+    "SW1P3JA": {
+      "postcode": "SW1P 3JA",
+      "lat": 51.496817,
+      "lng": -0.126159,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "St James's",
+      "town": null
+    },
+    "SW1P4EN": {
+      "postcode": "SW1P 4EN",
+      "lat": 51.494031,
+      "lng": -0.130207,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Vincent Square",
+      "town": null
+    },
+    "SW1W8BJ": {
+      "postcode": "SW1W 8BJ",
+      "lat": 51.491623,
+      "lng": -0.157618,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Royal Hospital",
+      "town": null
+    },
+    "SW1W8RH": {
+      "postcode": "SW1W 8RH",
+      "lat": 51.48652,
+      "lng": -0.150478,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Knightsbridge & Belgravia",
+      "town": null
+    },
+    "SW1X7HY": {
+      "postcode": "SW1X 7HY",
+      "lat": 51.499265,
+      "lng": -0.148895,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Knightsbridge & Belgravia",
+      "town": null
+    },
+    "SW1Y4PE": {
+      "postcode": "SW1Y 4PE",
+      "lat": 51.508476,
+      "lng": -0.13316,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "St James's",
+      "town": null
+    },
+    "SW1Y5HS": {
+      "postcode": "SW1Y 5HS",
+      "lat": 51.506103,
+      "lng": -0.134957,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "St James's",
+      "town": null
+    },
+    "SW33NR": {
+      "postcode": "SW3 3NR",
+      "lat": 51.489661,
+      "lng": -0.165548,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Stanley",
+      "town": null
+    },
+    "SW33TD": {
+      "postcode": "SW3 3TD",
+      "lat": 51.489639,
+      "lng": -0.166413,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Stanley",
+      "town": null
+    },
+    "SW35AW": {
+      "postcode": "SW3 5AW",
+      "lat": 51.486572,
+      "lng": -0.171577,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Stanley",
+      "town": null
+    },
+    "SW36NR": {
+      "postcode": "SW3 6NR",
+      "lat": 51.488035,
+      "lng": -0.16966,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Stanley",
+      "town": null
+    },
+    "SW46LE": {
+      "postcode": "SW4 6LE",
+      "lat": 51.465129,
+      "lng": -0.130797,
+      "district": "Lambeth",
+      "county": null,
+      "region": "London",
+      "ward": "Clapham Town",
+      "town": null
+    },
+    "SW50TU": {
+      "postcode": "SW5 0TU",
+      "lat": 51.495107,
+      "lng": -0.191361,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Abingdon",
+      "town": null
+    },
+    "SW71NA": {
+      "postcode": "SW7 1NA",
+      "lat": 51.500258,
+      "lng": -0.172657,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Knightsbridge & Belgravia",
+      "town": null
+    },
+    "SW72ST": {
+      "postcode": "SW7 2ST",
+      "lat": 51.494407,
+      "lng": -0.172891,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Brompton & Hans Town",
+      "town": null
+    },
+    "SW82SH": {
+      "postcode": "SW8 2SH",
+      "lat": 51.470826,
+      "lng": -0.133329,
+      "district": "Lambeth",
+      "county": null,
+      "region": "London",
+      "ward": "Stockwell West & Larkhall",
       "town": null
     },
     "SY107AG": {
@@ -2045,6 +6349,16 @@
       "ward": "Rusthall & Speldhurst",
       "town": null
     },
+    "TN40PW": {
+      "postcode": "TN4 0PW",
+      "lat": 51.155905,
+      "lng": 0.259674,
+      "district": "Tunbridge Wells",
+      "county": "Kent",
+      "region": "South East",
+      "ward": "Southborough & Bidborough",
+      "town": null
+    },
     "TN61XP": {
       "postcode": "TN6 1XP",
       "lat": 51.063673,
@@ -2075,6 +6389,427 @@
       "ward": "Gloweth, Malabar & Shortlanesend",
       "town": null
     },
+    "W111HE": {
+      "postcode": "W11 1HE",
+      "lat": 51.51839,
+      "lng": -0.204319,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Colville",
+      "town": null
+    },
+    "W140DA": {
+      "postcode": "W14 0DA",
+      "lat": 51.502187,
+      "lng": -0.21974,
+      "district": "Hammersmith and Fulham",
+      "county": null,
+      "region": "London",
+      "ward": "Addison",
+      "town": null
+    },
+    "W1B6BW": null,
+    "W1G0AR": {
+      "postcode": "W1G 0AR",
+      "lat": 51.516185,
+      "lng": -0.148094,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W1G6AA": {
+      "postcode": "W1G 6AA",
+      "lat": 51.520779,
+      "lng": -0.1503,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G6BP": {
+      "postcode": "W1G 6BP",
+      "lat": 51.52077,
+      "lng": -0.149133,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G6NP": {
+      "postcode": "W1G 6NP",
+      "lat": 51.520219,
+      "lng": -0.150669,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G6PU": {
+      "postcode": "W1G 6PU",
+      "lat": 51.52084,
+      "lng": -0.151321,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G7AF": {
+      "postcode": "W1G 7AF",
+      "lat": 51.521988,
+      "lng": -0.147094,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G7HH": {
+      "postcode": "W1G 7HH",
+      "lat": 51.52001,
+      "lng": -0.14716,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G7HY": {
+      "postcode": "W1G 7HY",
+      "lat": 51.520998,
+      "lng": -0.147653,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G7LE": {
+      "postcode": "W1G 7LE",
+      "lat": 51.522854,
+      "lng": -0.148443,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G8DU": {
+      "postcode": "W1G 8DU",
+      "lat": 51.51833,
+      "lng": -0.150097,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G8EJ": {
+      "postcode": "W1G 8EJ",
+      "lat": 51.518121,
+      "lng": -0.149399,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G8HU": {
+      "postcode": "W1G 8HU",
+      "lat": 51.518201,
+      "lng": -0.147017,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G8QS": {
+      "postcode": "W1G 8QS",
+      "lat": 51.518933,
+      "lng": -0.147276,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G9PB": {
+      "postcode": "W1G 9PB",
+      "lat": 51.517185,
+      "lng": -0.145906,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G9PL": {
+      "postcode": "W1G 9PL",
+      "lat": 51.517067,
+      "lng": -0.145838,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G9PN": {
+      "postcode": "W1G 9PN",
+      "lat": 51.518525,
+      "lng": -0.146514,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G9PR": {
+      "postcode": "W1G 9PR",
+      "lat": 51.518724,
+      "lng": -0.146535,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G9QJ": {
+      "postcode": "W1G 9QJ",
+      "lat": 51.517429,
+      "lng": -0.146573,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G9QW": {
+      "postcode": "W1G 9QW",
+      "lat": 51.517664,
+      "lng": -0.146621,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1G9QY": {
+      "postcode": "W1G 9QY",
+      "lat": 51.517049,
+      "lng": -0.146401,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1H6EQ": {
+      "postcode": "W1H 6EQ",
+      "lat": 51.516441,
+      "lng": -0.153488,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1J5JD": {
+      "postcode": "W1J 5JD",
+      "lat": 51.508283,
+      "lng": -0.145417,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W1J8DZ": {
+      "postcode": "W1J 8DZ",
+      "lat": 51.508557,
+      "lng": -0.143374,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W1K5SL": {
+      "postcode": "W1K 5SL",
+      "lat": 51.513565,
+      "lng": -0.147292,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W1K6ZL": {
+      "postcode": "W1K 6ZL",
+      "lat": 51.512564,
+      "lng": -0.153429,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W1S4LT": {
+      "postcode": "W1S 4LT",
+      "lat": 51.508619,
+      "lng": -0.142204,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W1T7HA": {
+      "postcode": "W1T 7HA",
+      "lat": 51.522684,
+      "lng": -0.13601,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Bloomsbury",
+      "town": null
+    },
+    "W1U2HX": {
+      "postcode": "W1U 2HX",
+      "lat": 51.518293,
+      "lng": -0.150588,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1U2SB": {
+      "postcode": "W1U 2SB",
+      "lat": 51.516584,
+      "lng": -0.14998,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1U3EL": {
+      "postcode": "W1U 3EL",
+      "lat": 51.516085,
+      "lng": -0.152552,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1U5NY": {
+      "postcode": "W1U 5NY",
+      "lat": 51.522367,
+      "lng": -0.152903,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Marylebone",
+      "town": null
+    },
+    "W1W5AH": {
+      "postcode": "W1W 5AH",
+      "lat": 51.523185,
+      "lng": -0.14435,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W1W5QT": {
+      "postcode": "W1W 5QT",
+      "lat": 51.523238,
+      "lng": -0.14367,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "W24AH": {
+      "postcode": "W2 4AH",
+      "lat": 51.512393,
+      "lng": -0.189149,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Lancaster Gate",
+      "town": null
+    },
+    "W26LG": {
+      "postcode": "W2 6LG",
+      "lat": 51.516785,
+      "lng": -0.178352,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "Hyde Park",
+      "town": null
+    },
+    "W42EU": {
+      "postcode": "W4 2EU",
+      "lat": 51.491997,
+      "lng": -0.25615,
+      "district": "Hounslow",
+      "county": null,
+      "region": "London",
+      "ward": "Chiswick Gunnersbury",
+      "town": null
+    },
+    "W68DB": {
+      "postcode": "W6 8DB",
+      "lat": 51.492857,
+      "lng": -0.218836,
+      "district": "Hammersmith and Fulham",
+      "county": null,
+      "region": "London",
+      "ward": "Avonmore",
+      "town": null
+    },
+    "W71LL": {
+      "postcode": "W7 1LL",
+      "lat": 51.514294,
+      "lng": -0.337031,
+      "district": "Ealing",
+      "county": null,
+      "region": "London",
+      "ward": "North Hanwell",
+      "town": null
+    },
+    "W85BN": {
+      "postcode": "W8 5BN",
+      "lat": 51.499885,
+      "lng": -0.188651,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Queen's Gate",
+      "town": null
+    },
+    "W85EH": {
+      "postcode": "W8 5EH",
+      "lat": 51.501645,
+      "lng": -0.189647,
+      "district": "Kensington and Chelsea",
+      "county": null,
+      "region": "London",
+      "ward": "Queen's Gate",
+      "town": null
+    },
     "WA44LU": {
       "postcode": "WA4 4LU",
       "lat": 53.337486,
@@ -2083,6 +6818,107 @@
       "county": null,
       "region": "North West",
       "ward": "Appleton",
+      "town": null
+    },
+    "WC1E6DB": {
+      "postcode": "WC1E 6DB",
+      "lat": 51.524893,
+      "lng": -0.136885,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Bloomsbury",
+      "town": null
+    },
+    "WC1E6HA": {
+      "postcode": "WC1E 6HA",
+      "lat": 51.519895,
+      "lng": -0.130228,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Bloomsbury",
+      "town": null
+    },
+    "WC1H9JG": {
+      "postcode": "WC1H 9JG",
+      "lat": 51.52759,
+      "lng": -0.124997,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Bloomsbury",
+      "town": null
+    },
+    "WC1N3JH": {
+      "postcode": "WC1N 3JH",
+      "lat": 51.522212,
+      "lng": -0.119898,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Holborn & Covent Garden",
+      "town": null
+    },
+    "WC1V6JF": {
+      "postcode": "WC1V 6JF",
+      "lat": 51.51858,
+      "lng": -0.115508,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Holborn & Covent Garden",
+      "town": null
+    },
+    "WC1X8RW": null,
+    "WC2A1QS": {
+      "postcode": "WC2A 1QS",
+      "lat": 51.517486,
+      "lng": -0.112915,
+      "district": "City of London",
+      "county": null,
+      "region": "London",
+      "ward": "Farringdon Without",
+      "town": null
+    },
+    "WC2H0DT": {
+      "postcode": "WC2H 0DT",
+      "lat": 51.514196,
+      "lng": -0.129856,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "West End",
+      "town": null
+    },
+    "WC2H9AG": {
+      "postcode": "WC2H 9AG",
+      "lat": 51.515662,
+      "lng": -0.125876,
+      "district": "Camden",
+      "county": null,
+      "region": "London",
+      "ward": "Holborn & Covent Garden",
+      "town": null
+    },
+    "WC2N6RH": {
+      "postcode": "WC2N 6RH",
+      "lat": 51.507989,
+      "lng": -0.124663,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "St James's",
+      "town": null
+    },
+    "WC2R1LA": {
+      "postcode": "WC2R 1LA",
+      "lat": 51.510926,
+      "lng": -0.117683,
+      "district": "Westminster",
+      "county": null,
+      "region": "London",
+      "ward": "St James's",
       "town": null
     },
     "WD194AA": {
@@ -2115,6 +6951,16 @@
       "ward": "Aldenham West",
       "town": null
     },
+    "WD63SU": {
+      "postcode": "WD6 3SU",
+      "lat": 51.640906,
+      "lng": -0.31107,
+      "district": "Hertsmere",
+      "county": "Hertfordshire",
+      "region": "East of England",
+      "ward": "Elstree",
+      "town": null
+    },
     "WR53YB": {
       "postcode": "WR5 3YB",
       "lat": 52.181095,
@@ -2135,6 +6981,16 @@
       "ward": "Droitwich East",
       "town": null
     },
+    "WS110JL": {
+      "postcode": "WS11 0JL",
+      "lat": 52.675432,
+      "lng": -2.025448,
+      "district": "Cannock Chase",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Cannock Longford & Bridgtown",
+      "town": null
+    },
     "WS111ST": {
       "postcode": "WS11 1ST",
       "lat": 52.676557,
@@ -2143,6 +6999,96 @@
       "county": "Staffordshire",
       "region": "West Midlands",
       "ward": "Featherstone, Sharehill & Saredon",
+      "town": null
+    },
+    "WS11AF": {
+      "postcode": "WS1 1AF",
+      "lat": 52.587019,
+      "lng": -1.979553,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Matthew's",
+      "town": null
+    },
+    "WS11HR": {
+      "postcode": "WS1 1HR",
+      "lat": 52.58478,
+      "lng": -1.978831,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Matthew's",
+      "town": null
+    },
+    "WS11NR": {
+      "postcode": "WS1 1NR",
+      "lat": 52.585563,
+      "lng": -1.982963,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Matthew's",
+      "town": null
+    },
+    "WS11QJ": {
+      "postcode": "WS1 1QJ",
+      "lat": 52.583306,
+      "lng": -1.978374,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Matthew's",
+      "town": null
+    },
+    "WS11SZ": {
+      "postcode": "WS1 1SZ",
+      "lat": 52.587782,
+      "lng": -1.976542,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Matthew's",
+      "town": null
+    },
+    "WS12NL": {
+      "postcode": "WS1 2NL",
+      "lat": 52.576947,
+      "lng": -1.968313,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Paddock",
+      "town": null
+    },
+    "WS13BZ": {
+      "postcode": "WS1 3BZ",
+      "lat": 52.578218,
+      "lng": -1.97997,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Matthew's",
+      "town": null
+    },
+    "WS13HH": {
+      "postcode": "WS1 3HH",
+      "lat": 52.568194,
+      "lng": -1.979429,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Palfrey & The Delves",
+      "town": null
+    },
+    "WS13NA": {
+      "postcode": "WS1 3NA",
+      "lat": 52.580888,
+      "lng": -1.983113,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Matthew's",
       "town": null
     },
     "WS149AD": {
@@ -2155,6 +7101,176 @@
       "ward": "St John's",
       "town": null
     },
+    "WS14LL": {
+      "postcode": "WS1 4LL",
+      "lat": 52.572915,
+      "lng": -1.990257,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Palfrey & The Delves",
+      "town": null
+    },
+    "WS20BA": {
+      "postcode": "WS2 0BA",
+      "lat": 52.589175,
+      "lng": -2.024528,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bentley & Darlaston North",
+      "town": null
+    },
+    "WS27JS": {
+      "postcode": "WS2 7JS",
+      "lat": 52.605449,
+      "lng": -2.013285,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Beechdale, Leamore & Reedswood",
+      "town": null
+    },
+    "WS29BP": {
+      "postcode": "WS2 9BP",
+      "lat": 52.572619,
+      "lng": -1.997989,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Pleck",
+      "town": null
+    },
+    "WS29HA": {
+      "postcode": "WS2 9HA",
+      "lat": 52.578264,
+      "lng": -1.999465,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Pleck",
+      "town": null
+    },
+    "WS29QT": {
+      "postcode": "WS2 9QT",
+      "lat": 52.574003,
+      "lng": -2.002312,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Pleck",
+      "town": null
+    },
+    "WS41AT": {
+      "postcode": "WS4 1AT",
+      "lat": 52.62022,
+      "lng": -1.955062,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Pelsall",
+      "town": null
+    },
+    "WS41HA": {
+      "postcode": "WS4 1HA",
+      "lat": 52.607133,
+      "lng": -1.960879,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Rushall-Shelfield",
+      "town": null
+    },
+    "WS41NA": {
+      "postcode": "WS4 1NA",
+      "lat": 52.608311,
+      "lng": -1.961099,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Rushall-Shelfield",
+      "town": null
+    },
+    "WS42AB": {
+      "postcode": "WS4 2AB",
+      "lat": 52.590515,
+      "lng": -1.975167,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Rushall-Shelfield",
+      "town": null
+    },
+    "WS42DU": {
+      "postcode": "WS4 2DU",
+      "lat": 52.593588,
+      "lng": -1.968759,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Rushall-Shelfield",
+      "town": null
+    },
+    "WS42LA": {
+      "postcode": "WS4 2LA",
+      "lat": 52.590003,
+      "lng": -1.979596,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Rushall-Shelfield",
+      "town": null
+    },
+    "WS53EY": {
+      "postcode": "WS5 3EY",
+      "lat": 52.571941,
+      "lng": -1.946258,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Pheasey Park Farm",
+      "town": null
+    },
+    "WS53LY": {
+      "postcode": "WS5 3LY",
+      "lat": 52.568775,
+      "lng": -1.943444,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Paddock",
+      "town": null
+    },
+    "WS53PD": {
+      "postcode": "WS5 3PD",
+      "lat": 52.573583,
+      "lng": -1.959536,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Paddock",
+      "town": null
+    },
+    "WS54JJ": {
+      "postcode": "WS5 4JJ",
+      "lat": 52.561132,
+      "lng": -1.962512,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Great Barr, Tamebridge & Yew Tree",
+      "town": null
+    },
+    "WS54LB": {
+      "postcode": "WS5 4LB",
+      "lat": 52.559379,
+      "lng": -1.960832,
+      "district": "Sandwell",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Great Barr, Tamebridge & Yew Tree",
+      "town": null
+    },
     "WS54LX": {
       "postcode": "WS5 4LX",
       "lat": 52.564588,
@@ -2163,6 +7279,226 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Palfrey & The Delves",
+      "town": null
+    },
+    "WS66AY": {
+      "postcode": "WS6 6AY",
+      "lat": 52.639718,
+      "lng": -2.009158,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Essington",
+      "town": null
+    },
+    "WS66DP": {
+      "postcode": "WS6 6DP",
+      "lat": 52.657023,
+      "lng": -2.011438,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Great Wyrley Landywood",
+      "town": null
+    },
+    "WS67ED": {
+      "postcode": "WS6 7ED",
+      "lat": 52.662279,
+      "lng": -2.03063,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Cheslyn Hay Village",
+      "town": null
+    },
+    "WS67HS": {
+      "postcode": "WS6 7HS",
+      "lat": 52.659993,
+      "lng": -2.039943,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Cheslyn Hay Village",
+      "town": null
+    },
+    "WS98LX": {
+      "postcode": "WS9 8LX",
+      "lat": 52.604952,
+      "lng": -1.916036,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Aldridge Central & South",
+      "town": null
+    },
+    "WS98PT": {
+      "postcode": "WS9 8PT",
+      "lat": 52.603723,
+      "lng": -1.91939,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Aldridge Central & South",
+      "town": null
+    },
+    "WS99BH": {
+      "postcode": "WS9 9BH",
+      "lat": 52.630269,
+      "lng": -1.932136,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Aldridge North & Walsall Wood",
+      "town": null
+    },
+    "WS99NP": {
+      "postcode": "WS9 9NP",
+      "lat": 52.629637,
+      "lng": -1.927749,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Aldridge North & Walsall Wood",
+      "town": null
+    },
+    "WV100QP": {
+      "postcode": "WV10 0QP",
+      "lat": 52.599738,
+      "lng": -2.095549,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Heath Town",
+      "town": null
+    },
+    "WV106AN": {
+      "postcode": "WV10 6AN",
+      "lat": 52.618961,
+      "lng": -2.12986,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bushbury North",
+      "town": null
+    },
+    "WV106BA": {
+      "postcode": "WV10 6BA",
+      "lat": 52.620733,
+      "lng": -2.129259,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bushbury North",
+      "town": null
+    },
+    "WV106GH": {
+      "postcode": "WV10 6GH",
+      "lat": 52.612924,
+      "lng": -2.126016,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Oxley",
+      "town": null
+    },
+    "WV106TU": {
+      "postcode": "WV10 6TU",
+      "lat": 52.616852,
+      "lng": -2.13489,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Oxley",
+      "town": null
+    },
+    "WV107NP": {
+      "postcode": "WV10 7NP",
+      "lat": 52.650666,
+      "lng": -2.10555,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Featherstone, Sharehill & Saredon",
+      "town": null
+    },
+    "WV108BN": {
+      "postcode": "WV10 8BN",
+      "lat": 52.611245,
+      "lng": -2.105587,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Fallings Park",
+      "town": null
+    },
+    "WV108PW": {
+      "postcode": "WV10 8PW",
+      "lat": 52.612357,
+      "lng": -2.099387,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Fallings Park",
+      "town": null
+    },
+    "WV109BA": {
+      "postcode": "WV10 9BA",
+      "lat": 52.610232,
+      "lng": -2.112791,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bushbury South & Low Hill",
+      "town": null
+    },
+    "WV109JX": {
+      "postcode": "WV10 9JX",
+      "lat": 52.607705,
+      "lng": -2.113626,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bushbury South & Low Hill",
+      "town": null
+    },
+    "WV109QU": {
+      "postcode": "WV10 9QU",
+      "lat": 52.60586,
+      "lng": -2.10643,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bushbury South & Low Hill",
+      "town": null
+    },
+    "WV111AH": {
+      "postcode": "WV11 1AH",
+      "lat": 52.616293,
+      "lng": -2.089618,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Fallings Park",
+      "town": null
+    },
+    "WV111TW": {
+      "postcode": "WV11 1TW",
+      "lat": 52.602698,
+      "lng": -2.080081,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Wednesfield South",
+      "town": null
+    },
+    "WV112LT": {
+      "postcode": "WV11 2LT",
+      "lat": 52.615549,
+      "lng": -2.057168,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Wednesfield North",
       "town": null
     },
     "WV113RF": {
@@ -2175,10 +7511,60 @@
       "ward": "Wednesfield South",
       "town": null
     },
+    "WV11HT": {
+      "postcode": "WV1 1HT",
+      "lat": 52.587279,
+      "lng": -2.123226,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV11NA": {
+      "postcode": "WV1 1NA",
+      "lat": 52.588103,
+      "lng": -2.126092,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV11ST": {
+      "postcode": "WV1 1ST",
+      "lat": 52.585982,
+      "lng": -2.126145,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV12TJ": {
+      "postcode": "WV1 2TJ",
+      "lat": 52.576322,
+      "lng": -2.092193,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "East Park",
+      "town": null
+    },
     "WV132HA": {
       "postcode": "WV13 2HA",
       "lat": 52.582578,
       "lng": -2.048949,
+      "district": "Walsall",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Willenhall",
+      "town": null
+    },
+    "WV132NF": {
+      "postcode": "WV13 2NF",
+      "lat": 52.584247,
+      "lng": -2.05667,
       "district": "Walsall",
       "county": null,
       "region": "West Midlands",
@@ -2215,6 +7601,16 @@
       "ward": "Bilston North",
       "town": null
     },
+    "WV146RN": {
+      "postcode": "WV14 6RN",
+      "lat": 52.571944,
+      "lng": -2.092611,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Bilston North",
+      "town": null
+    },
     "WV149LF": {
       "postcode": "WV14 9LF",
       "lat": 52.53887,
@@ -2223,6 +7619,86 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Coseley",
+      "town": null
+    },
+    "WV14AN": {
+      "postcode": "WV1 4AN",
+      "lat": 52.591413,
+      "lng": -2.132774,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV14DJ": {
+      "postcode": "WV1 4DJ",
+      "lat": 52.586541,
+      "lng": -2.132685,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV14JH": {
+      "postcode": "WV1 4JH",
+      "lat": 52.586298,
+      "lng": -2.133009,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV14PR": {
+      "postcode": "WV1 4PR",
+      "lat": 52.586218,
+      "lng": -2.139356,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV14PS": {
+      "postcode": "WV1 4PS",
+      "lat": 52.586706,
+      "lng": -2.137719,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV14PY": {
+      "postcode": "WV1 4PY",
+      "lat": 52.587364,
+      "lng": -2.136009,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV14TF": {
+      "postcode": "WV1 4TF",
+      "lat": 52.590099,
+      "lng": -2.149376,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV14TH": {
+      "postcode": "WV1 4TH",
+      "lat": 52.588476,
+      "lng": -2.146109,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
       "town": null
     },
     "WV23DR": {
@@ -2235,6 +7711,356 @@
       "ward": "Blakenhall",
       "town": null
     },
+    "WV23DX": {
+      "postcode": "WV2 3DX",
+      "lat": 52.571907,
+      "lng": -2.122578,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Blakenhall",
+      "town": null
+    },
+    "WV23JE": {
+      "postcode": "WV2 3JE",
+      "lat": 52.567888,
+      "lng": -2.132068,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Blakenhall",
+      "town": null
+    },
+    "WV24DP": {
+      "postcode": "WV2 4DP",
+      "lat": 52.580993,
+      "lng": -2.125909,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV24LD": {
+      "postcode": "WV2 4LD",
+      "lat": 52.582731,
+      "lng": -2.130578,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "St Peters",
+      "town": null
+    },
+    "WV30JH": {
+      "postcode": "WV3 0JH",
+      "lat": 52.578175,
+      "lng": -2.137176,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Graiseley",
+      "town": null
+    },
+    "WV30LW": {
+      "postcode": "WV3 0LW",
+      "lat": 52.573726,
+      "lng": -2.143964,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Graiseley",
+      "town": null
+    },
+    "WV37DF": {
+      "postcode": "WV3 7DF",
+      "lat": 52.570706,
+      "lng": -2.143718,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Graiseley",
+      "town": null
+    },
+    "WV38DH": {
+      "postcode": "WV3 8DH",
+      "lat": 52.571744,
+      "lng": -2.173645,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Merry Hill",
+      "town": null
+    },
+    "WV39AY": {
+      "postcode": "WV3 9AY",
+      "lat": 52.580241,
+      "lng": -2.178873,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Wightwick",
+      "town": null
+    },
+    "WV39LQ": {
+      "postcode": "WV3 9LQ",
+      "lat": 52.580976,
+      "lng": -2.154953,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV39NB": {
+      "postcode": "WV3 9NB",
+      "lat": 52.586224,
+      "lng": -2.142293,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV39NJ": {
+      "postcode": "WV3 9NJ",
+      "lat": 52.589496,
+      "lng": -2.149463,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV39PA": {
+      "postcode": "WV3 9PA",
+      "lat": 52.588027,
+      "lng": -2.152543,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV39PX": {
+      "postcode": "WV3 9PX",
+      "lat": 52.587028,
+      "lng": -2.146665,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV44LB": {
+      "postcode": "WV4 4LB",
+      "lat": 52.557596,
+      "lng": -2.172128,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Merry Hill",
+      "town": null
+    },
+    "WV45AL": {
+      "postcode": "WV4 5AL",
+      "lat": 52.562378,
+      "lng": -2.131049,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Blakenhall",
+      "town": null
+    },
+    "WV45RH": {
+      "postcode": "WV4 5RH",
+      "lat": 52.558138,
+      "lng": -2.143456,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Penn",
+      "town": null
+    },
+    "WV45SF": {
+      "postcode": "WV4 5SF",
+      "lat": 52.564813,
+      "lng": -2.147136,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Penn",
+      "town": null
+    },
+    "WV46RA": {
+      "postcode": "WV4 6RA",
+      "lat": 52.555462,
+      "lng": -2.116456,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Ettingshall South & Spring Vale",
+      "town": null
+    },
+    "WV58AP": {
+      "postcode": "WV5 8AP",
+      "lat": 52.522062,
+      "lng": -2.209425,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Wombourne South",
+      "town": null
+    },
+    "WV59DN": {
+      "postcode": "WV5 9DN",
+      "lat": 52.534609,
+      "lng": -2.183965,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Wombourne North",
+      "town": null
+    },
+    "WV59JB": {
+      "postcode": "WV5 9JB",
+      "lat": 52.535299,
+      "lng": -2.185516,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Wombourne North",
+      "town": null
+    },
+    "WV59JD": {
+      "postcode": "WV5 9JD",
+      "lat": 52.53634,
+      "lng": -2.186597,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Wombourne North",
+      "town": null
+    },
+    "WV60BW": {
+      "postcode": "WV6 0BW",
+      "lat": 52.592728,
+      "lng": -2.153238,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV60BZ": {
+      "postcode": "WV6 0BZ",
+      "lat": 52.591353,
+      "lng": -2.152554,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV60DD": {
+      "postcode": "WV6 0DD",
+      "lat": 52.59226,
+      "lng": -2.153576,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV60EB": {
+      "postcode": "WV6 0EB",
+      "lat": 52.593027,
+      "lng": -2.151645,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV60HA": {
+      "postcode": "WV6 0HA",
+      "lat": 52.600028,
+      "lng": -2.153087,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV60JT": {
+      "postcode": "WV6 0JT",
+      "lat": 52.596431,
+      "lng": -2.160736,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV60JZ": {
+      "postcode": "WV6 0JZ",
+      "lat": 52.596711,
+      "lng": -2.15963,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV60LB": {
+      "postcode": "WV6 0LB",
+      "lat": 52.596424,
+      "lng": -2.158994,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Park",
+      "town": null
+    },
+    "WV67HB": {
+      "postcode": "WV6 7HB",
+      "lat": 52.585537,
+      "lng": -2.210732,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Perton Wrottesley",
+      "town": null
+    },
+    "WV67HD": {
+      "postcode": "WV6 7HD",
+      "lat": 52.58771,
+      "lng": -2.222049,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Perton Wrottesley",
+      "town": null
+    },
+    "WV68BW": {
+      "postcode": "WV6 8BW",
+      "lat": 52.581756,
+      "lng": -2.198095,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Wightwick",
+      "town": null
+    },
+    "WV68EJ": {
+      "postcode": "WV6 8EJ",
+      "lat": 52.590529,
+      "lng": -2.182015,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Wightwick",
+      "town": null
+    },
     "WV68LE": {
       "postcode": "WV6 8LE",
       "lat": 52.593476,
@@ -2243,6 +8069,136 @@
       "county": null,
       "region": "West Midlands",
       "ward": "Tettenhall Wightwick",
+      "town": null
+    },
+    "WV68QT": {
+      "postcode": "WV6 8QT",
+      "lat": 52.59767,
+      "lng": -2.168344,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Wightwick",
+      "town": null
+    },
+    "WV68QZ": {
+      "postcode": "WV6 8QZ",
+      "lat": 52.598081,
+      "lng": -2.169793,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Wightwick",
+      "town": null
+    },
+    "WV69EG": {
+      "postcode": "WV6 9EG",
+      "lat": 52.609222,
+      "lng": -2.161596,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Regis",
+      "town": null
+    },
+    "WV69EH": {
+      "postcode": "WV6 9EH",
+      "lat": 52.611182,
+      "lng": -2.161367,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Regis",
+      "town": null
+    },
+    "WV69PA": {
+      "postcode": "WV6 9PA",
+      "lat": 52.602944,
+      "lng": -2.157468,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Tettenhall Regis",
+      "town": null
+    },
+    "WV81AJ": {
+      "postcode": "WV8 1AJ",
+      "lat": 52.631463,
+      "lng": -2.196828,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Codsall",
+      "town": null
+    },
+    "WV81BH": {
+      "postcode": "WV8 1BH",
+      "lat": 52.63029,
+      "lng": -2.193897,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Codsall",
+      "town": null
+    },
+    "WV81BX": {
+      "postcode": "WV8 1BX",
+      "lat": 52.629945,
+      "lng": -2.201593,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Codsall",
+      "town": null
+    },
+    "WV81DP": {
+      "postcode": "WV8 1DP",
+      "lat": 52.630674,
+      "lng": -2.206428,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Codsall",
+      "town": null
+    },
+    "WV81HB": {
+      "postcode": "WV8 1HB",
+      "lat": 52.631313,
+      "lng": -2.200772,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Codsall",
+      "town": null
+    },
+    "WV81HF": {
+      "postcode": "WV8 1HF",
+      "lat": 52.624659,
+      "lng": -2.185156,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Bilbrook",
+      "town": null
+    },
+    "WV81PE": {
+      "postcode": "WV8 1PE",
+      "lat": 52.624868,
+      "lng": -2.189648,
+      "district": "South Staffordshire",
+      "county": "Staffordshire",
+      "region": "West Midlands",
+      "ward": "Codsall",
+      "town": null
+    },
+    "WV95HD": {
+      "postcode": "WV9 5HD",
+      "lat": 52.628312,
+      "lng": -2.151679,
+      "district": "Wolverhampton",
+      "county": null,
+      "region": "West Midlands",
+      "ward": "Oxley",
       "town": null
     }
   },
