@@ -377,6 +377,41 @@ if (!isDbConfigured()) {
   process.exit(1);
 }
 
+/* ------------------------------------------------------------------ *
+ * A Render internal hostname, pasted into a laptop's shell
+ *
+ * Render gives every database two connection strings. The Internal one
+ * has a bare hostname — dpg-xxxxxxxx-a — and resolves only from inside
+ * Render's own network. The External one is the same host with a region
+ * suffix: dpg-xxxxxxxx-a.frankfurt-postgres.render.com. They sit next to
+ * each other in the dashboard and differ by a suffix that is easy to
+ * lose when copying.
+ *
+ * Left alone, the internal one surfaces as
+ * "getaddrinfo ENOTFOUND dpg-dai5qarm8hqs73efikd0-a" from four frames
+ * inside the Postgres driver, which looks like the database is down
+ * rather than like the wrong one of two strings. This is the third
+ * variant of that error to cost a debugging cycle on this project.
+ * ------------------------------------------------------------------ */
+function refuseInternalRenderHost() {
+  const url = process.env.DATABASE_URL ?? "";
+  let host = "";
+  try { host = new URL(url).hostname; } catch { return; }
+  if (!/^dpg-[a-z0-9]+-a$/i.test(host)) return;
+
+  console.error(
+    `DATABASE_URL points at ${host}, which is Render's INTERNAL hostname.\n` +
+    "It resolves only from inside Render, so from here it fails as\n" +
+    '"getaddrinfo ENOTFOUND" and looks like the database is down.\n\n' +
+    "In the Render dashboard, copy the External Database URL instead — same\n" +
+    "host with a region suffix, e.g. .frankfurt-postgres.render.com — and\n" +
+    "keep ?sslmode=require on the end."
+  );
+  process.exit(1);
+}
+refuseInternalRenderHost();
+
+
 /* A file that is not where you said is a typo, not a crash. It used to
    come back as a raw ENOENT stack trace, which is a wall of Node
    internals over a one-line problem. */
