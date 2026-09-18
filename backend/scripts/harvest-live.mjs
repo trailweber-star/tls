@@ -126,34 +126,86 @@ function profileLinksIn(html) {
   return [...out];
 }
 
+/** "Showing 1 - 12 of 2,750 Results" — the directory's own total. */
+function totalResultsIn(html) {
+  const text = html.replace(/<[^>]+>/g, " ");
+  const m = text.match(/of\s+([\d,]+)\s+Results/i);
+  return m ? parseInt(m[1].replace(/,/g, ""), 10) : null;
+}
+
 async function enumerate() {
   const seen = new Set();
-  let page = 1;
+
+  /* Page one does two jobs: it yields its own profiles, and it tells us
+     how many there are in total. Knowing the page count up front turns
+     this from an indeterminate wait — which looks identical to a hang,
+     and gets killed — into a progress bar. */
+  console.log("enumerating listing pages…");
+  const firstPage = await get("/search_results?page=1");
+  if (!firstPage.ok) {
+    console.error(`  could not load page 1 (HTTP ${firstPage.status}). Nothing to enumerate.`);
+    process.exit(1);
+  }
+  profileLinksIn(firstPage.html).forEach((u) => seen.add(u));
+
+  const total = totalResultsIn(firstPage.html);
+  const perPage = Math.max(seen.size, 1);
+  const lastPage = total ? Math.ceil(total / perPage) : 500;
+  console.log(
+    total
+      ? `  ${total.toLocaleString()} listings, ${perPage} per page — ${lastPage} pages to walk`
+      : `  could not read a total; walking until the pages run dry`
+  );
+
+  /* Save whatever has been found so far, so a Ctrl-C at page 180 is not
+     180 pages thrown away. */
+  const save = () => {
+    const urls = [...seen].sort();
+    fs.writeFileSync(URLS_PATH, JSON.stringify(urls, null, 2));
+    return urls;
+  };
+  let stopped = false;
+  const onSigint = () => {
+    stopped = true;
+    console.log("\n  stopping — saving what has been found so far");
+  };
+  process.on("SIGINT", onSigint);
+
   let emptyRuns = 0;
+  const line = (page) =>
+    process.stdout.write(`\r  page ${page}/${lastPage} — ${seen.size} profiles      `);
+  line(1);
 
-  process.stdout.write("enumerating listing pages");
-  while (page <= 500) {
-    const res = await get(`/search_results?page=${page}`);
-    const found = res.ok ? profileLinksIn(res.html) : [];
+  for (let page = 2; page <= lastPage && !stopped; page += CONCURRENCY) {
+    const batch = [];
+    for (let i = 0; i < CONCURRENCY && page + i <= lastPage; i += 1) batch.push(page + i);
+
+    const results = await Promise.all(batch.map((n) => get(`/search_results?page=${n}`)));
     const before = seen.size;
-    found.forEach((u) => seen.add(u));
+    for (const res of results) {
+      if (res.ok) profileLinksIn(res.html).forEach((u) => seen.add(u));
+    }
 
-    // Stop on two consecutive pages that added nothing new, not one — a
-    // single page can legitimately be all duplicates of a featured row.
+    // Stop once a whole batch adds nothing — past the end of the results.
     if (seen.size === before) {
       if (++emptyRuns >= 2) break;
     } else {
       emptyRuns = 0;
     }
 
-    if (page % 10 === 0) process.stdout.write(`\r  page ${page} — ${seen.size} profiles   `);
-    page += 1;
+    line(batch[batch.length - 1]);
     await sleep(BATCH_DELAY_MS);
   }
 
-  const urls = [...seen].sort();
-  fs.writeFileSync(URLS_PATH, JSON.stringify(urls, null, 2));
+  process.off("SIGINT", onSigint);
+  const urls = save();
   console.log(`\n  ${urls.length} profile URLs → ${path.relative(BACKEND, URLS_PATH)}`);
+  if (total && urls.length < total * 0.9) {
+    console.log(
+      `  note: the directory claims ${total.toLocaleString()}. ${total - urls.length} were not reached —\n` +
+      `  re-run --urls to try again, or carry on and accept the shortfall.`
+    );
+  }
   return urls;
 }
 
@@ -193,6 +245,87 @@ const first = (html, re, group = 1) => {
 
 const UK_POSTCODE = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i;
 
+/* Tails that are a country or a home nation, not a town. They arrive
+   stuck on the end of the address line and have to come off before the
+   remainder can be read as a place: "Birmingham, UK, England" is one
+   town and two tails. */
+const ADDRESS_TAIL = /^(uk|u\.k\.|gb|united kingdom|england|scotland|wales|northern ireland|great britain)$/i;
+
+/* UK counties and the big metropolitan areas. An address line runs
+   specific-to-general, so a county is the part just before the country
+   and would otherwise be mistaken for the town — "Bushey,Hertfordshire"
+   read as Hertfordshire, which is a county the size of a small nation.
+   Pulled out into its own field rather than discarded, because
+   geotag.mjs scores candidate places on county agreement and this is
+   exactly the evidence it wants: it is what separates the Stanmore in
+   Greater London from the Stanmore in Shropshire. */
+const COUNTIES = new Set(
+  [
+    "Bedfordshire","Berkshire","Bristol","Buckinghamshire","Cambridgeshire","Cheshire",
+    "Cornwall","Cumbria","Derbyshire","Devon","Dorset","Durham","County Durham",
+    "East Riding of Yorkshire","East Sussex","Essex","Gloucestershire","Greater London",
+    "Greater Manchester","Hampshire","Herefordshire","Hertfordshire","Isle of Wight",
+    "Kent","Lancashire","Leicestershire","Lincolnshire","Merseyside","Norfolk",
+    "North Yorkshire","Northamptonshire","Northumberland","Nottinghamshire",
+    "Oxfordshire","Rutland","Shropshire","Somerset","South Yorkshire",
+    "Staffordshire","Suffolk","Surrey","Tyne and Wear","Warwickshire","West Midlands",
+    "West Sussex","West Yorkshire","Wiltshire","Worcestershire",
+    "Aberdeenshire","Angus","Argyll and Bute","Ayrshire","Clackmannanshire",
+    "Dumfries and Galloway","Dunbartonshire","Fife","Highland","Lanarkshire",
+    "Lothian","Midlothian","Moray","Perth and Kinross","Renfrewshire",
+    "Scottish Borders","Stirlingshire","West Lothian",
+    "Anglesey","Carmarthenshire","Ceredigion","Conwy","Denbighshire","Flintshire",
+    "Gwynedd","Monmouthshire","Pembrokeshire","Powys","Swansea","Wrexham",
+    "Antrim","Armagh","Down","Fermanagh","Londonderry","Tyrone",
+  ].map((c) => c.toLowerCase())
+);
+
+/* Things that appear in a street line but never in a town name, used to
+   tell "Birmingham" from "23A Highfield Rd". */
+const STREET_WORDS =
+  /\b(road|rd|street|st|avenue|ave|lane|ln|close|drive|dr|way|court|ct|place|pl|square|sq|terrace|crescent|grove|park(?!\s*$)|hill|gardens?|walk|row|suite|unit|floor|house|clinic|hospital|centre|center|surgery|practice|building|wing)\b/i;
+
+/**
+ * The town, out of whatever the address line turned out to be.
+ *
+ * Four real shapes, all from the live site:
+ *
+ *   "Cambridge, CB24 9EL"                → Cambridge
+ *   "Birmingham, UK, England"            → Birmingham
+ *   "Bushey,Hertfordshire"               → Bushey
+ *   "Highfield Clinic, 23A Highfield Rd, Birmingham , United Kingdom"
+ *                                        → Birmingham
+ *
+ * The rule: drop the postcode, split on commas, throw away country and
+ * home-nation tails, then take the LAST remaining part that does not
+ * read like a street — because an address runs specific-to-general, so
+ * the town is the last thing before the country. Taking the first part
+ * instead yields "Highfield Clinic", which geocodes to nothing.
+ */
+function townFromAddressLine(line, postcode) {
+  let s = String(line ?? "");
+  if (postcode) s = s.replace(postcode, " ");
+
+  let parts = s
+    .split(",")
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .filter((p) => !ADDRESS_TAIL.test(p));
+
+  // Lift out any county before looking for the town, so "Bushey,
+  // Hertfordshire" resolves to Bushey-in-Hertfordshire and not to a
+  // county of 1.2 million people.
+  const county = parts.find((p) => COUNTIES.has(p.toLowerCase())) ?? "";
+  if (county) parts = parts.filter((p) => p !== county);
+
+  if (!parts.length) return { town: "", county };
+
+  const town = [...parts].reverse().find((p) => !STREET_WORDS.test(p) && !/\d/.test(p));
+  // Everything looks like a street line — better to hand back the last
+  // part and let the geocoder refuse it than to invent a town.
+  return { town: town ?? parts[parts.length - 1], county };
+}
+
 function parseProfile(url, html) {
   const rec = { url, harvestedAt: new Date().toISOString() };
 
@@ -217,10 +350,42 @@ function parseProfile(url, html) {
     first(html, /table-display-phone">[\s\S]*?col-sm-8">\s*([\s\S]*?)<\/div>/);
   rec.website = first(html, /class="weblink"[^>]*href="([^"]+)"/);
 
-  /* The image: taken from the <img>, not from the JSON-LD. They disagree,
-     and on the records where they disagree it is the JSON-LD path that
-     404s while the <img> path serves a real file. */
-  rec.image = first(html, /<img[^>]+src="(\/pictures\/profile\/[^"]+)"/);
+  /* --- the photo ---
+   *
+   * Four families of path turn up here, and only two of them are a
+   * picture of anybody:
+   *
+   *   /pictures/profile/pimage-<id>-<n>-photo.webp   a real headshot
+   *   /logos/profile/profile_<timestamp>.jpg         a real logo/photo
+   *   /logos/profile/limage-<id>-<n>-photo.webp      ditto
+   *   /images/profile-profile-holder.png             the empty-state icon
+   *   /images/Generated-Image-September-17-2025…webp an AI-generated filler
+   *
+   * The last two are not profile photos and must never be imported as
+   * one. A placeholder at least fails honestly; a generated stock image
+   * on a named consultant's profile is a picture of a person who does
+   * not exist, sitting above a real doctor's GMC number. That is worse
+   * than an empty avatar, so it is recorded as "none" with the reason
+   * kept in imageRejected. */
+  const imageCandidates = [
+    real(biz?.image?.url),
+    first(html, /<img[^>]+src="(\/(?:pictures|logos)\/profile\/[^"]+)"/),
+    first(html, /<img[^>]+src="(\/images\/[^"]+)"/),
+  ].filter(Boolean);
+
+  const REAL_PHOTO = /^\/(?:pictures|logos)\/profile\//;
+  const NOT_A_PHOTO = /profile-profile-holder|Generated-Image|placeholder|no-image|default/i;
+
+  rec.image = imageCandidates.find((u) => REAL_PHOTO.test(u) && !NOT_A_PHOTO.test(u)) ?? "";
+  rec.imageRejected = rec.image
+    ? ""
+    : imageCandidates.find((u) => NOT_A_PHOTO.test(u))
+      ? /Generated-Image/i.test(imageCandidates.join(" "))
+        ? "AI-generated filler image, not a real photo"
+        : "placeholder avatar, no real photo"
+      : imageCandidates.length
+        ? `unrecognised image path: ${imageCandidates[0]}`
+        : "";
   rec.imageJsonLd = real(biz?.image?.url);
 
   rec.category = first(html, /<span class="category category-profession_id">([\s\S]*?)<\/span>/);
@@ -249,9 +414,9 @@ function parseProfile(url, html) {
 
   const pc = rec.addressLine.match(UK_POSTCODE);
   rec.postcodeFromAddress = pc ? `${pc[1].toUpperCase()} ${pc[2].toUpperCase()}` : "";
-  rec.townFromAddress = pc
-    ? rec.addressLine.replace(pc[0], "").replace(/[,\s]+$/, "").trim()
-    : rec.addressLine;
+  const parsedTown = townFromAddressLine(rec.addressLine, pc?.[0]);
+  rec.townFromAddress = parsedTown.town;
+  rec.countyFromAddress = parsedTown.county;
 
   // What Brilliant Directories itself thinks the city and postcode are —
   // captured so the damage is visible in the output rather than implied.
@@ -307,17 +472,29 @@ const COUNTRY_SLUGS = new Set([
   "belgium", "switzerland", "austria", "sweden", "norway", "denmark", "pro",
 ]);
 
+/* A closed list of category slugs was the wrong shape for this. The live
+   site has "orthopaedic-surgeon", "paediatric-surgeon",
+   "anaesthetist-orthopaedic-surgeon" and no doubt more nobody has seen
+   yet, and every one this list misses becomes a town: the first pass
+   filed two consultants in a place called "Anaesthetist Orthopaedic
+   Surgeon". So the test is what the words MEAN, not whether the exact
+   string was predicted. */
+const PROFESSION_WORDS =
+  /(surgeon|surgery|surgical|specialist|consultant|doctor|physician|practitioner|dentist|dentistry|therapist|therapy|olog(y|ist)|iatric|iatry|medicine|medical|clinic|nurse|nursing|midwife|midwifery|aesthetic|cosmetic|orthodont|physio|osteopath|chiropract|podiatr|optometr|optician|counsell?or|counselling|psychiatr|anaesthe|radiograph|sonograph|dietit|nutrition)/i;
+
 const CATEGORY_SLUGS = new Set([
   "psychologist", "physiotherapist", "orthopaedics", "neurosurgery", "gynaecology",
   "general-practioners", "ent-surgeon", "ent-specialist", "dermatologist",
-  "dentistry", "aesthetic-doctors", "orthopaedic-surgeon", "orthopaedic-surgery",
-  "paediatric-surgeon",
+  "dentistry", "aesthetic-doctors", "paediatrics",
 ]);
 
 function slugTown(segs) {
   const body = segs.slice(0, -1);
   for (const s of body) {
     if (COUNTRY_SLUGS.has(s) || CATEGORY_SLUGS.has(s)) continue;
+    // A profession, however it is spelled. This is what stops
+    // "anaesthetist-orthopaedic-surgeon" becoming a town.
+    if (PROFESSION_WORDS.test(s.replace(/-/g, " "))) continue;
     // "solihull-uk" → "Solihull". A country welded onto a town name is
     // noise; left in, it reaches the geocoder as a town called
     // "Solihull Uk" and resolves to nothing.
@@ -392,11 +569,159 @@ async function fetchAll() {
  * which 40 of 2,750 went missing.
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * The two gates: is it in the UK, and is it a healthcare listing
+ *
+ * The live directory is not clean. Alongside 2,750 UK consultants and
+ * clinics it carries hospitals in Patna, a skin clinic in Dubai, a
+ * practice in Serbia — and a Finnish cryptocurrency site and a company
+ * that sells puzzles. None of that belongs in a UK specialist
+ * directory, so none of it crosses over.
+ *
+ * Nothing is deleted quietly. A row that fails either gate is written to
+ * rejected.csv with the reason, and a row that cannot be judged either
+ * way goes to review.csv. Three files, because "2,310 of 2,750 imported"
+ * is only a useful sentence if the other 440 are somewhere you can look
+ * at them.
+ * ------------------------------------------------------------------ */
+
+const UK_COUNTRY = /^(GB|GBR|UK|United Kingdom|England|Scotland|Wales|Northern Ireland)$/i;
+const UK_SLUGS = new Set([
+  "united-kingdom", "england", "scotland", "wales", "northern-ireland",
+]);
+
+/** A clear non-UK signal, or nothing at all. Absence is not a rejection. */
+function ukVerdict(rec) {
+  const segs = rec.url.replace(/^\//, "").split("/");
+  const slugCountry = segs.find((s) => COUNTRY_SLUGS.has(s) && s !== "pro");
+
+  if (slugCountry && !UK_SLUGS.has(slugCountry)) {
+    return { uk: false, why: `URL says ${slugCountry}` };
+  }
+  if (rec.country && !UK_COUNTRY.test(rec.country.trim())) {
+    return { uk: false, why: `country field says ${rec.country}` };
+  }
+  if (slugCountry || rec.country || rec.postcodeFromAddress) return { uk: true };
+  return { uk: null, why: "nothing on the record says which country" };
+}
+
+/* Words that settle it on their own. A "clinic", a "dentist" or a
+   "consultant" is in; crypto, gambling and puzzles are out whatever else
+   the record claims. The out-list wins, so a fake listing that stuffs
+   "clinic" into its name does not sneak through on the word alone. */
+const HEALTH_WORDS = new RegExp(
+  [
+    "clinic", "hospital", "dental", "dentist", "orthodont", "endodont", "periodont",
+    "doctor", "\\bdr\\b", "\\bmr\\b", "\\bmrs\\b", "\\bms\\b", "\\bmiss\\b", "surgeon", "surgery", "surgical",
+    "medical", "medicine", "healthcare", "health", "wellness", "wellbeing",
+    "physio", "physiotherap", "osteopath", "chiropract", "podiatr", "chiropod",
+    "psycholog", "psychiatr", "psychotherap", "therapy", "therapist", "counsell", "counsel",
+    "orthopaed", "orthoped", "gynaecolog", "gynecolog", "obstetric", "dermatolog",
+    "neurosurg", "neurolog", "cardiolog", "oncolog", "urolog", "rheumatolog",
+    "paediatric", "pediatric", "geriatric", "radiolog", "patholog", "anaesthe",
+    "\\bent\\b", "audiolog", "optometr", "optician", "ophthalm", "optical",
+    "aesthetic", "cosmetic", "botox", "dermal", "filler", "skin", "laser",
+    "nurse", "nursing", "midwif", "fertility", "\\bivf\\b", "maternity",
+    "practice", "consultant", "specialist", "diagnost", "pharmac", "\\bgp\\b",
+    "acupunctur", "hypnotherap", "nutrition", "dietit", "podiatry", "sports injur",
+    "rehabilitat", "pain", "smile", "teeth", "tooth", "vein", "hair transplant",
+  ].join("|"),
+  "i"
+);
+
+const NOT_HEALTH_WORDS = new RegExp(
+  [
+    "crypto", "bitcoin", "\\bnft\\b", "blockchain", "\\bforex\\b", "\\btrading\\b",
+    "casino", "betting", "gambl", "\\bloan", "payday", "mortgage broker",
+    "puzzle", "\\btoys?\\b", "\\bgames?\\b", "escort", "\\bvape\\b", "\\bcbd shop\\b",
+    "plumb", "roofing", "scaffold", "locksmith", "removals", "\\btaxi\\b",
+    "car hire", "car rental", "\\bcarpet", "\\blandscap", "\\bpaving\\b",
+    "seo agency", "web design", "digital marketing", "\\bcourier\\b", "shipping",
+    "\\btravel agen", "\\bholiday", "\\bcatering\\b", "\\bbakery\\b", "\\bcafe\\b",
+    "\\brestaurant\\b", "\\bplc\\b investments", "\\bestate agen",
+  ].join("|"),
+  "i"
+);
+
+const HEALTH_CATEGORIES = new Set([
+  "psychologist", "physiotherapist", "orthopaedics", "neurosurgery", "gynaecology",
+  "general practioners", "general practitioners", "ent surgeon", "ent specialist",
+  "dermatologist", "dentistry", "aesthetic doctors",
+]);
+
+/**
+ * Is this a healthcare listing?
+ *
+ * The category is the strongest evidence there is: it is an admin-set
+ * field from a fixed list, not something a member typed. A record with a
+ * health category is a health record. Only after that does the wording
+ * of the name and description get a say, and a hard out-word overrides
+ * everything — a "clinic" in Helsinki selling cryptocurrency is still
+ * selling cryptocurrency.
+ */
+function healthVerdict(rec) {
+  const haystack = `${rec.name} ${rec.category} ${rec.description ?? ""}`;
+
+  const bad = haystack.match(NOT_HEALTH_WORDS);
+  if (bad) return { health: false, why: `"${bad[0]}" in the name or description` };
+
+  if (rec.category && HEALTH_CATEGORIES.has(rec.category.trim().toLowerCase())) {
+    return { health: true };
+  }
+  if (HEALTH_WORDS.test(haystack)) return { health: true };
+
+  // No category, nothing that reads as healthcare, but nothing damning
+  // either — e.g. an invented brand name like "Envigore". A person
+  // decides these, not a regex.
+  return { health: null, why: "no category and nothing healthcare-related in the name" };
+}
+
+/* ------------------------------------------------------------------ *
+ * The fields a listing cannot go live without
+ *
+ * Named by the client: address, coordinates, town, category,
+ * subcategory, name, profile photo, description, email. A row missing
+ * any of them is held in review.csv rather than imported, and the
+ * summary counts each field separately — because "412 rows held back"
+ * is not actionable, and "412 held back, 400 of them for the same one
+ * missing field" tells you exactly what to go and fix.
+ *
+ * EMAIL IS NOT ON THIS LIST, deliberately. It is not published on any
+ * profile: Brilliant Directories routes member contact through /connect
+ * precisely so that addresses cannot be harvested, and the only address
+ * in the page source is the form's own "name@yoursite.com" placeholder.
+ * No amount of parsing recovers it. It is not a loss, because nothing
+ * downstream needs it — import-profile.mjs mints
+ * <slug>@unclaimed.toplocalspecialists.com for an unclaimed listing and
+ * sets no password on it, so the account exists, an admin can act as
+ * them, nobody can sign in, and the real address arrives when the
+ * clinician claims the listing. Which is the correct way for it to
+ * arrive: an address scraped off a page is not consent to be emailed.
+ *
+ * SUBCATEGORY depends on the specialty tree in this database, which the
+ * harvester deliberately knows nothing about. map-taxonomy.mjs fills it
+ * in afterwards, resolving against the six predefined top-level
+ * specialties and the 473 below them.
+ * ------------------------------------------------------------------ */
+
+const REQUIRED = [
+  ["name", (r) => r.name],
+  ["category", (r) => r.category],
+  ["subCategory", (r) => r.subCategory],
+  ["description", (r) => r.description],
+  ["photo", (r) => r.image],
+  ["address", (r) => r.addressLine || r.postcodeFromAddress],
+  ["town", (r) => r.townFromAddress || r.townFromSlug],
+  ["coordinates", (r) => r.lat && r.lng],
+];
+
+const missingFields = (rec) => REQUIRED.filter(([, get]) => !get(rec)).map(([name]) => name);
+
 const COLUMNS = [
-  "url", "slug", "name", "category", "claimed", "gmcId",
-  "townFromAddress", "postcodeFromAddress", "townFromSlug",
-  "lat", "lng", "region", "country", "locationSource",
-  "telephone", "website", "image", "yearsEstablished", "description",
+  "url", "slug", "name", "category", "subCategory", "claimed", "gmcId",
+  "townFromAddress", "countyFromAddress", "postcodeFromAddress", "townFromSlug",
+  "addressLine", "lat", "lng", "region", "country", "locationSource",
+  "telephone", "website", "image", "imageRejected", "yearsEstablished", "description",
   "bdLocality", "bdPostcode",
   "sourceRating_DO_NOT_IMPORT", "sourceReviewCount_DO_NOT_IMPORT",
 ];
@@ -414,6 +739,7 @@ function writeCsv() {
   }
 
   const keep = [];
+  const review = [];
   const reject = [];
   let line = 0;
 
@@ -429,10 +755,57 @@ function writeCsv() {
       reject.push({ line, url: rec.url, reason: "no location of any kind — not geo, not address, not slug" });
       continue;
     }
+
+    // Outside the UK — out, and said plainly.
+    const uk = ukVerdict(rec);
+    if (uk.uk === false) {
+      reject.push({ line, url: rec.url, reason: `not in the UK — ${uk.why}` });
+      continue;
+    }
+
+    // Not a healthcare listing — out.
+    const health = healthVerdict(rec);
+    if (health.health === false) {
+      reject.push({ line, url: rec.url, reason: `not a healthcare listing — ${health.why}` });
+      continue;
+    }
+
+    // Either gate unsure. Held back rather than guessed at in either
+    // direction, because both mistakes are expensive: importing a
+    // puzzle shop is embarrassing, and dropping a real consultant
+    // because his practice has an invented name loses a partner.
+    if (uk.uk === null || health.health === null) {
+      review.push({
+        ...rec,
+        reviewReason: [uk.uk === null ? uk.why : null, health.health === null ? health.why : null]
+          .filter(Boolean)
+          .join("; "),
+      });
+      continue;
+    }
+
+    // In the UK, plainly healthcare — but is it complete enough to go
+    // live? A listing with no photo or no description is not a listing
+    // anyone wants to land on.
+    const missing = missingFields(rec);
+    rec.missing = missing.join(" ");
+    if (missing.length) {
+      review.push({ ...rec, reviewReason: `missing: ${missing.join(", ")}` });
+      continue;
+    }
+
     keep.push(rec);
   }
 
+  const REVIEW_PATH = path.join(OUT, "review.csv");
   fs.writeFileSync(CSV_PATH, [COLUMNS.join(","), ...keep.map(csvRow)].join("\n") + "\n");
+  fs.writeFileSync(
+    REVIEW_PATH,
+    [
+      ["reviewReason", ...COLUMNS].join(","),
+      ...review.map((r) => [csvCell(r.reviewReason), csvRow(r)].join(",")),
+    ].join("\n") + "\n"
+  );
   fs.writeFileSync(
     REJECTS_PATH,
     ["line,url,reason", ...reject.map((r) => [r.line, r.url, r.reason].map(csvCell).join(","))].join("\n") + "\n"
@@ -443,24 +816,76 @@ function writeCsv() {
   const tally = {};
   for (const r of keep) tally[r.locationSource] = (tally[r.locationSource] ?? 0) + 1;
 
+  const pct = (n) => (keep.length ? `${Math.round((n / keep.length) * 100)}%` : "—");
   const withPostcode = keep.filter((r) => r.postcodeFromAddress).length;
   const withGeo = keep.filter((r) => r.lat).length;
   const withCategory = keep.filter((r) => r.category).length;
   const withImage = keep.filter((r) => r.image).length;
-  const nonUk = keep.filter((r) => r.country && !/^(GB|United Kingdom)$/i.test(r.country)).length;
+  const placeable = keep.filter((r) => r.lat || r.postcodeFromAddress).length;
 
-  console.log(`\n  kept     ${keep.length}`);
-  console.log(`  rejected ${reject.length}  → ${path.relative(BACKEND, REJECTS_PATH)}`);
-  console.log(`\n  category present   ${withCategory}/${keep.length}`);
-  console.log(`  coordinates        ${withGeo}/${keep.length}`);
-  console.log(`  real postcode      ${withPostcode}/${keep.length}`);
-  console.log(`  profile photo      ${withImage}/${keep.length}`);
-  console.log(`  outside the UK     ${nonUk}  (review before importing)`);
+  const reasons = {};
+  for (const r of reject) {
+    const k = /not in the UK/.test(r.reason)
+      ? "not in the UK"
+      : /not a healthcare listing/.test(r.reason)
+      ? "not a healthcare listing"
+      : /no location/.test(r.reason)
+      ? "no location at all"
+      : /no name/.test(r.reason)
+      ? "no name"
+      : "fetch or parse failure";
+    reasons[k] = (reasons[k] ?? 0) + 1;
+  }
+
+  console.log(`\n  import   ${keep.length}   → ${path.relative(BACKEND, CSV_PATH)}`);
+  console.log(`  review   ${review.length}   → ${path.relative(BACKEND, REVIEW_PATH)}`);
+  console.log(`  rejected ${reject.length}   → ${path.relative(BACKEND, REJECTS_PATH)}`);
+
+  if (reject.length) {
+    console.log(`\n  why rejected:`);
+    for (const [k, v] of Object.entries(reasons).sort((a, b) => b[1] - a[1])) {
+      console.log(`    ${String(v).padStart(5)}  ${k}`);
+    }
+  }
+
+  /* Field completeness across everything that passed the UK and
+     healthcare gates — the import-ready rows plus the ones held for a
+     missing field. This is the table that decides whether the public
+     site is a good enough source or whether the Members export is
+     worth chasing: one field missing on nearly every row is a reason to
+     go and get the export, not a reason to import 2,000 half-listings. */
+  const gated = [...keep, ...review.filter((r) => /^missing:/.test(r.reviewReason))];
+  if (gated.length) {
+    console.log(`\n  field completeness across ${gated.length} UK healthcare listings:`);
+    for (const [name, get] of REQUIRED) {
+      const have = gated.filter((r) => get(r)).length;
+      const bar = "█".repeat(Math.round((have / gated.length) * 24)).padEnd(24, "·");
+      console.log(
+        `    ${name.padEnd(12)} ${bar} ${String(have).padStart(5)}/${gated.length}` +
+        (have === 0 ? "   ← nothing has this" : have < gated.length * 0.5 ? "   ← mostly missing" : "")
+      );
+    }
+  }
+
+  const noPhotoReason = {};
+  for (const r of gated) if (!r.image && r.imageRejected) noPhotoReason[r.imageRejected] = (noPhotoReason[r.imageRejected] ?? 0) + 1;
+  if (Object.keys(noPhotoReason).length) {
+    console.log(`\n  why a photo is missing:`);
+    for (const [k, v] of Object.entries(noPhotoReason).sort((a, b) => b[1] - a[1])) {
+      console.log(`    ${String(v).padStart(5)}  ${k}`);
+    }
+  }
+
+  console.log(`\n  of the ${keep.length} to import:`);
+  console.log(`    category present   ${withCategory}  ${pct(withCategory)}`);
+  console.log(`    profile photo      ${withImage}  ${pct(withImage)}`);
+  console.log(`    coordinates        ${withGeo}  ${pct(withGeo)}`);
+  console.log(`    real postcode      ${withPostcode}  ${pct(withPostcode)}`);
+  console.log(`    placeable exactly  ${placeable}  ${pct(placeable)}   (geo or postcode — the rest need the town geocoded)`);
   console.log(`\n  location provenance:`);
   for (const [k, v] of Object.entries(tally).sort((a, b) => b[1] - a[1])) {
     console.log(`    ${String(v).padStart(5)}  ${k}`);
   }
-  console.log(`\n  → ${path.relative(BACKEND, CSV_PATH)}`);
 }
 
 /* ------------------------------------------------------------------ */
