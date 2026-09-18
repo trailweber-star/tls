@@ -541,7 +541,7 @@ function harvestFacts(row) {
        wording, or a district reverse-geocoded from their pin where the
        address line gave a street instead of a town. The other two are
        read only for a file written before that column existed. */
-    town: clean(row.townResolved) ?? clean(row.townFromAddress) ?? clean(row.townFromSlug),
+    town: clean(row.townResolved) ?? clean(row.townFromSlug),
     photoFile: clean(row.photoFile),
     county: clean(row.countyFromAddress),
     address: clean(row.addressLine),

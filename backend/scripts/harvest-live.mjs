@@ -730,7 +730,12 @@ const REQUIRED = [
   /* NOT photo, for a reason particular to this directory. See the
      REPORTED_ONLY note below. */
   ["address", (r) => r.addressLine || r.postcodeFromAddress],
-  ["town", (r) => r.townResolved || r.townFromAddress || r.townFromSlug],
+  /* townResolved only. settleTown() has already considered the address
+     line and the slug, so falling back to them here would re-admit the
+     street names it exists to keep out — five rows slipped through that
+     way, each landing a city row called after a street. A row with no
+     settled town is held until --towns has looked its postcode up. */
+  ["town", (r) => r.townResolved],
   ["coordinates", (r) => r.lat && r.lng],
 ];
 
@@ -842,18 +847,13 @@ function writeCsv() {
 
     rec.imageRejected = restateWhyNoPhoto(rec.imageRejected);
 
-    /* The town, settled here rather than left to each consumer to work
-       out for itself. A repaired town wins over a street name; the
-       member's own wording wins over everything else. */
-    const addressTown = rec.townFromAddress || rec.townFromSlug || "";
-    const repaired = rec.lat && rec.lng ? towns[coordKey(rec.lat, rec.lng)] : null;
-    if (isNotAPlace(addressTown) && repaired?.town) {
-      rec.townResolved = repaired.town;
-      rec.townSource = "reverse-geocoded from the pin";
-    } else {
-      rec.townResolved = addressTown;
-      rec.townSource = rec.townFromAddress ? "address line" : rec.townFromSlug ? "url slug" : "";
-    }
+    /* The town, settled by the one function that decides it, so the CSV
+       and the --towns report can never disagree. addressLine is not
+       touched: the street detail is the address, and it goes to the
+       address field on the listing. */
+    const settled = settleTown(rec, towns);
+    rec.townResolved = settled.town;
+    rec.townSource = settled.source;
 
     rec.photoFile = photoFor(rec.slug);
 
@@ -1005,28 +1005,55 @@ function writeCsv() {
 /* ------------------------------------------------------------------ *
  * Phase 3 — a town that is actually a town
  *
- * The town is read off the old site's address line, which is the
- * member's own wording and usually right. 247 times it is a street:
- * "Tooley St", "27 Tooley St", "Nottingham Pl", "114A Harley St". The
- * address parser prefers a segment with no street word and no digits in
- * it, and when no segment qualifies it takes the last one rather than
- * give up — which is the right fallback for "Bushey, Hertfordshire" and
- * the wrong one for an address that never names its town at all.
+ * THE PROBLEM. The town is read off the old site's address line, and 295
+ * times that line has no town in it. What lands in the column instead is
+ * a street ("27 Tooley St", "114A Harley St", "Nottingham Pl") or
+ * nothing at all. A directory whose location filter offers "27 Tooley
+ * St" alongside "London" is broken in the way people actually notice.
  *
- * Only 10 of those 247 have a postcode, so the postcode lookup cannot
- * fix them. The coordinates can: every row that passes the gates has a
- * pin, and postcodes.io will name the district a point sits in. So the
- * pin answers the question the address line could not.
+ * THE ADDRESS IS NOT THE CASUALTY. addressLine keeps every word of it —
+ * "27 Tooley St" is a perfectly good address and it goes to the address
+ * field on the listing. The town is a separate, coarser thing whose only
+ * job is to be picked cleanly out of a filter, and these two were being
+ * asked to be the same string.
  *
- * WHAT THIS DOES NOT DO: repair a town that merely looks unfamiliar.
- * "Sutton Coldfield" and "Solihull" are real places and the member
- * chose them; replacing them with a lookup's idea of the right label
- * would overwrite 2,100 correct answers to fix 247 wrong ones, and
- * would turn every London address into its borough. Only a town that
- * fails the "is this a place at all" test is touched.
+ * FOUR ANSWERS, IN ORDER OF HOW MUCH THEY COST:
  *
- * THE CACHE. towns.json keys every lookup on the rounded coordinate, so
- * a re-run is instant and a Ctrl-C costs nothing. Delete it to redo.
+ *   1. The member's own wording, when it names a place. 2,048 rows. Free,
+ *      and the most accurate: they chose it.
+ *
+ *   2. The URL slug. The old site's own profile paths carry the town —
+ *      /england/london/ent-surgeon/alwyn-d-souza — and it is right 231
+ *      times out of the 295, 154 of them saying London. This costs
+ *      nothing and I very nearly wrote a 2,343-call crawl before
+ *      noticing it was already in the file.
+ *
+ *   3. The postcode. Of the 64 the slug cannot fix, 63 have one, and
+ *      they share just 14 distinct postcodes — "Essex, SS2 4XH" with the
+ *      county lifted out leaves no town, and SS2 is Southend-on-Sea.
+ *      Fourteen lookups.
+ *
+ *   4. The pin, reverse-geocoded. One row. Kept because the next harvest
+ *      may need it more.
+ *
+ * THEN LONDON. A London postcode area — E, EC, N, NW, SE, SW, W, WC —
+ * means the town is London, whatever else it said. That corrects
+ * Belgravia, Marylebone, Putney and Canning Town, which are real places
+ * but not ones a person filters by when they mean London. It stops at
+ * the postcode area on purpose: Croydon and Kingston upon Thames are
+ * CR and KT, Royal Mail does not call them London, and neither does
+ * anybody searching for a surgeon in Croydon.
+ *
+ * WHAT IT WILL NOT DO is second-guess a town that is already a place.
+ * Sutton Coldfield, Solihull and Headington are real, the member chose
+ * them, and a lookup's preferred label for those coordinates would
+ * overwrite 2,048 correct answers to fix 295 wrong ones — and would turn
+ * every London address into its borough, which is the opposite of the
+ * point.
+ *
+ * THE CACHE. towns.json holds every lookup, keyed on the postcode or the
+ * rounded coordinate. Saved after every batch, so a Ctrl-C costs nothing
+ * and a re-run is instant. Delete it to redo.
  * ------------------------------------------------------------------ */
 
 /* A street, a building, a floor, a number — not a settlement. */
@@ -1038,18 +1065,69 @@ const isNotAPlace = (town) => {
   return !t || t.length < 3 || NOT_A_PLACE.test(t);
 };
 
-const coordKey = (lat, lng) => `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
+/* The eight London postcode areas. Not a list of boroughs: a borough
+   list would drag in Croydon and Bromley, which nobody calls London. */
+const LONDON_POSTCODE = /^(EC|WC|E|N|NW|SE|SW|W)\d/i;
+const isLondonPostcode = (pc) => LONDON_POSTCODE.test(String(pc ?? "").trim());
+
+const coordKey = (lat, lng) => `pin:${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
+const postcodeKey = (pc) => `pc:${String(pc).trim().toUpperCase()}`;
 
 const readTowns = () => {
   try { return JSON.parse(fs.readFileSync(TOWNS_PATH, "utf8")); } catch { return {}; }
 };
 
 /**
- * postcodes.io in bulk: 100 points per POST, nearest postcode to each.
- * admin_district is the answer we want ("Southwark", "Westminster"),
- * with the ward and parish as fallbacks for a rural point whose
- * district is a shire with no town in the name.
+ * The town for one record, and where it came from.
+ *
+ * Pure, and used by --csv as well as by --towns, so the CSV and the
+ * report can never disagree about what a listing's town is.
  */
+function settleTown(rec, towns = {}) {
+  const postcode = String(rec.postcodeFromAddress ?? "").trim();
+
+  /* London first, because it outranks every other answer: a W1 address
+     is in London whether the line said Marylebone, Harley St or nothing. */
+  if (isLondonPostcode(postcode)) return { town: "London", source: "London postcode area" };
+
+  const fromAddress = String(rec.townFromAddress ?? "").trim();
+  if (!isNotAPlace(fromAddress)) return { town: fromAddress, source: "address line" };
+
+  const fromSlug = String(rec.townFromSlug ?? "").trim();
+  if (!isNotAPlace(fromSlug)) return { town: fromSlug, source: "url slug" };
+
+  const byPostcode = postcode ? towns[postcodeKey(postcode)] : null;
+  if (byPostcode?.town) {
+    if (isLondonPostcode(byPostcode.postcode)) return { town: "London", source: "London postcode area" };
+    return { town: byPostcode.town, source: "postcode lookup" };
+  }
+
+  const byPin = rec.lat && rec.lng ? towns[coordKey(rec.lat, rec.lng)] : null;
+  if (byPin?.town) {
+    if (isLondonPostcode(byPin.postcode)) return { town: "London", source: "London postcode area" };
+    return { town: byPin.town, source: "reverse-geocoded from the pin" };
+  }
+
+  return { town: "", source: "" };
+}
+
+/** admin_district, then ward, then parish — the first that names a place. */
+const placeName = (hit) =>
+  hit ? { town: hit.admin_district || hit.admin_ward || hit.parish || "", postcode: hit.postcode ?? "", region: hit.region ?? "" } : null;
+
+/** postcodes.io bulk postcode lookup: up to 100 per POST. */
+async function lookupPostcodes(list) {
+  const res = await fetch("https://api.postcodes.io/postcodes", {
+    method: "POST",
+    headers: { "content-type": "application/json", "user-agent": UA },
+    body: JSON.stringify({ postcodes: list }),
+  });
+  if (!res.ok) throw new Error(`postcodes.io HTTP ${res.status}`);
+  const body = await res.json();
+  return (body.result ?? []).map((row) => placeName(row?.result));
+}
+
+/** postcodes.io bulk reverse lookup: nearest postcode to each point. */
 async function reverseGeocode(points) {
   const res = await fetch("https://api.postcodes.io/postcodes", {
     method: "POST",
@@ -1062,12 +1140,7 @@ async function reverseGeocode(points) {
   });
   if (!res.ok) throw new Error(`postcodes.io HTTP ${res.status}`);
   const body = await res.json();
-  return (body.result ?? []).map((row) => {
-    const hit = row?.result?.[0];
-    if (!hit) return null;
-    const name = hit.admin_district || hit.admin_ward || hit.parish || "";
-    return name ? { town: name, postcode: hit.postcode ?? "", region: hit.region ?? "" } : null;
-  });
+  return (body.result ?? []).map((row) => placeName(row?.result?.[0]));
 }
 
 async function repairTowns() {
@@ -1077,70 +1150,110 @@ async function repairTowns() {
   }
 
   const cache = readTowns();
-  const wanted = new Map();
-  let considered = 0;
-
+  const records = [];
   for (const raw of fs.readFileSync(PROFILES_PATH, "utf8").split("\n")) {
     if (!raw.trim()) continue;
-    let rec;
-    try { rec = JSON.parse(raw); } catch { continue; }
-    if (rec.error || !rec.lat || !rec.lng) continue;
-    considered += 1;
-    const town = rec.townFromAddress || rec.townFromSlug;
-    if (!isNotAPlace(town)) continue;
-    const key = coordKey(rec.lat, rec.lng);
-    if (key in cache) continue;
-    if (!wanted.has(key)) wanted.set(key, { lat: rec.lat, lng: rec.lng });
+    try {
+      const rec = JSON.parse(raw);
+      if (!rec.error) records.push(rec);
+    } catch { /* torn line */ }
   }
 
-  const cachedAlready = Object.keys(cache).length;
-  console.log(`${considered} records with a pin`);
-  console.log(`  towns that are not a place  ${wanted.size + cachedAlready} distinct points`);
-  console.log(`  already looked up           ${cachedAlready}`);
-  console.log(`  to look up now              ${wanted.size}\n`);
+  /* Settle everything with what is already on the record, then see what
+     is actually left. This is the step that turned a 2,343-lookup crawl
+     into fourteen. */
+  const bySource = {};
+  const stuck = [];
+  for (const rec of records) {
+    const { town, source } = settleTown(rec, cache);
+    if (town) bySource[source] = (bySource[source] ?? 0) + 1;
+    else stuck.push(rec);
+  }
 
-  if (!wanted.size) {
-    console.log("Nothing to do. --csv will use towns.json as it stands.");
+  console.log(`${records.length} records\n  settled with what is already on file:`);
+  for (const [k, v] of Object.entries(bySource).sort((a, b) => b[1] - a[1])) {
+    console.log(`    ${String(v).padStart(5)}  ${k}`);
+  }
+  console.log(`    ${String(stuck.length).padStart(5)}  still without a town\n`);
+
+  if (!stuck.length) {
+    console.log("Nothing to look up. Re-run --csv and the towns are in the CSV.");
     return;
   }
 
-  const points = [...wanted.entries()];
-  const BULK = 100;
+  const postcodes = [...new Set(stuck.map((r) => String(r.postcodeFromAddress ?? "").trim()).filter(Boolean))]
+    .filter((pc) => !(postcodeKey(pc) in cache));
+  const pins = new Map();
+  for (const r of stuck) {
+    if (String(r.postcodeFromAddress ?? "").trim()) continue;
+    if (!r.lat || !r.lng) continue;
+    const key = coordKey(r.lat, r.lng);
+    if (!(key in cache) && !pins.has(key)) pins.set(key, { lat: r.lat, lng: r.lng });
+  }
+
+  console.log(`  postcodes to look up  ${postcodes.length}`);
+  console.log(`  pins to reverse       ${pins.size}\n`);
+
+  const save = () => fs.writeFileSync(TOWNS_PATH, JSON.stringify(cache, null, 2));
   let named = 0;
-  let unnamed = 0;
+  let missed = 0;
 
-  for (let i = 0; i < points.length; i += BULK) {
-    const slice = points.slice(i, i + BULK);
-    let answers;
-    try {
-      answers = await reverseGeocode(slice.map(([, pt]) => pt));
-    } catch (err) {
-      /* Save what we have before giving up: a half-filled cache is worth
-         keeping, and the next run picks up exactly where this stopped. */
-      fs.writeFileSync(TOWNS_PATH, JSON.stringify(cache, null, 2));
-      console.error(`\n  ${String(err.message ?? err)} — saved ${named} lookups so far, re-run to continue`);
-      process.exit(1);
+  try {
+    for (let i = 0; i < postcodes.length; i += 100) {
+      const slice = postcodes.slice(i, i + 100);
+      const answers = await lookupPostcodes(slice);
+      slice.forEach((pc, n) => {
+        /* null is cached too: a postcode that is not on the register
+           will not be next time either, and re-asking is just load on a
+           free service. */
+        cache[postcodeKey(pc)] = answers[n];
+        answers[n] ? named++ : missed++;
+      });
+      save();
+      await sleep(BATCH_DELAY_MS);
     }
-    slice.forEach(([key], n) => {
-      const hit = answers[n];
-      /* null is cached too. A point in the sea, or 2km from any
-         postcode, will be null again next time and re-asking is just
-         load on a free service. */
-      cache[key] = hit;
-      hit ? named++ : unnamed++;
-    });
-    fs.writeFileSync(TOWNS_PATH, JSON.stringify(cache, null, 2));
-    process.stdout.write(`\r  ${Math.min(i + BULK, points.length)}/${points.length} — ${named} named, ${unnamed} no match   `);
-    await sleep(BATCH_DELAY_MS);
+
+    const points = [...pins.entries()];
+    for (let i = 0; i < points.length; i += 100) {
+      const slice = points.slice(i, i + 100);
+      const answers = await reverseGeocode(slice.map(([, pt]) => pt));
+      slice.forEach(([key], n) => {
+        cache[key] = answers[n];
+        answers[n] ? named++ : missed++;
+      });
+      save();
+      await sleep(BATCH_DELAY_MS);
+    }
+  } catch (err) {
+    save();
+    console.error(`  ${String(err.message ?? err)} — saved ${named} lookups, re-run to continue`);
+    process.exit(1);
   }
 
-  const counts = {};
-  for (const v of Object.values(cache)) if (v?.town) counts[v.town] = (counts[v.town] ?? 0) + 1;
-  console.log(`\n  → ${path.relative(BACKEND, TOWNS_PATH)}`);
-  console.log(`\n  the towns those points resolved to:`);
-  for (const [k, v] of Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15)) {
-    console.log(`    ${String(v).padStart(4)}  ${k}`);
+  console.log(`  ${named} named, ${missed} no match`);
+  console.log(`  → ${path.relative(BACKEND, TOWNS_PATH)}`);
+
+  /* Re-settle with the cache filled, so the closing report is the answer
+     --csv will actually write rather than a promise about it. */
+  const after = {};
+  let stillStuck = 0;
+  const towns = {};
+  for (const rec of records) {
+    const { town, source } = settleTown(rec, cache);
+    if (!town) { stillStuck += 1; continue; }
+    after[source] = (after[source] ?? 0) + 1;
+    towns[town] = (towns[town] ?? 0) + 1;
   }
+  console.log(`\n  where every town now comes from:`);
+  for (const [k, v] of Object.entries(after).sort((a, b) => b[1] - a[1])) {
+    console.log(`    ${String(v).padStart(5)}  ${k}`);
+  }
+  if (stillStuck) console.log(`    ${String(stillStuck).padStart(5)}  still without a town — held by --csv`);
+  console.log(`\n  the ten biggest towns:`);
+  for (const [k, v] of Object.entries(towns).sort((a, b) => b[1] - a[1]).slice(0, 10)) {
+    console.log(`    ${String(v).padStart(5)}  ${k}`);
+  }
+  console.log(`\n  ${Object.keys(towns).length} towns in total.`);
   console.log(`\n  Now re-run --csv, then map-taxonomy.mjs --write --default-sub.`);
 }
 
