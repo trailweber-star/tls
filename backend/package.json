@@ -33,7 +33,8 @@
     "seed:retire": "node scripts/retire-seed.mjs",
     "facilities:move": "node scripts/move-to-facilities.mjs",
     "treatments:websites": "node scripts/derive-from-websites.mjs",
-    "taxonomy:refile": "node scripts/refile-taxonomy.mjs"
+    "taxonomy:refile": "node scripts/refile-taxonomy.mjs",
+    "treatments:audit": "node scripts/audit-treatments.mjs"
   },
   "keywords": [],
   "author": "",
