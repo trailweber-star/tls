@@ -211,7 +211,11 @@ const mockSlugById = new Map([
 const fingerprint = (r) =>
   [r.rating, String(r.patientName ?? "").trim(), String(r.comment ?? "").replace(/\s+/g, " ").trim()].join("\u0000");
 const seedReviewsBySlug = new Map();
-for (const r of mock.reviews ?? []) {
+/* The seed keeps the two kinds in two arrays -- mock.reviews is
+   specialists only, mock.facilityReviews is the places -- and reading
+   only the first one held back every facility, which is how Queen's
+   Cross survived the last run. */
+for (const r of [...(mock.reviews ?? []), ...(mock.facilityReviews ?? [])]) {
   const slug = mockSlugById.get(r.subjectId);
   if (!slug) continue;
   if (!seedReviewsBySlug.has(slug)) seedReviewsBySlug.set(slug, new Set());
