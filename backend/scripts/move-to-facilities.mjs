@@ -129,17 +129,61 @@ const specialists = await db
   .where(inArray(t.specialists.slug, wantedSlugs));
 const bySlug = new Map(specialists.map((s) => [s.slug, s]));
 
-const missing = wantedSlugs.filter((s) => !bySlug.has(s));
+const existingFacilities = await db.select({ slug: t.facilities.slug }).from(t.facilities);
+const takenFacilitySlugs = new Set(existingFacilities.map((f) => f.slug));
+
+/* A RE-RUN IS NORMAL, AND IT USED TO BE IMPOSSIBLE.
+ *
+ * This script moves a group only when every check on it passes, so a
+ * run can move six groups and hold five back. The next run then found
+ * six facilities already carrying the slugs it was about to create and
+ * stopped dead, which meant the five held-back groups could never be
+ * picked up at all -- the failure had made itself permanent.
+ *
+ * An existing facility slug is two different facts depending on what
+ * became of its listings. If they are gone, this group moved on an
+ * earlier run and there is nothing left to do: say so and skip it. If
+ * they are still sitting in the specialists table, something else owns
+ * that slug -- the csv is pointing a second group at a facility that
+ * already exists -- and creating it would either fail on the unique
+ * index or merge two unrelated places. That still stops everything. */
+const done = [];
+const collisions = [];
+for (const [facilitySlug, rows] of groups) {
+  if (!takenFacilitySlugs.has(facilitySlug)) continue;
+  const stillListed = rows.map((r) => r.slug).filter((s) => bySlug.has(s));
+  if (stillListed.length) collisions.push(`${facilitySlug} — still a listing: ${stillListed.join(", ")}`);
+  else done.push({ facilitySlug, rows });
+}
+if (collisions.length) {
+  die(
+    "These facility slugs already exist while the listings behind them are still here, " +
+      `so the csv is pointing a second group at an existing facility:\n    ${collisions.join("\n    ")}`
+  );
+}
+for (const g of done) groups.delete(g.facilitySlug);
+
+if (done.length) {
+  console.log(`${c.dim}${done.length} already moved on an earlier run — skipped:${c.off}`);
+  for (const g of done) dim(`    ${g.rows[0].facilityName || g.facilitySlug}`);
+  console.log("");
+}
+
+/* Their member listings are supposed to be gone, so they are not
+   spelling mistakes. Anything still unaccounted for is. */
+const movedSlugs = new Set(done.flatMap((g) => g.rows.map((r) => r.slug)));
+const missing = wantedSlugs.filter((s) => !bySlug.has(s) && !movedSlugs.has(s));
 if (missing.length) {
   console.log(`${c.warn}! ${missing.length} slug(s) in the csv match no listing — check the spelling:${c.off}`);
   for (const s of missing) console.log(`    ${s}`);
   console.log("");
 }
 
-const existingFacilities = await db.select({ slug: t.facilities.slug }).from(t.facilities);
-const takenFacilitySlugs = new Set(existingFacilities.map((f) => f.slug));
-const collisions = [...groups.keys()].filter((s) => takenFacilitySlugs.has(s));
-if (collisions.length) die(`These facility slugs already exist: ${collisions.join(", ")}`);
+if (!groups.size) {
+  console.log(`${c.good}Nothing left to move.${c.off}\n`);
+  await disconnectDb();
+  process.exit(0);
+}
 
 const categories = await db
   .select({ id: t.facilityCategories.id, slug: t.facilityCategories.slug, name: t.facilityCategories.name })
