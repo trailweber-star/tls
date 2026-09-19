@@ -30,7 +30,8 @@
  * WHAT IT REFUSES TO DO. The seed marks its own listings claimed, so
  * `claimed` cannot be the test for whether a real person has taken one
  * over -- the test is whether there is any real activity against it: an
- * enquiry, an article, a review, or a linked account that is not a demo
+ * enquiry, an article, a review the seed did not itself write, or a
+ * linked account that is not a demo
  * one. Anything with those is named and skipped, because at that point
  * something happened there that is not ours to throw away.
  *
@@ -178,13 +179,58 @@ const [leadsSp, leadsFac, articlesSp, articlesFac, reviewsAny] = await Promise.a
   /* Reviews are polymorphic -- subjectType plus subjectId -- so one
      query covers both kinds of demo record. */
   allIds.length
-    ? db.select({ k: t.reviews.subjectId }).from(t.reviews).where(inArray(t.reviews.subjectId, allIds))
+    ? db
+        .select({
+          id: t.reviews.id, k: t.reviews.subjectId, rating: t.reviews.rating,
+          comment: t.reviews.comment, patientName: t.reviews.patientName,
+        })
+        .from(t.reviews)
+        .where(inArray(t.reviews.subjectId, allIds))
     : [],
 ]);
 
+/* A REVIEW ON A DEMO RECORD IS USUALLY ALSO DEMO DATA.
+ *
+ * The first run of this script removed nothing: all fifteen records
+ * were held back, every one of them for "2-4 review(s) left on it", and
+ * every one of those reviews was written by the same seed that wrote
+ * the record. The check was firing on its own evidence, and a rule that
+ * protects fabricated CQC ratings from removal because the fabrication
+ * came with fabricated praise is not protecting anybody.
+ *
+ * So a review is matched against the seed the same way the record is:
+ * src/data/mock.js contains the exact text, and a live review whose
+ * rating, patient name and comment are word for word one of the seed's
+ * own reviews of that same record is part of the seed. Anything else --
+ * a real patient who found a demo listing and left a real review -- is
+ * not, and still holds the record back. */
+const mockSlugById = new Map([
+  ...(mock.specialists ?? []).map((x) => [x.id, x.slug]),
+  ...(mock.facilities ?? []).map((x) => [x.id, x.slug]),
+]);
+const fingerprint = (r) =>
+  [r.rating, String(r.patientName ?? "").trim(), String(r.comment ?? "").replace(/\s+/g, " ").trim()].join("\u0000");
+const seedReviewsBySlug = new Map();
+for (const r of mock.reviews ?? []) {
+  const slug = mockSlugById.get(r.subjectId);
+  if (!slug) continue;
+  if (!seedReviewsBySlug.has(slug)) seedReviewsBySlug.set(slug, new Set());
+  seedReviewsBySlug.get(slug).add(fingerprint(r));
+}
+const slugById = new Map(found.map((r) => [r.id, r.slug]));
+const seededReviewIds = [];
+const realReviews = [];
+for (const rv of reviewsAny) {
+  const slug = slugById.get(rv.k);
+  const seeded = slug && seedReviewsBySlug.get(slug)?.has(fingerprint(rv));
+  if (seeded) seededReviewIds.push(rv);
+  else realReviews.push(rv);
+}
+
 const leadCount = new Map([...count(leadsSp, "k"), ...count(leadsFac, "k")]);
 const articleCount = new Map([...count(articlesSp, "k"), ...count(articlesFac, "k")]);
-const reviewCount = count(reviewsAny, "k");
+const reviewCount = count(realReviews, "k");
+const seededReviewCount = count(seededReviewIds, "k");
 
 /* A linked account only blocks removal if it is somebody's real login.
    The unclaimed shells the importer creates, and any demo address, are
@@ -207,7 +253,7 @@ for (const r of found) {
   const v = reviewCount.get(r.id) ?? 0;
   if (l) reasons.push(`${l} patient enquir${l === 1 ? "y" : "ies"} against it`);
   if (a) reasons.push(`${a} article(s) written under it`);
-  if (v) reasons.push(`${v} review(s) left on it`);
+  if (v) reasons.push(`${v} review(s) left on it that the seed did not write`);
   const user = r.userId ? userById.get(r.userId) : null;
   if (user && !isDisposableAccount(user.email)) reasons.push(`a real account is attached: ${user.email}`);
   if (reasons.length) held.push({ ...r, reasons });
@@ -235,6 +281,8 @@ if (removable.length) {
     console.log(`  ${r.name}`);
     dim(`    ${r.kind} /${r.kind === "facility" ? "organisations" : "specialists"}/${r.slug}`);
     dim(`    demo because: ${r.evidence.join(", ")}`);
+    const sv = seededReviewCount.get(r.id) ?? 0;
+    if (sv) dim(`    and ${sv} seeded review(s) of it, which go with it`);
   }
   console.log("");
 }
@@ -273,6 +321,15 @@ for (const r of removable) {
     }
   } else {
     await db.delete(t.facilities).where(eq(t.facilities.id, r.id));
+  }
+
+  /* Reviews are polymorphic, so nothing cascades them. Only the ones
+     the seed itself wrote — anything a real patient left has already
+     held the whole record back, so there is none here. */
+  const mine = seededReviewIds.filter((rv) => rv.k === r.id).map((rv) => rv.id);
+  if (mine.length) {
+    await db.delete(t.reviews).where(inArray(t.reviews.id, mine));
+    dim(`  and ${mine.length} seeded review(s) of it`);
   }
 
   if (r.userId) {
