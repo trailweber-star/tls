@@ -52,6 +52,89 @@ function tabsFor(specialist: SpecialistWithRelations) {
   ];
 }
 
+/* ------------------------------------------------------------------ *
+ * What the Treatments section actually has to show
+ *
+ * Three states, and until this was written only the first was handled.
+ *
+ *   1. The listing names procedures. Show them.
+ *   2. The listing names only conditions. In a 623-listing sample, one
+ *      in three of the listings that named anything at all named a
+ *      condition and no procedure. The page told those visitors the
+ *      clinician "hasn't listed individual treatments yet" while the record held
+ *      Tennis Elbow, Endometriosis, Sciatica. That was not a missing
+ *      feature, it was the page contradicting its own database.
+ *   3. The listing names neither. Every listing still carries the
+ *      subcategories the mapper resolved -- no listing has none -- so
+ *      show those rather than ending on a dead sentence, and label them
+ *      as what they are. "Areas of practice" is not a claim that this
+ *      person performs a procedure; it is where the listing is filed,
+ *      and the note under it says so.
+ *
+ * Every row links to a search that finds others in the same area, which
+ * is the one thing the Expertise chips above it do not do. A named
+ * treatment or condition goes to free-text search, which matches those
+ * names; a subcategory goes to its own filter value, which is exact.
+ * ------------------------------------------------------------------ */
+type PracticeGroup = {
+  key: string;
+  label: string;
+  items: { key: string; name: string; href: string }[];
+};
+
+function practiceGroups(s: SpecialistWithRelations): { groups: PracticeGroup[]; areAreas: boolean } {
+  /* One shared seen-set across the groups: a name that appeared as a
+     procedure should not appear again under conditions. */
+  const seen = new Set<string>();
+  const fresh = <T extends { name: string }>(xs: T[]) =>
+    xs.filter((x) => {
+      const key = (x.name ?? "").trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+  const groups: PracticeGroup[] = [];
+  const search = (name: string) => `/search?q=${encodeURIComponent(name)}`;
+
+  const procedures = fresh(s.treatments);
+  if (procedures.length) {
+    groups.push({
+      key: "procedures",
+      label: "Procedures",
+      items: procedures.map((t) => ({ key: `tr-${t.id}`, name: t.name, href: search(t.name) })),
+    });
+  }
+
+  const conditions = fresh(s.conditions);
+  if (conditions.length) {
+    groups.push({
+      key: "conditions",
+      label: "Conditions treated",
+      items: conditions.map((c) => ({ key: `co-${c.id}`, name: c.name, href: search(c.name) })),
+    });
+  }
+
+  if (groups.length) return { groups, areAreas: false };
+
+  const areas = fresh(s.specialties);
+  if (!areas.length) return { groups: [], areAreas: false };
+  return {
+    groups: [
+      {
+        key: "areas",
+        label: "Areas of practice",
+        items: areas.map((sp) => ({
+          key: `sp-${sp.id}`,
+          name: sp.name,
+          href: `/search?subspecialty=${encodeURIComponent(sp.slug)}`,
+        })),
+      },
+    ],
+    areAreas: true,
+  };
+}
+
 const TAB_BAR_HEIGHT = 56;
 
 // Icons cycle across the hero's specialty chips — decoration only, so a
@@ -157,6 +240,8 @@ export default function SpecialistProfile() {
   ]
     .filter((v, i, arr) => arr.indexOf(v) === i)
     .slice(0, 3);
+
+  const practice = practiceGroups(specialist);
 
   const primaryLocation = specialist.clinicLocations[0] ?? null;
   const seoDescription = [
@@ -473,23 +558,38 @@ export default function SpecialistProfile() {
           className="scroll-mt-32 border-t border-line py-10"
         >
           <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">Treatments</h2>
-          {specialist.treatments.length > 0 ? (
-            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-              {specialist.treatments.map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3"
-                >
-                  <span className="text-[13.5px] font-semibold text-ink">{t.name}</span>
-                  <Link
-                    to={`/search?subspecialty=${specialist.primarySpecialty?.slug ?? ""}`}
-                    className="shrink-0 text-[12.5px] font-bold text-teal-600 hover:underline"
-                  >
-                    Compare
-                  </Link>
-                </li>
+          {practice.groups.length > 0 ? (
+            <div className="mt-5 space-y-7">
+              {practice.groups.map((group) => (
+                <div key={group.key}>
+                  <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+                    {group.label}
+                  </h3>
+                  <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {group.items.map((item) => (
+                      <li
+                        key={item.key}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3"
+                      >
+                        <span className="text-[13.5px] font-semibold text-ink">{item.name}</span>
+                        <Link
+                          to={item.href}
+                          className="shrink-0 text-[12.5px] font-bold text-teal-600 hover:underline"
+                        >
+                          Compare
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+              {practice.areAreas && (
+                <p className="text-[13px] leading-relaxed text-ink-muted">
+                  This listing doesn&apos;t name individual procedures. These are the areas it is filed
+                  under, and each one searches the directory for others in the same area.
+                </p>
+              )}
+            </div>
           ) : (
             <p className="mt-4 text-[13.5px] text-ink-muted">
               {specialist.fullName} hasn&apos;t listed individual treatments yet.
