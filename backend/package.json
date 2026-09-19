@@ -34,6 +34,7 @@
     "facilities:move": "node scripts/move-to-facilities.mjs",
     "treatments:websites": "node scripts/derive-from-websites.mjs",
     "taxonomy:refile": "node scripts/refile-taxonomy.mjs",
+    "specialties:correct": "node scripts/correct-specialties.mjs",
     "treatments:audit": "node scripts/audit-treatments.mjs"
   },
   "keywords": [],

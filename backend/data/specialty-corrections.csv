@@ -1,0 +1,58 @@
+# Listings the old site filed under the wrong specialty, and where they
+# belong.
+#
+# correct-specialties.mjs reads this. Every line is a decision somebody
+# made by reading the listing's own words, not a rule a script inferred
+# — which is why the destination is written down here rather than
+# guessed at run time from the name. The mapper already guessed once,
+# from the old site's category, and these are the rows where the old
+# site's category was wrong.
+#
+# WHY THEY ARE WRONG. The old site kept a single "Psychologist"
+# category that its own staff appear to have used as a catch-all: three
+# of the rows below are aesthetics clinics and two are sports massage
+# businesses. map-taxonomy.mjs trusts that category, correctly — it is
+# the only statement of intent the source gives — so a wrong category
+# in becomes a wrong branch out, and the branch decides which filters
+# find the listing and which treatments derive onto it.
+#
+# THE from COLUMN IS A GUARD, NOT DECORATION. It is the primary
+# specialty this listing had when the decision was made. If the live
+# row says something else, somebody or something has moved it since and
+# this decision was made against a state that no longer exists, so the
+# script refuses that line and says what it actually found.
+#
+# WHAT hold MEANS. Two of these have nowhere correct to go, and saying
+# so is the decision. "Physiotherapist" is a title protected by law in
+# the UK — using it requires HCPC registration — and a sports massage
+# business is not entitled to it. This repository has already rejected
+# one listing on exactly that ground (Harborne Chiropractic, in
+# listing-decisions.csv: "registered with the General Chiropractic
+# Council, offering no physiotherapy"), so filing these two under
+# Physiotherapy would repeat, in the taxonomy, the same class of error
+# as the invented GMC numbers. The tree has no branch for soft tissue
+# or sports therapy. That is a decision for Kirti: either the tree
+# grows a home for them, or they are rejected the way Harborne was.
+# Until then they are named here, with the destination that WOULD be
+# used, and nothing is applied.
+#
+# WHAT A MOVE TAKES WITH IT. Treatments and conditions derived from the
+# listing's own words were matched against its old branch, so they are
+# answers to the wrong question and the script clears them. Re-run both
+# derivation passes afterwards; it says so when it finishes. Anything a
+# person put on the profile themselves is left alone.
+#
+# slug            the listing's slug in the specialists table
+# action          move | hold
+# fromSpecialtySlug  the primary specialty it has now — a guard
+# toSpecialtySlug    the primary specialty it should have
+# alsoTag         extra specialty slugs to keep tagged, space separated
+# reason          why, in one line, for whoever reads this next
+#
+slug,action,fromSpecialtySlug,toSpecialtySlug,alsoTag,reason
+ihya-house-of-aesthetics,move,psychology-general-psychology-and-counselling,aesthetics-specialists-general-aesthetics,,"Its own description: ""your destination for physical and emotional revival"", a ""doctor-led team"" offering ""bespoke aesthetic therapies"". An aesthetics clinic filed under Psychology because the old site's category said Psychologist. General Aesthetics rather than a narrower leaf: it names treatments across several of them."
+qaya-clinic-prp-prf-microneedling-hydrafacial-hijama-cupping-lymphatic-massage-vampire-facial-birmingham,move,psychology-general-psychology-and-counselling,aesthetics-specialists-skin-treatments,,"Names its own services in its own title: PRP, PRF, microneedling, HydraFacial, vampire facial, lymphatic drainage. Every one of them is a skin treatment, so this one can go to the narrower leaf rather than General. Nothing on it is psychology."
+newhall-medical-dental-aesthetics,move,dentistry-general-dentistry,aesthetics-specialists-general-aesthetics,dentistry dentistry-general-dentistry,"Genuinely both, and the description leads with the aesthetics: ""our leading aesthetic and advanced skin care clinic"". So the primary moves and the dentistry tags stay — it should keep appearing in a dentistry filter, because it is also a dental practice."
+st-pauls-physio,move,psychology-general-psychology-and-counselling,physiotherapy-general-physiotherapy,,"A physiotherapy practice with an empty description, so the evidence is its name and its own domain, stpaulsphysio.co.uk — nothing more. HCPC registration was NOT checked; this changes where it is filed, not what it is verified as."
+fire-earth-sports-massage,hold,psychology-general-psychology-and-counselling,physiotherapy-sports-physiotherapy,,"KIRTI TO DECIDE. A sports massage business: ""soft tissue techniques and exercise therapy plans"". Psychology is plainly wrong, but Physiotherapy is a protected title and nothing here says HCPC. No branch fits. Grow the tree or reject it, as Harborne Chiropractic was."
+sn-clinic-massage-dudley-sports-massage,hold,psychology-general-psychology-and-counselling,physiotherapy-musculoskeletal-physiotherapy,,"KIRTI TO DECIDE. Same question as Fire & Earth. Its own words are ""award winning injury clinic ... treatment and prevention of a number of musculoskeletal disorders"", which is the work physiotherapists do, but the name says massage and no registration is stated."
