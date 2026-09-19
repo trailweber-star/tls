@@ -52,6 +52,15 @@ const EMPTY = new Set([
   "counselling", "counseling", "dermatology", "orthopaedics", "orthopaedic",
   "orthopedics", "physiotherapy", "physio", "paediatrics", "pediatrics",
   "neurosurgery", "dentistry", "wellbeing", "wellness",
+  /* And the job, which is the same thing one rung down. "Sarah Barker
+     Speech and Language Therapist" was matched to somebody else's
+     mental-health page on the strength of "speech", "language" and
+     "therapist", all three of which appear on any such page. */
+  "therapist", "therapists", "practitioner", "speech", "language", "hearing",
+  "audiology", "audiologist", "podiatry", "podiatrist", "optician", "optometry",
+  "optometrist", "pharmacist", "midwife", "midwifery", "nutrition",
+  "nutritionist", "dietitian", "surgeon", "physician", "nurse", "psychiatry",
+  "psychiatrist", "chiropractor", "osteopath", "osteopathy", "chiropractic",
 ]);
 
 /* Whole words only. "ENT" as a surname matched "treatment", "patient" and
@@ -137,7 +146,7 @@ function otherClinicians(text, ownName) {
  * verdict
  *
  *   listing  { fullName, town, postcode, telephone, branch, leafNames }
- *   source   { url, text, claimedByOtherListings }
+ *   source   { url, text, claimedByOtherListings, sameHostListings }
  *
  * Returns { pass, checks, why }. `checks` is always the full list, in a
  * fixed order, whether or not the verdict passed -- a report that only
@@ -150,13 +159,57 @@ export function verdict({ listing, source, kind }) {
   const checks = [];
   const add = (name, pass, detail) => checks.push({ name, pass, detail });
 
+  const domain = domainNames(source?.url);
+  const nameBare = bareName(listing.fullName);
+  /* Boolean(), because these are string operands: an empty domain makes
+     the && chain evaluate to "" and a check whose pass is "" is neither
+     true nor false when somebody reads the report. */
+  const domainSaysSo = Boolean(
+    nameBare.length >= 6 &&
+      ((domain.label && (domain.label.includes(nameBare) || nameBare.includes(domain.label))) ||
+        (domain.host && domain.host.includes(nameBare)))
+  );
+
   /* 1. Exclusive. Two listings pointing at one page means the page is
-        about neither of them in particular. */
-  const sharers = source?.claimedByOtherListings ?? 0;
+        about neither of them in particular.
+
+        The url is the wrong granularity, and Sarah Barker proved it.
+        Her listing gives midlandhealth.co.uk/mental-health/ and Midland
+        Health's gives midlandhealth.co.uk/ — different urls, so this
+        check saw no sharer, and she was about to be credited with
+        twelve services off a department page belonging to a practice
+        she is one clinician at. The host is the right granularity.
+
+        But a shared host is not automatically somebody else's page. The
+        same practice is often listed once per branch: Mr Roger Sloan
+        appears twice, Solihull and Coventry, on rogersloan.co.uk, and
+        Achieve Health three times on achievehealth.uk. Those are the
+        same business and its own site is its own site. What separates
+        them from Midland Health is whether the names have anything in
+        common: Sloan and Sloan share "sloan"; Sarah Barker and Midland
+        Health share nothing at all. So a co-sharer only disqualifies
+        the page when it names a different party. */
+  const sameUrl = source?.claimedByOtherListings ?? 0;
+  const mine = new Set(nameWords(stripDisciplines(listing.fullName)).filter((w) => !EMPTY.has(w)));
+  const strangers = (source?.sameHostListings ?? []).filter((other) => {
+    const theirs = nameWords(stripDisciplines(other)).filter((w) => !EMPTY.has(w));
+    if (!theirs.length || !mine.size) return true;
+    return !theirs.some((w) => mine.has(w));
+  });
+  /* Unless the host is named after them, in which case the strangers
+     are the guests. */
+  const ours = domainSaysSo && strangers.length > 0;
+  const exclusive = sameUrl === 0 && (strangers.length === 0 || ours);
   add(
     "exclusive",
-    sharers === 0,
-    sharers === 0 ? "no other listing gives this url" : `${sharers} other listing(s) give the same url`
+    exclusive,
+    sameUrl > 0
+      ? `${sameUrl} other listing(s) give the same url`
+      : strangers.length === 0
+        ? "no other listing gives this site"
+        : ours
+          ? `${strangers.length} other listing(s) on this site, but the domain is named after this one`
+          : `the site is also given by ${strangers.length} unrelated listing(s): ${strangers.slice(0, 3).join(", ")}`
   );
 
   /* 2. Readable. A parked domain, a cookie wall or a 404 body can all
@@ -189,17 +242,6 @@ export function verdict({ listing, source, kind }) {
     const surname = parts[parts.length - 1] ?? "";
     if (surname.length < 3 || EMPTY.has(surname)) treatAsOrg = true;
   }
-
-  const domain = domainNames(source?.url);
-  const nameBare = bareName(listing.fullName);
-  /* Boolean(), because these are string operands: an empty domain makes
-     the && chain evaluate to "" and a check whose pass is "" is neither
-     true nor false when somebody reads the report. */
-  const domainSaysSo = Boolean(
-    nameBare.length >= 6 &&
-      ((domain.label && (domain.label.includes(nameBare) || nameBare.includes(domain.label))) ||
-        (domain.host && domain.host.includes(nameBare)))
-  );
 
   if (treatAsOrg) {
     const distinctive = parts.filter((w) => !EMPTY.has(w));

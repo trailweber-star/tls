@@ -79,6 +79,7 @@ const [specialists, specialties, locLinks, allLocations, cities] = await Promise
   db.select({
     id: t.specialists.id, slug: t.specialists.slug, fullName: t.specialists.fullName,
     primarySpecialtyId: t.specialists.primarySpecialtyId, claimed: t.specialists.claimed,
+    websiteUrl: t.specialists.websiteUrl,
   }).from(t.specialists),
   db.select({ id: t.specialties.id, parentId: t.specialties.parentId, slug: t.specialties.slug }).from(t.specialties),
   db.select().from(t.specialistClinicLocations),
@@ -102,6 +103,23 @@ for (const l of locLinks) {
   locationsOf.get(l.specialistId).push(loc);
 }
 const bySlug = new Map(specialists.map((s) => [s.slug, s]));
+
+/* Who else gives a website on this host. The gate needs the names, not
+   a count: a second listing on the same host is only a problem when it
+   is a different party, and the only way to tell is to compare them. */
+const hostOf = (u) => {
+  try { return new URL(/^https?:/i.test(String(u)) ? u : `https://${u}`).hostname.toLowerCase().replace(/^www\./, ""); }
+  catch { return null; }
+};
+const namesByHost = new Map();
+for (const s of specialists) {
+  const h = hostOf(s.websiteUrl);
+  if (!h) continue;
+  if (!namesByHost.has(h)) namesByHost.set(h, []);
+  namesByHost.get(h).push({ slug: s.slug, fullName: s.fullName });
+}
+const sameHostListings = (url, ownSlug) =>
+  (namesByHost.get(hostOf(url)) ?? []).filter((x) => x.slug !== ownSlug).map((x) => x.fullName);
 
 /* Every leaf name in a branch, so the gate's discipline check can ask
    whether the page talks about this listing's field at all. Asking only
@@ -165,7 +183,11 @@ for (const f of files) {
       branch: root,
       leafNames: leafNamesByRoot.get(root) ?? [],
     },
-    source: { url: rec.url, text, claimedByOtherListings: rec.claimedByOtherListings ?? 0 },
+    source: {
+      url: rec.url, text,
+      claimedByOtherListings: rec.claimedByOtherListings ?? 0,
+      sameHostListings: sameHostListings(rec.url, rec.slug),
+    },
   });
 
   if (!v.pass) {

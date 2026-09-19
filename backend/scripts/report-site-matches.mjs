@@ -22,6 +22,18 @@ const leavesByRoot = new Map();
 const mapped = parseCsv(fs.readFileSync("data/harvest/mapped.csv","utf8"));
 const bySlug = new Map(mapped.map(r=>[r.slug,r]));
 
+/* Other listings publishing on the same host — the gate compares the
+   names to decide whether they are the same practice or strangers. */
+const hostOf = (u) => { try { return new URL(/^https?:/i.test(String(u))?u:`https://${u}`).hostname.toLowerCase().replace(/^www\./,""); } catch { return null; } };
+const namesByHost = new Map();
+for (const r of mapped) {
+  const h = hostOf(r.website); if (!h) continue;
+  if (!namesByHost.has(h)) namesByHost.set(h, []);
+  namesByHost.get(h).push({ slug: r.slug, name: r.name });
+}
+const sameHostListings = (url, ownSlug) =>
+  (namesByHost.get(hostOf(url)) ?? []).filter(x => x.slug !== ownSlug).map(x => x.name);
+
 const dir = "data/harvest/sites";
 const files = fs.readdirSync(dir).filter(f=>f.endsWith(".json"));
 const C = { off:"\u001b[0m", dim:"\u001b[2m", good:"\u001b[32m", bad:"\u001b[31m", warn:"\u001b[33m", bold:"\u001b[1m" };
@@ -41,7 +53,11 @@ for (const f of files.sort()) {
       town: m?.townResolved, postcode: m?.postcodeFromAddress, telephone: m?.telephone,
       branch: branchRoot, leafNames,
     },
-    source: { url: rec.url, text, claimedByOtherListings: rec.claimedByOtherListings ?? 0 },
+    source: {
+      url: rec.url, text,
+      claimedByOtherListings: rec.claimedByOtherListings ?? 0,
+      sameHostListings: sameHostListings(rec.url, rec.slug),
+    },
   });
   if (v.pass) pass++; else { fail++; for (const c of v.checks) if(!c.pass) failReasons.set(c.name,(failReasons.get(c.name)??0)+1); }
   const mark = v.pass ? `${C.good}PASS${C.off}` : `${C.bad}FAIL${C.off}`;

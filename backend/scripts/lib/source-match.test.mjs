@@ -266,3 +266,83 @@ test("a two-word business is not a person whose surname is UK", () => {
   assert.equal(v.checks.find((c) => c.name === "named").pass, true, v.why);
   assert.equal(v.isOrg, true, "two words, no honorific, surname would be 'uk'");
 });
+
+/* ---------------------------------------------------------------- *
+ * The same host, which is not the same thing as the same url.
+ * ---------------------------------------------------------------- */
+
+test("a department page one rung down the same site — Sarah Barker on midlandhealth.co.uk/mental-health/ — fails", () => {
+  /* Her listing gives .../mental-health/ and Midland Health's gives the
+     homepage, so the url check saw no sharer at all. Twelve services
+     off a page belonging to the practice she is one clinician at. */
+  const page =
+    "Midland Health mental health service in Birmingham. We offer talking therapy, counselling and " +
+    "speech and language therapy for adults and children. Our therapists are all HCPC registered. " + filler;
+  const v = verdict({
+    listing: {
+      fullName: "Sarah Barker Speech and Language Therapist",
+      town: "Birmingham", postcode: "B15 1LZ",
+      leafNames: ["Stress Management", "Low Mood"], branch: "psychology",
+    },
+    source: {
+      url: "https://midlandhealth.co.uk/mental-health/",
+      claimedByOtherListings: 0,
+      sameHostListings: ["Midland Health", "Mr Amit Parmar ENT", "Dr Kausik Das Gynaecology"],
+      text: page,
+    },
+  });
+  assert.equal(v.pass, false, v.why);
+  assert.ok(failed(v).includes("exclusive"), `should fail 'exclusive', failed ${failed(v)}`);
+});
+
+test("one practice listed once per branch — Mr Roger Sloan, Solihull and Coventry — still passes", () => {
+  const v = verdict({
+    listing: {
+      fullName: "Warwickshire Orthopaedic Clinic Solihull - Mr Roger Sloan",
+      town: "Solihull", postcode: "B91 2AW",
+      leafNames: ["Hip Replacement", "Knee Replacement"], branch: "orthopaedics",
+    },
+    source: {
+      url: "https://www.rogersloan.co.uk/",
+      claimedByOtherListings: 0,
+      sameHostListings: ["Warwickshire Orthopaedic Clinic Coventy - Mr Roger Sloan"],
+      text: "Mr Roger Sloan is a consultant orthopaedic surgeon in Solihull offering hip replacement and knee replacement. " + filler,
+    },
+  });
+  assert.equal(v.pass, true, v.why);
+});
+
+test("a group's site shared by its practices — rodericksdentalpartners.co.uk — fails for each", () => {
+  const v = verdict({
+    listing: {
+      fullName: "Cottams Dental - Harborne Dentist",
+      town: "Birmingham", postcode: "B17 9NS",
+      leafNames: ["Dental Implants", "Teeth Whitening"], branch: "dentistry",
+    },
+    source: {
+      url: "https://www.rodericksdentalpartners.co.uk/practices/cottams",
+      claimedByOtherListings: 0,
+      sameHostListings: ["Castle Care - Castle Bromwich Dental Care", "Coventry Road Dental", "Handsworth Wood Dental Practice"],
+      text: "Rodericks Dental Partners. Our practices offer dental implants and teeth whitening across the Midlands, Harborne included. " + filler,
+    },
+  });
+  assert.equal(v.pass, false, v.why);
+  assert.ok(failed(v).includes("exclusive"), `should fail 'exclusive', failed ${failed(v)}`);
+});
+
+test("guests on a practice's own domain do not cost the practice its own site", () => {
+  const v = verdict({
+    listing: {
+      fullName: "Broad Oaks Health Clinic",
+      town: "Solihull", postcode: "B91 1DL",
+      leafNames: ["Sports Injury Assessment"], branch: "physiotherapy",
+    },
+    source: {
+      url: "https://www.broadoakshealthclinic.com/",
+      claimedByOtherListings: 0,
+      sameHostListings: ["Dove House Psychology Services"],
+      text: "Broad Oaks Health Clinic in Solihull offers sports injury assessment and rehabilitation. " + filler,
+    },
+  });
+  assert.equal(v.pass, true, v.why);
+});
