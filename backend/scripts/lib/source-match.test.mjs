@@ -151,3 +151,62 @@ test("isOrganisation separates the two kinds", () => {
   assert.equal(isOrganisation("Coventry Central Chiropractic Clinic"), true);
   assert.equal(isOrganisation("Dr Fatima Al-Rashid"), false);
 });
+
+/* ------------------------------------------------------------------ *
+ * Found by running the gate over the first 25 fetched sites. All three
+ * were passing the `named` check on nothing at all.
+ * ------------------------------------------------------------------ */
+
+test("ENT is not a surname, and must not match the word 'treatment'", () => {
+  const v = verdict({
+    listing: { fullName: "Mr Amit Parmar ENT", town: "Birmingham", postcode: "B15 1LZ", leafNames: ["Sinusitis"], branch: "ent" },
+    source: {
+      claimedByOtherListings: 0,
+      text:
+        "Our consultants offer assessment and treatment for every patient referred to the department. " +
+        "Different options are discussed at the first appointment. Sinusitis is among the conditions seen in Birmingham. " + filler,
+    },
+  });
+  assert.equal(
+    v.checks.find((c) => c.name === "named").pass,
+    false,
+    "a page that never says Parmar must not pass 'named'"
+  );
+  assert.equal(v.pass, false, v.why);
+});
+
+test("a category appended to a person's name is not their surname", () => {
+  const page =
+    "Dr Grisham Smotra is a consultant gynaecologist in Birmingham. " +
+    "The gynaecology service treats heavy periods and pelvic pain. " + filler;
+  const yes = verdict({
+    listing: { fullName: "Dr Grisham Smotra Gynaecology", town: "Birmingham", postcode: "B15 1LZ", leafNames: ["Pelvic Pain"], branch: "gynaecology" },
+    source: { claimedByOtherListings: 0, text: page },
+  });
+  assert.equal(yes.pass, true, yes.why);
+
+  /* The same page, for the other consultant whose listing carries the
+     same department word. It says "gynaecology" all over it and that
+     must not be enough. */
+  const no = verdict({
+    listing: { fullName: "Dr Kausik Das Gynaecology", town: "Birmingham", postcode: "B15 1LZ", leafNames: ["Pelvic Pain"], branch: "gynaecology" },
+    source: { claimedByOtherListings: 0, text: page },
+  });
+  assert.equal(no.pass, false, no.why);
+  assert.ok(failed(no).includes("named"), `failed ${failed(no)}`);
+});
+
+test("a business named after its discipline is an organisation, not a person called Psychology", () => {
+  assert.equal(isOrganisation("New Meanings Psychology"), true);
+  assert.equal(isOrganisation("the247dentist - Coventry"), true);
+  assert.equal(isOrganisation("Dr Grisham Smotra Gynaecology"), false, "an honorific still means a person");
+
+  const v = verdict({
+    listing: { fullName: "New Meanings Psychology", town: "Birmingham", postcode: "B15 1LZ", leafNames: ["Talking Therapy"], branch: "psychology" },
+    source: {
+      claimedByOtherListings: 0,
+      text: "A psychology practice in Birmingham offering assessment and talking therapy to adults. " + filler,
+    },
+  });
+  assert.equal(v.checks.find((c) => c.name === "named").pass, false, "'psychology' alone is not the name");
+});

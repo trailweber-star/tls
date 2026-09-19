@@ -36,7 +36,7 @@ const PARKED =
   /(domain (is |name )?for sale|buy this domain|this domain may be for sale|page not found|404 error|under construction|coming soon|account suspended|site is temporarily unavailable|website is currently unavailable|enable javascript to)/i;
 
 const ORG_WORD =
-  /\b(clinic|clinics|centre|center|hospital|practice|surgery|ltd|limited|llp|group|associates|partners|physio|physiotherapy|chiropractic|dental|dentist|aesthetics|aesthetic|health|healthcare|medical|care|therapy|therapies|counselling|counseling|psychotherapy|studio|spa|institute|academy|laser|skin|smile|orthodontic|wellness|rehab|rehabilitation|sports|injury|pharmacy|osteopath|osteopathy|acupuncture|wellbeing|consultancy|solutions|company|specialists)\b/i;
+  /\b(clinic|clinics|centre|center|hospital|practice|surgery|ltd|limited|llp|group|associates|partners|physio|physiotherapy|chiropractic|dental|dentist|dentistry|aesthetics|aesthetic|health|healthcare|medical|care|therapy|therapies|counselling|counseling|psychotherapy|psychology|psychological|gynaecology|gynecology|dermatology|orthopaedics|orthopaedic|orthopedics|paediatrics|pediatrics|neurosurgery|studio|spa|institute|academy|laser|skin|smile|orthodontic|wellness|rehab|rehabilitation|sports|injury|pharmacy|osteopath|osteopathy|acupuncture|wellbeing|consultancy|solutions|company|specialists)\b/i;
 
 /* Words that identify nobody. A page "naming" a listing only because
    both contain the word "clinic" has not named it. */
@@ -45,10 +45,43 @@ const EMPTY = new Set([
   "clinic", "clinics", "centre", "center", "practice", "surgery", "group", "services",
   "service", "health", "healthcare", "medical", "care", "dental", "dentist", "therapy",
   "aesthetics", "aesthetic", "specialist", "specialists", "consultant", "london",
+  /* The old site appended the category to a lot of names -- "Dr Grisham
+     Smotra Gynaecology", "Mr Amit Parmar ENT". Those words identify a
+     department, not a person or a business. */
+  "gynaecology", "gynecology", "ent", "psychology", "psychological", "psychotherapy",
+  "counselling", "counseling", "dermatology", "orthopaedics", "orthopaedic",
+  "orthopedics", "physiotherapy", "physio", "paediatrics", "pediatrics",
+  "neurosurgery", "dentistry", "wellbeing", "wellness",
 ]);
 
-export const isOrganisation = (name) =>
-  ORG_WORD.test(String(name ?? "")) || String(name ?? "").replace(TITLE, "").trim().split(/\s+/).length > 4;
+/* Whole words only. "ENT" as a surname matched "treatment", "patient" and
+   "different", so every page in the sample "named" the listing. A check
+   that cannot fail is not a check. */
+const hasWord = (hay, word) => {
+  const w = String(word ?? "").trim();
+  if (!w) return false;
+  return new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(hay);
+};
+
+/* A name the old site decorated with its category: strip the category
+   back off before deciding which word is the surname. */
+const stripDisciplines = (s) =>
+  words(s).filter((w) => !EMPTY.has(w)).length >= 2
+    ? words(s).filter((w) => !EMPTY.has(w)).join(" ")
+    : String(s ?? "");
+
+/* A personal honorific settles it: "Dr Grisham Smotra Gynaecology" is a
+   person whose listing carries a department name, not a department. */
+export const isOrganisation = (name) => {
+  const raw = String(name ?? "").trim();
+  if (/^(mr|mrs|ms|miss|mx|dr|doctor|prof|professor|sir|dame)\b\.?\s+\S/i.test(raw)) return false;
+  /* Businesses glue words to digits -- "the247dentist" -- and a word
+     boundary will not find "dentist" inside it. Prising the two apart
+     is narrower than dropping the boundary, which would start matching
+     "spa" inside "space" and "care" inside "scare". */
+  const spaced = raw.replace(/(\d)([a-z])/gi, "$1 $2").replace(/([a-z])(\d)/gi, "$1 $2");
+  return ORG_WORD.test(spaced) || raw.replace(TITLE, "").trim().split(/\s+/).length > 4;
+};
 
 const words = (s) =>
   String(s ?? "")
@@ -124,10 +157,10 @@ export function verdict({ listing, source, kind }) {
         words must appear, not merely the word "clinic". */
   let named = false;
   let namedDetail = "";
-  const parts = nameWords(listing.fullName);
+  const parts = nameWords(stripDisciplines(listing.fullName));
   if (isOrg) {
     const distinctive = parts.filter((w) => !EMPTY.has(w));
-    const hits = distinctive.filter((w) => hay.includes(w));
+    const hits = distinctive.filter((w) => hasWord(hay, w));
     named = distinctive.length > 0 && hits.length >= Math.max(1, Math.ceil(distinctive.length / 2));
     namedDetail = distinctive.length
       ? `${hits.length}/${distinctive.length} distinctive word(s): ${hits.join(", ") || "none"}`
@@ -135,10 +168,10 @@ export function verdict({ listing, source, kind }) {
   } else {
     const surname = parts[parts.length - 1] ?? "";
     const given = parts.slice(0, -1);
-    const surnameOk = surname.length > 2 && hay.includes(surname);
+    const surnameOk = surname.length > 2 && hasWord(hay, surname);
     const givenOk =
       given.length === 0 ||
-      given.some((g) => hay.includes(g)) ||
+      given.some((g) => hasWord(hay, g)) ||
       given.some((g) => new RegExp(`\\b${g[0]}\\.?\\s+${surname}\\b`, "i").test(hay));
     named = surnameOk && givenOk;
     namedDetail = `surname "${surname}" ${surnameOk ? "found" : "absent"}; given name ${givenOk ? "agrees" : "does not appear"}`;
@@ -152,8 +185,8 @@ export function verdict({ listing, source, kind }) {
   const phone = digits(listing.telephone);
   const pageDigits = digits(text);
   const placedBy = [];
-  if (town && town.length > 3 && hay.includes(town)) placedBy.push(`town "${listing.town}"`);
-  if (outward && outward.length >= 2 && hay.includes(outward)) placedBy.push(`postcode ${outward.toUpperCase()}`);
+  if (town && town.length > 3 && hasWord(hay, town)) placedBy.push(`town "${listing.town}"`);
+  if (outward && outward.length >= 2 && hasWord(hay, outward)) placedBy.push(`postcode ${outward.toUpperCase()}`);
   if (phone.length >= 9 && pageDigits.includes(phone)) placedBy.push("telephone");
   add("placed", placedBy.length > 0, placedBy.join(", ") || "no town, postcode or phone number from the listing");
 
@@ -162,7 +195,7 @@ export function verdict({ listing, source, kind }) {
         different discipline is a different practice of theirs, or a
         different person with the same name. */
   const leaves = (listing.leafNames ?? []).filter(Boolean);
-  const leafHits = leaves.filter((n) => hay.includes(String(n).toLowerCase()));
+  const leafHits = leaves.filter((n) => hasWord(hay, String(n).toLowerCase()));
   add(
     "discipline",
     leafHits.length > 0,
