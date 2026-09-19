@@ -70,10 +70,12 @@ services:
       - key: SITE_USER
         value: client
 
-      # Seed the demo directory on a genuinely empty database, so the
-      # first load shows a working site. Never overwrites existing rows.
+      # OFF. This seeded a demo directory into an empty database, which was
+      # right for the first preview and is wrong now: a fresh deployment is
+      # restored from a pg_dump of the real data, and a seed running first
+      # puts 8 demo listings in the way of that restore.
       - key: SEED_ON_BOOT
-        value: "1"
+        value: "0"
 
       # The admin login for the preview. Set both before the first
       # deploy, or the seed falls back to admin@tls.test / demo1234.
