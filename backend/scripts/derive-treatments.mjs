@@ -166,6 +166,7 @@ if (FROM_CSV) {
 
 const found = new Map();      // person id -> [{ leaf, sentence }]
 const crossBranch = [];
+const borrowed = [];
 let negatedHits = 0;
 let redundant = 0;
 let academicOnly = 0;
@@ -184,6 +185,7 @@ for (const p of people) {
   redundant += r.redundant;
   academicOnly += r.academicOnly;
   for (const x of r.crossBranch) crossBranch.push({ person: p.name, leaf: x.leaf, theirs: p.root, its: x.root });
+  for (const x of r.borrowed) borrowed.push({ person: p.name, leaf: x.leaf, theirs: p.root, its: x.root });
   if (r.picks.length) found.set(p.id, r.picks);
 }
 
@@ -199,7 +201,8 @@ console.log(`  procedures to file                 ${asTreatment.length}`);
 console.log(`  conditions to file                 ${asCondition.length}`);
 console.log(`  mean per listing                   ${(all.length / Math.max(found.size, 1)).toFixed(1)}`);
 if (negatedHits) console.log(`  ${c.warn}skipped, named to say it is NOT offered   ${negatedHits}${c.off}`);
-if (crossBranch.length) console.log(`  ${c.warn}skipped, outside the listing's own branch ${crossBranch.length}${c.off}`);
+if (crossBranch.length) console.log(`  ${c.warn}skipped, a procedure from another branch  ${crossBranch.length}${c.off}`);
+if (borrowed.length) console.log(`  ${c.dim}a condition filed under another branch    ${borrowed.length}${c.off}`);
 if (redundant) console.log(`  ${c.dim}dropped, a more specific name covered it     ${redundant}${c.off}`);
 if (academicOnly) console.log(`  ${c.warn}dropped, only named in a sentence about their CV  ${academicOnly}${c.off}`);
 
@@ -257,6 +260,20 @@ if (LIMIT > 0 && found.size) {
  * belongs there, next to the category it contradicts, and a report
  * that is wrong 24 times out of 25 is worse than no report, because
  * the next person stops reading it. Hence: none here. */
+
+if (borrowed.length) {
+  /* Applied, not skipped -- see the note in lib/treatment-matcher.mjs.
+     Printed so the borrowing is visible rather than silent. */
+  console.log(`\n  ${c.dim}conditions taken from another branch (a complaint is the patient's):${c.off}`);
+  const seen = new Set();
+  for (const x of borrowed) {
+    const k = `${x.leaf}|${x.theirs}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (seen.size > 8) break;
+    dim(`    ${x.person.slice(0, 34).padEnd(36)} ${x.leaf} (${x.its}) on a ${x.theirs} listing`);
+  }
+}
 
 if (crossBranch.length) {
   console.log(`\n  ${c.warn}not applied — named a procedure from another branch:${c.off}`);

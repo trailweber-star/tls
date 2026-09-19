@@ -166,7 +166,7 @@ let places = 0;
 /* A hospital is not a clinician. See scripts/lib/place-listings.mjs. */
 const PLACES = placeListingSlugs();
 let cappedCount = 0;
-const totals = { negated: 0, crossBranch: 0, redundant: 0, academicOnly: 0 };
+const totals = { negated: 0, crossBranch: 0, borrowed: 0, redundant: 0, academicOnly: 0 };
 
 for (const f of files) {
   let rec;
@@ -205,6 +205,7 @@ for (const f of files) {
   const m = matchIn(text, root);
   totals.negated += m.negated;
   totals.crossBranch += m.crossBranch.length;
+  totals.borrowed += m.borrowed.length;
   totals.redundant += m.redundant;
   totals.academicOnly += m.academicOnly;
 
@@ -248,7 +249,8 @@ console.log(`  new conditions to file             ${asCondition.length}`);
 console.log(`  ${c.dim}named, but already on the listing  ${passed.reduce((n, r) => n + r.alreadyKnew, 0)}${c.off}`);
 if (cappedCount) console.log(`  ${c.warn}trimmed to ${MAX_PER_LISTING} on ${cappedCount} listing(s)${c.off} ${c.dim}(${withNew.reduce((n, r) => n + r.trimmed, 0)} dropped — a page naming that many is a service list)${c.off}`);
 console.log(`  ${c.dim}skipped, said NOT offered          ${totals.negated}${c.off}`);
-console.log(`  ${c.dim}skipped, outside its own branch    ${totals.crossBranch}${c.off}`);
+console.log(`  ${c.dim}skipped, a procedure from elsewhere ${totals.crossBranch}${c.off}`);
+if (totals.borrowed) console.log(`  ${c.dim}a condition filed elsewhere       ${totals.borrowed}${c.off}`);
 console.log(`  ${c.dim}dropped, a longer name covered it  ${totals.redundant}${c.off}`);
 console.log(`  ${c.dim}dropped, only in a CV sentence     ${totals.academicOnly}${c.off}`);
 

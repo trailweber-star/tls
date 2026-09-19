@@ -136,6 +136,22 @@ export const matchers = leaves
     return { ...l, rx: new RegExp(`\\b(?:${rx.join("|")})\\b`, "i") };
   });
 
+/* TWO WORDS, TWO MEANINGS, ONE PER BRANCH.
+ *
+ * Letting a condition cross branches assumes the name means the same
+ * thing on both sides. Nearly always it does -- back pain is back pain.
+ * Where it does not, the borrow produces a confident wrong answer, so
+ * the pair is named here and refused.
+ *
+ * "Complex trauma" is the one this was written for. In orthopaedics it
+ * is a patient with several serious fractures at once; in psychology it
+ * is repeated interpersonal harm, C-PTSD. A counsellor writing that she
+ * works with complex trauma is not offering to pin a femur. Keyed by
+ * the leaf slug and the branch it must not cross into. */
+const HOMONYMS = new Map([
+  ["complex-trauma", new Set(["psychology"])],
+]);
+
 /* A CONDITION NAMED IN A SENTENCE ABOUT SOMEBODY'S CV.
  *
  * "She also gained an MD for her research thesis on ovarian cancer"
@@ -162,11 +178,14 @@ export const sentencesOf = (text) => String(text ?? "").split(/(?<=[.!?])\s+|\n+
  *
  * Returns the leaves this text names, each with the sentence it came
  * from, plus counts of everything deliberately thrown away. The counts
- * matter: a pass that silently discards is a pass nobody can audit.
+ * matter: a pass that silently discards is a pass nobody can audit --
+ * and `borrowed` is the mirror of that, the conditions taken from
+ * another branch, so what is quietly kept is auditable too.
  * ------------------------------------------------------------------ */
 export function matchIn(text, root) {
   const picks = new Map();
   const crossBranch = [];
+  const borrowed = [];
   let negated = 0;
   let redundant = 0;
   let academicOnly = 0;
@@ -176,7 +195,31 @@ export function matchIn(text, root) {
     for (const m of matchers) {
       if (!m.rx.test(s)) continue;
       if (isNegated) { negated += 1; continue; }
-      if (m.root !== root) { crossBranch.push({ leaf: m.name, root: m.root }); continue; }
+      /* A CONDITION IS THE PATIENT'S, A PROCEDURE IS THE PRACTITIONER'S.
+       *
+       * Both used to be thrown away when the leaf sat in another branch,
+       * and for procedures that is right: a knee replacement belongs to
+       * whoever performs it, so an orthopaedic operation named on a
+       * gynaecologist's page is a mistake, not a service.
+       *
+       * A condition is not like that. Back pain is the same back pain
+       * whichever clinician the patient sees, and the tree files each
+       * complaint once, under whoever it was first written for. Every
+       * one of the 53 physiotherapy leaves is named for the discipline
+       * rather than the complaint -- "Back Pain Physiotherapy" -- so a
+       * physio's own page saying it treats back pain matched nothing at
+       * all, while "Back Pain" sat one branch away in orthopaedics and
+       * was discarded on sight. That is why the physiotherapy branch
+       * came back empty from a pass over 252 practices.
+       *
+       * So a condition may cross. It is still the listing's own words,
+       * still refused when the sentence negates it or only recites a CV,
+       * and on the website pass still behind the match gate. */
+      if (m.root !== root) {
+        if (m.kind !== "condition") { crossBranch.push({ leaf: m.name, root: m.root }); continue; }
+        if (HOMONYMS.get(m.slug)?.has(root)) { crossBranch.push({ leaf: m.name, root: m.root }); continue; }
+        borrowed.push({ leaf: m.name, root: m.root });
+      }
       const academic = ACADEMIC.test(s);
       if (!picks.has(m.slug)) picks.set(m.slug, { leaf: m, sentence: s.trim(), academic });
       else if (!academic) {
@@ -203,5 +246,5 @@ export function matchIn(text, root) {
     }
   }
 
-  return { picks: [...picks.values()], crossBranch, negated, redundant, academicOnly };
+  return { picks: [...picks.values()], crossBranch, borrowed, negated, redundant, academicOnly };
 }
