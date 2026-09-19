@@ -30,7 +30,8 @@
     "sites:fetch": "node scripts/fetch-websites.mjs",
     "test:match": "node --test scripts/lib/source-match.test.mjs",
     "sites:report": "node scripts/report-site-matches.mjs",
-    "seed:retire": "node scripts/retire-seed.mjs"
+    "seed:retire": "node scripts/retire-seed.mjs",
+    "facilities:move": "node scripts/move-to-facilities.mjs"
   },
   "keywords": [],
   "author": "",

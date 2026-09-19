@@ -1,0 +1,52 @@
+# Listings that are places, not people, and where they should go.
+#
+# move-to-facilities.mjs reads this. Every line is a decision somebody
+# made by reading the listing, not a rule a script inferred, which is
+# why the type and the categories are written down here rather than
+# guessed from the name at run time. "Hospital" in a name does not say
+# whether a place is NHS or private, and getting that wrong on a
+# healthcare directory is not a cosmetic error.
+#
+# TWO OR MORE LINES MAY SHARE A facilitySlug. That is a merge: the old
+# site listed some hospitals once per department, so University Hospital
+# Coventry & Warwickshire appears three times and New Cross twice. They
+# become one facility each. The line marked primary=yes supplies the
+# address, website, photo and description; the others are removed once
+# the facility exists.
+#
+# WHAT IS LOST. Facilities carry facility categories, not specialty
+# tags, and they have no treatments or conditions. All 14 of these were
+# checked first: none is claimed, none has a review, an enquiry or an
+# article, and not one has a single treatment or condition on it. So
+# nothing goes except the two specialty tags each, which the facility
+# categories below replace.
+#
+# WHAT IS NOT FILLED IN. regulator, regulatorRef and regulatorRating are
+# left empty. A CQC number is a fact to be looked up, not one to be
+# assumed, and this repository already has one example of what invented
+# regulator data looks like in production.
+#
+# slug          the listing's slug in the specialists table
+# facilitySlug  the facility to create — shared slugs merge
+# facilityName  the facility's name, since a merged one needs a name no
+#               single source row has
+# facilityType  hospital | clinic | care_home | pharmacy
+# categories    facility category slugs, space separated
+# primary       yes for the row whose details the facility takes
+# reason        why, in one line, for whoever reads this next
+#
+slug,facilitySlug,facilityName,facilityType,categories,primary,reason
+university-hospital-coventry-warwickshire,university-hospital-coventry-and-warwickshire,University Hospital Coventry & Warwickshire,hospital,hospitals-nhs-hospital,yes,"NHS, University Hospitals Coventry and Warwickshire NHS Trust. The cleanest of the three names and the one with the trust's own homepage on it."
+university-hospital-coventry-and-warwickshire-gynaecology,university-hospital-coventry-and-warwickshire,University Hospital Coventry & Warwickshire,hospital,hospitals-nhs-hospital,no,"The same hospital, listed again by department on the old site."
+university-hospital-coventry-warwickshire-fracture-clinic,university-hospital-coventry-and-warwickshire,University Hospital Coventry & Warwickshire,hospital,hospitals-nhs-hospital,no,"The same hospital again — the fracture clinic is a department at the same Clifford Bridge Road address."
+new-cross-hospital-gynaecology,new-cross-hospital,New Cross Hospital,hospital,hospitals-nhs-hospital,yes,"NHS, The Royal Wolverhampton NHS Trust. Primary only because its url is on the trust's own domain; it points at the gynaecology department rather than the hospital, so the address wants correcting by hand."
+new-cross-hospital-ent,new-cross-hospital,New Cross Hospital,hospital,hospitals-nhs-hospital,no,"The same hospital, listed again by department. Its url is a retired nhs.uk DefaultView.aspx page."
+birmingham-dental-hospital,birmingham-dental-hospital,Birmingham Dental Hospital,hospital,hospitals-nhs-hospital hospitals-specialist-hospital,yes,"NHS, Birmingham Community Healthcare NHS Foundation Trust. A dental hospital, so specialist as well as NHS."
+birmingham-solihull-mental-health-nhs-trust,birmingham-solihull-mental-health-nhs-trust,Birmingham & Solihull Mental Health NHS Trust,hospital,hospitals-nhs-hospital hospitals-specialist-hospital,yes,"An NHS trust rather than a single hospital, which the name says plainly. Filed as a specialist NHS setting; worth Kirti deciding whether a trust belongs in the directory at all."
+warwick-hospital-dermatology,warwick-hospital,Warwick Hospital,hospital,hospitals-nhs-hospital,yes,"NHS, South Warwickshire University NHS Foundation Trust. Renamed from the department to the hospital, since it is the only Warwick Hospital listing."
+solihull-hospital,solihull-hospital,Solihull Hospital,hospital,hospitals-nhs-hospital,yes,"NHS, University Hospitals Birmingham NHS Foundation Trust."
+dudley-group-nhs-foundation-trust,dudley-group-nhs-foundation-trust,The Dudley Group NHS Foundation Trust,hospital,hospitals-nhs-hospital,yes,"An NHS trust, not a single hospital. Same question as Birmingham & Solihull."
+spire-little-aston-hospital,spire-little-aston-hospital,Spire Little Aston Hospital,hospital,hospitals-private-hospital,yes,"Private, Spire Healthcare."
+spire-parkway-hospital,spire-parkway-hospital,Spire Parkway Hospital,hospital,hospitals-private-hospital,yes,"Private, Spire Healthcare."
+cygnet-joyce-parker-hospital,cygnet-joyce-parker-hospital,Cygnet Joyce Parker Hospital,hospital,hospitals-private-hospital hospitals-specialist-hospital,yes,"Private, Cygnet Health Care. A mental health hospital, so specialist as well as private."
+st-judes-womens-hospital,st-judes-womens-hospital,St Judes Women's Hospital,hospital,hospitals-private-hospital hospitals-specialist-hospital,yes,"Private on the evidence found — its own site is stjudeclinic.com and it appears as a Total Fertility satellite clinic — but nothing states it outright. KIRTI TO CONFIRM before this goes live."
