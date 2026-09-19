@@ -166,7 +166,7 @@ let places = 0;
 /* A hospital is not a clinician. See scripts/lib/place-listings.mjs. */
 const PLACES = placeListingSlugs();
 let cappedCount = 0;
-const totals = { negated: 0, crossBranch: 0, borrowed: 0, redundant: 0, academicOnly: 0 };
+const totals = { negated: 0, crossBranch: 0, borrowed: 0, alsoNamedHere: 0, redundant: 0, academicOnly: 0 };
 
 for (const f of files) {
   let rec;
@@ -206,6 +206,7 @@ for (const f of files) {
   totals.negated += m.negated;
   totals.crossBranch += m.crossBranch.length;
   totals.borrowed += m.borrowed.length;
+  totals.alsoNamedHere += m.alsoNamedHere;
   totals.redundant += m.redundant;
   totals.academicOnly += m.academicOnly;
 
@@ -251,6 +252,7 @@ if (cappedCount) console.log(`  ${c.warn}trimmed to ${MAX_PER_LISTING} on ${capp
 console.log(`  ${c.dim}skipped, said NOT offered          ${totals.negated}${c.off}`);
 console.log(`  ${c.dim}skipped, a procedure from elsewhere ${totals.crossBranch}${c.off}`);
 if (totals.borrowed) console.log(`  ${c.dim}a condition filed elsewhere       ${totals.borrowed}${c.off}`);
+if (totals.alsoNamedHere) console.log(`  ${c.dim}another profession's name for it  ${totals.alsoNamedHere}${c.off}`);
 console.log(`  ${c.dim}dropped, a longer name covered it  ${totals.redundant}${c.off}`);
 console.log(`  ${c.dim}dropped, only in a CV sentence     ${totals.academicOnly}${c.off}`);
 

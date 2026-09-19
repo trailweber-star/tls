@@ -170,6 +170,7 @@ const borrowed = [];
 let negatedHits = 0;
 let redundant = 0;
 let academicOnly = 0;
+let alsoNamedHere = 0;
 let withBio = 0;
 let places = 0;
 
@@ -184,6 +185,7 @@ for (const p of people) {
   negatedHits += r.negated;
   redundant += r.redundant;
   academicOnly += r.academicOnly;
+  alsoNamedHere += r.alsoNamedHere;
   for (const x of r.crossBranch) crossBranch.push({ person: p.name, leaf: x.leaf, theirs: p.root, its: x.root });
   for (const x of r.borrowed) borrowed.push({ person: p.name, leaf: x.leaf, theirs: p.root, its: x.root });
   if (r.picks.length) found.set(p.id, r.picks);
@@ -203,6 +205,7 @@ console.log(`  mean per listing                   ${(all.length / Math.max(found
 if (negatedHits) console.log(`  ${c.warn}skipped, named to say it is NOT offered   ${negatedHits}${c.off}`);
 if (crossBranch.length) console.log(`  ${c.warn}skipped, a procedure from another branch  ${crossBranch.length}${c.off}`);
 if (borrowed.length) console.log(`  ${c.dim}a condition filed under another branch    ${borrowed.length}${c.off}`);
+if (alsoNamedHere) console.log(`  ${c.dim}another profession's name for the same     ${alsoNamedHere}${c.off}`);
 if (redundant) console.log(`  ${c.dim}dropped, a more specific name covered it     ${redundant}${c.off}`);
 if (academicOnly) console.log(`  ${c.warn}dropped, only named in a sentence about their CV  ${academicOnly}${c.off}`);
 

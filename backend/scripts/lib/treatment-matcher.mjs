@@ -127,9 +127,51 @@ for (const l of leaves) l.kind = override.get(l.slug) ?? kindOf(l.name);
 /* Short names match too much. "Knee" appears in every knee bio and says
    nothing a patient can act on; the leaf that matters is "Knee
    Replacement". Six characters is where the noise stops. */
+/* THE SAME COMPLAINT, FILED TWICE UNDER TWO PROFESSIONS.
+ *
+ * Physiotherapy names its leaves for the profession rather than the
+ * complaint -- "Back Pain Physiotherapy", "Neck Pain Physiotherapy" --
+ * while orthopaedics has the bare "Back Pain". Both are right, and a
+ * patient with a sore back may want either. But a physio's own page
+ * says "we treat back pain", not "we offer back pain physiotherapy",
+ * so the branch that most needed the match was the one that could not
+ * make it.
+ *
+ * So a leaf whose name is another branch's leaf plus a trailing word
+ * answers to the shorter name as well. "Back Pain Physiotherapy" picks
+ * up "back pain"; the orthopaedic "Back Pain" keeps it too, and each
+ * listing gets the one filed under its own profession.
+ *
+ * The condition is that the stem must ALREADY be a leaf somewhere else.
+ * That is what makes it a shared complaint rather than a guess: nothing
+ * new is invented, two existing entries are joined. It is why "Stroke
+ * Rehabilitation" gains nothing -- no branch files a bare "Stroke" --
+ * and a bare "stroke" in a sentence stays the ambiguous English word. */
+const leafNames = new Map();
+for (const l of leaves) {
+  const k = l.name.toLowerCase();
+  if (!leafNames.has(k)) leafNames.set(k, new Set());
+  leafNames.get(k).add(l.root);
+}
+
+function sharedStem(leaf) {
+  const words = leaf.name.split(/\s+/);
+  for (let keep = words.length - 1; keep >= 1; keep -= 1) {
+    const stem = words.slice(0, keep).join(" ");
+    if (stem.length < 6) break;
+    const roots = leafNames.get(stem.toLowerCase());
+    if (roots && [...roots].some((r) => r !== leaf.root)) return stem;
+  }
+  return null;
+}
+
 export const matchers = leaves
   .filter((l) => l.kind !== "skip" && l.name.length >= 6)
-  .map((l) => ({ ...l, aliases: aliasesFor(l.name) }))
+  .map((l) => {
+    const stem = sharedStem(l);
+    const aliases = aliasesFor(l.name);
+    return { ...l, aliases: stem && !aliases.includes(stem) ? [...aliases, stem] : aliases };
+  })
   .filter((l) => l.aliases.length)
   .map((l) => {
     const rx = l.aliases.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"));
@@ -189,45 +231,74 @@ export function matchIn(text, root) {
   let negated = 0;
   let redundant = 0;
   let academicOnly = 0;
+  let alsoNamedHere = 0;
+
+  /* The exact words that matched, lowercased, for leaves in this
+     listing's own branch. Used below to tell a leaf from another branch
+     that is the same complaint under a different profession's name. */
+  const ownWords = new Set();
+  const norm = (x) => x.toLowerCase().replace(/\s+/g, " ");
+  const keep = (m, s, academic) => {
+    if (!picks.has(m.slug)) picks.set(m.slug, { leaf: m, sentence: s.trim(), academic });
+    else if (!academic) {
+      // A plain sentence beats the CV sentence that got here first.
+      const seen = picks.get(m.slug);
+      if (seen.academic) { seen.academic = false; seen.sentence = s.trim(); }
+    }
+  };
+
+  /* Anything outside this listing's branch waits until every sentence
+     has been read, because whether to keep it depends on what the
+     listing's own branch turned out to match. */
+  const elsewhere = [];
 
   for (const s of sentencesOf(text)) {
     const isNegated = NEGATED.test(s);
     for (const m of matchers) {
-      if (!m.rx.test(s)) continue;
+      const hit = m.rx.exec(s);
+      if (!hit) continue;
       if (isNegated) { negated += 1; continue; }
-      /* A CONDITION IS THE PATIENT'S, A PROCEDURE IS THE PRACTITIONER'S.
-       *
-       * Both used to be thrown away when the leaf sat in another branch,
-       * and for procedures that is right: a knee replacement belongs to
-       * whoever performs it, so an orthopaedic operation named on a
-       * gynaecologist's page is a mistake, not a service.
-       *
-       * A condition is not like that. Back pain is the same back pain
-       * whichever clinician the patient sees, and the tree files each
-       * complaint once, under whoever it was first written for. Every
-       * one of the 53 physiotherapy leaves is named for the discipline
-       * rather than the complaint -- "Back Pain Physiotherapy" -- so a
-       * physio's own page saying it treats back pain matched nothing at
-       * all, while "Back Pain" sat one branch away in orthopaedics and
-       * was discarded on sight. That is why the physiotherapy branch
-       * came back empty from a pass over 252 practices.
-       *
-       * So a condition may cross. It is still the listing's own words,
-       * still refused when the sentence negates it or only recites a CV,
-       * and on the website pass still behind the match gate. */
-      if (m.root !== root) {
-        if (m.kind !== "condition") { crossBranch.push({ leaf: m.name, root: m.root }); continue; }
-        if (HOMONYMS.get(m.slug)?.has(root)) { crossBranch.push({ leaf: m.name, root: m.root }); continue; }
-        borrowed.push({ leaf: m.name, root: m.root });
-      }
       const academic = ACADEMIC.test(s);
-      if (!picks.has(m.slug)) picks.set(m.slug, { leaf: m, sentence: s.trim(), academic });
-      else if (!academic) {
-        // A plain sentence beats the CV sentence that got here first.
-        const seen = picks.get(m.slug);
-        if (seen.academic) { seen.academic = false; seen.sentence = s.trim(); }
-      }
+      if (m.root !== root) { elsewhere.push({ m, s, academic, words: norm(hit[0]) }); continue; }
+      ownWords.add(norm(hit[0]));
+      keep(m, s, academic);
     }
+  }
+
+  for (const x of elsewhere) {
+    /* THE SAME WORDS, ALREADY ANSWERED BY THIS LISTING'S OWN BRANCH.
+     *
+     * "Back Pain Physiotherapy" and orthopaedics' "Back Pain" both
+     * answer to "back pain", so on a physiotherapist every mention
+     * matches in two branches at once. For a PROCEDURE that settles it:
+     * the listing has already been credited with its own profession's
+     * name for the work, and the other branch's name is not a claim
+     * being refused but the same claim said twice. Counting those as
+     * skips buried the real refusals a thousand deep.
+     *
+     * A condition is kept even so. "Back Pain Physiotherapy" is a
+     * service, and it files under treatments; the complaint itself is
+     * what a patient searches by, and a physio who never gets the
+     * condition never appears under it. So the profile carries both --
+     * back pain, the complaint, and what this practice does about it. */
+    if (x.m.kind !== "condition" && ownWords.has(x.words)) { alsoNamedHere += 1; continue; }
+
+    /* A CONDITION IS THE PATIENT'S, A PROCEDURE IS THE PRACTITIONER'S.
+     *
+     * A procedure named outside its branch is a mistake, not a service:
+     * a knee replacement belongs to whoever performs it, so one named
+     * on a gynaecologist's page is thrown away.
+     *
+     * A condition is not like that. Back pain is the same back pain
+     * whichever clinician the patient sees, and the tree files each
+     * complaint once, under whoever it was first written for. Where the
+     * listing's own branch has no name for it -- sciatica, tennis
+     * elbow and plantar fasciitis exist nowhere under physiotherapy --
+     * the complaint is borrowed rather than lost. */
+    if (x.m.kind !== "condition") { crossBranch.push({ leaf: x.m.name, root: x.m.root }); continue; }
+    if (HOMONYMS.get(x.m.slug)?.has(root)) { crossBranch.push({ leaf: x.m.name, root: x.m.root }); continue; }
+    borrowed.push({ leaf: x.m.name, root: x.m.root });
+    keep(x.m, x.s, x.academic);
   }
 
   for (const [slug, v] of [...picks]) {
@@ -241,10 +312,15 @@ export function matchIn(text, root) {
   for (const [slugA, a] of [...picks]) {
     for (const [slugB, b] of [...picks]) {
       if (slugA === slugB || !picks.has(slugA)) continue;
+      /* Same side of the line only. "Back Pain" the complaint and "Back
+         Pain Physiotherapy" the service are not the same claim said
+         twice -- one says what the patient has, the other what this
+         practice does about it, and they print in different columns. */
+      if (a.leaf.kind !== b.leaf.kind) continue;
       const shorter = a.leaf.aliases.some((x) => b.leaf.aliases.some((y) => y.length > x.length && y.toLowerCase().includes(x.toLowerCase())));
       if (shorter) { picks.delete(slugA); redundant += 1; }
     }
   }
 
-  return { picks: [...picks.values()], crossBranch, borrowed, negated, redundant, academicOnly };
+  return { picks: [...picks.values()], crossBranch, borrowed, alsoNamedHere, negated, redundant, academicOnly };
 }
