@@ -97,7 +97,7 @@ for (const { from, to } of retired) {
       if (byId.get(id)?.slug !== from.slug) continue;
       const key = `${link.specialistId}\u0000${to.slug}`;
       const already = to.kind === "treatment" ? holdsTreatment.has(key) : holdsCondition.has(key);
-      dupMoves.push({ specialistId: link.specialistId, fromKind: kind, fromSlug: from.slug, toKind: to.kind, toSlug: to.slug, name: to.name, already });
+      dupMoves.push({ specialistId: link.specialistId, fromKind: kind, fromSlug: from.slug, toKind: to.kind, toSlug: to.slug, name: to.name, already, source: link.source ?? null });
     }
   }
 }
@@ -109,13 +109,13 @@ for (const link of cdLinks) {
   const row = cdById.get(link.conditionId);
   if (!row) continue;
   if (wantKind.get(row.slug) !== "treatment") continue;
-  kindMoves.push({ specialistId: link.specialistId, from: "condition", to: "treatment", slug: row.slug, name: row.name });
+  kindMoves.push({ specialistId: link.specialistId, from: "condition", to: "treatment", slug: row.slug, name: row.name, source: link.source ?? null });
 }
 for (const link of trLinks) {
   const row = trById.get(link.treatmentId);
   if (!row) continue;
   if (wantKind.get(row.slug) !== "condition") continue;
-  kindMoves.push({ specialistId: link.specialistId, from: "treatment", to: "condition", slug: row.slug, name: row.name });
+  kindMoves.push({ specialistId: link.specialistId, from: "treatment", to: "condition", slug: row.slug, name: row.name, source: link.source ?? null });
 }
 
 /* ------------------------------------------------------------ report */
@@ -206,12 +206,18 @@ if (missing.length) {
 
 /* Add first, then remove. A crash between the two leaves a duplicate,
    which is visible and fixable; the other order loses the claim. */
+/* THE SOURCE TRAVELS WITH THE LINK. This script moves a claim from one
+   side of the treatment/condition line to the other; it does not
+   originate one. So the row it writes keeps whatever provenance the row
+   it replaces had — drop it and a derived link becomes unattributed,
+   which quietly takes it out of reach of the pass that produced it and
+   puts it back in the pile the description pass adopts. */
 const adds = { treatment: [], condition: [] };
-for (const m of kindMoves) adds[m.to].push({ specialistId: m.specialistId, slug: m.slug });
-for (const m of dupMoves) if (!m.already) adds[m.toKind].push({ specialistId: m.specialistId, slug: m.toSlug });
+for (const m of kindMoves) adds[m.to].push({ specialistId: m.specialistId, slug: m.slug, source: m.source });
+for (const m of dupMoves) if (!m.already) adds[m.toKind].push({ specialistId: m.specialistId, slug: m.toSlug, source: m.source });
 
 for (const [kind, table, col] of [["treatment", t.specialistTreatments, "treatmentId"], ["condition", t.specialistConditions, "conditionId"]]) {
-  const rows = adds[kind].map((a) => ({ specialistId: a.specialistId, [col]: idBySlug[kind].get(a.slug) }));
+  const rows = adds[kind].map((a) => ({ specialistId: a.specialistId, [col]: idBySlug[kind].get(a.slug), source: a.source }));
   for (let i = 0; i < rows.length; i += 500) {
     await db.insert(table).values(rows.slice(i, i + 500)).onConflictDoNothing();
     console.log(`${c.dim}  added ${kind} links ${Math.min(i + 500, rows.length)}/${rows.length}${c.off}`);

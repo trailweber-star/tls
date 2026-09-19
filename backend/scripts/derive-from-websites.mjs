@@ -4,6 +4,7 @@
  *
  *   node scripts/derive-from-websites.mjs                  # report
  *   node scripts/derive-from-websites.mjs --write          # apply
+ *   node scripts/derive-from-websites.mjs --write --replace # re-do its own
  *   node scripts/derive-from-websites.mjs --max=20         # per listing
  *
  * The description pass reached 43% of listings, because that is how
@@ -36,7 +37,7 @@ import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { eq, inArray } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { getDb, disconnectDb, isDbConfigured } from "../src/db/client.js";
 import * as t from "../src/db/schema.js";
 import { verdict } from "./lib/source-match.mjs";
@@ -53,6 +54,29 @@ const num = (f, d) => {
   return a ? Number(a.split("=")[1]) || d : d;
 };
 const WRITE = has("--write");
+
+/* --replace: clear what a previous run of THIS pass put on a listing
+   before writing again, so a re-run is the state the current rules
+   produce rather than the union of every run ever made.
+
+   This pass could not have such a flag until specialist_treatments
+   carried a source column, because the only delete available to it was
+   "every link on this listing" — which would have thrown away the
+   description pass's work, the mirror image of the accident that went
+   the other way on 17 September. It now deletes source = 'website' and
+   nothing else: not the description pass's rows, not a clinician's own
+   list, and not the unattributed rows from before the column existed,
+   which the description pass adopts.
+
+   Without it this pass can only ever add, which means a guard added
+   afterwards — the gate, the NOT-offered check, the service-list cap —
+   cannot take back what it already wrote. Claimed listings are left
+   alone either way. */
+const REPLACE = has("--replace");
+
+/* What this pass signs its work with. From the schema, so the writer
+   and the delete cannot drift apart. */
+const MY_SOURCE = t.LINK_SOURCES.website;
 const VERBOSE = has("--verbose");
 const MAX_PER_LISTING = num("max", 20);
 
@@ -148,8 +172,14 @@ const note = (specialistId, slug) => {
   if (!alreadyHas.has(specialistId)) alreadyHas.set(specialistId, new Set());
   alreadyHas.get(specialistId).add(slug);
 };
-for (const r of haveTreatments) note(r.specialistId, treatmentSlugById.get(r.treatmentId));
-for (const r of haveConditions) note(r.specialistId, conditionSlugById.get(r.conditionId));
+/* With --replace, this pass's own rows are about to go, so they must
+   not count as "already on the listing" — otherwise every name it
+   found last time is filtered out as known, cleared, and never written
+   back. Everyone else's rows still count: a name the description pass
+   or the clinician already put there is not something to add twice. */
+const mineAlready = (r) => REPLACE && r.source === MY_SOURCE;
+for (const r of haveTreatments) if (!mineAlready(r)) note(r.specialistId, treatmentSlugById.get(r.treatmentId));
+for (const r of haveConditions) if (!mineAlready(r)) note(r.specialistId, conditionSlugById.get(r.conditionId));
 
 /* ---------------------------------------------------------- the pass */
 
@@ -344,13 +374,43 @@ for (const r of withNew) {
   for (const p of r.picks) {
     const id = idBySlug[p.leaf.kind].get(p.leaf.slug);
     if (!id) continue;
-    if (p.leaf.kind === "treatment") treatmentLinks.push({ specialistId: r.specialistId, treatmentId: id });
-    else conditionLinks.push({ specialistId: r.specialistId, conditionId: id });
+    if (p.leaf.kind === "treatment") treatmentLinks.push({ specialistId: r.specialistId, treatmentId: id, source: MY_SOURCE });
+    else conditionLinks.push({ specialistId: r.specialistId, conditionId: id, source: MY_SOURCE });
   }
 }
 
-/* These are additions, never a replacement: whatever the description
-   pass found stays. onConflictDoNothing makes a re-run a no-op. */
+if (REPLACE) {
+  /* Every unclaimed listing this pass has ever written to, not just the
+     ones it found something on today. Scoping the clear to today's finds
+     would mean a listing the gate now REFUSES keeps what an earlier,
+     looser gate gave it — which is the one case a re-do most needs to
+     fix, and the reason this flag exists at all. Safe to be this broad
+     precisely because the delete is scoped by source: it cannot reach
+     the description pass's rows or a clinician's own list. */
+  const claimed = new Set(specialists.filter((x) => x.claimed).map((x) => x.id));
+  const ids = [...new Set(
+    [...haveTreatments, ...haveConditions]
+      .filter((r) => r.source === MY_SOURCE && !claimed.has(r.specialistId))
+      .map((r) => r.specialistId)
+  )];
+  let cleared = 0;
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200);
+    await db.delete(t.specialistTreatments).where(
+      and(inArray(t.specialistTreatments.specialistId, chunk), eq(t.specialistTreatments.source, MY_SOURCE))
+    );
+    await db.delete(t.specialistConditions).where(
+      and(inArray(t.specialistConditions.specialistId, chunk), eq(t.specialistConditions.source, MY_SOURCE))
+    );
+    cleared += chunk.length;
+  }
+  console.log(`${c.dim}cleared this pass's own earlier links on ${cleared} unclaimed listing(s)${c.off}`);
+}
+
+/* Additions, unless --replace said otherwise: whatever the description
+   pass found stays either way. onConflictDoNothing makes a re-run a
+   no-op, and means a link the description pass already wrote keeps ITS
+   source — the first writer of a link owns it. */
 for (const [label, table, rows] of [
   ["procedure", t.specialistTreatments, treatmentLinks],
   ["condition", t.specialistConditions, conditionLinks],

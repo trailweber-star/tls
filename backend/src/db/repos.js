@@ -500,18 +500,24 @@ export const specialists = {
 };
 
 async function linkAll(tx, specialistId, { specialtyIds, conditionIds, treatmentIds, locationIds }) {
+  /* The fourth element is the provenance the join table records, where
+     it records one. Anything written through here came from a person
+     using the site — a clinician who claimed the listing, or an admin
+     on their behalf — so it is tagged "profile", which is what keeps
+     the derivation scripts' --replace from ever deleting it. The two
+     tables with no source column take null and ignore it. */
   const pairs = [
-    [t.specialistSpecialties, "specialtyId", specialtyIds],
-    [t.specialistConditions, "conditionId", conditionIds],
-    [t.specialistTreatments, "treatmentId", treatmentIds],
-    [t.specialistClinicLocations, "clinicLocationId", locationIds],
+    [t.specialistSpecialties, "specialtyId", specialtyIds, null],
+    [t.specialistConditions, "conditionId", conditionIds, t.LINK_SOURCES.profile],
+    [t.specialistTreatments, "treatmentId", treatmentIds, t.LINK_SOURCES.profile],
+    [t.specialistClinicLocations, "clinicLocationId", locationIds, null],
   ];
-  for (const [table, column, ids] of pairs) {
+  for (const [table, column, ids, source] of pairs) {
     const unique = [...new Set((ids ?? []).filter(Boolean))];
     if (unique.length === 0) continue;
     await tx
       .insert(table)
-      .values(unique.map((value) => ({ specialistId, [column]: value })))
+      .values(unique.map((value) => ({ specialistId, [column]: value, ...(source ? { source } : {}) })))
       .onConflictDoNothing();
   }
 }

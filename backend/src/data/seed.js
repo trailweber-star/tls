@@ -326,6 +326,7 @@ async function seed() {
       s.conditionSlugs.map((slug) => ({
         specialistId: specialistBySlug[s.slug].id,
         conditionId: conditionBySlug[slug].id,
+        source: t.LINK_SOURCES.seed,
       }))
     )
   );
@@ -334,6 +335,7 @@ async function seed() {
       s.treatmentSlugs.map((slug) => ({
         specialistId: specialistBySlug[s.slug].id,
         treatmentId: treatmentBySlug[slug].id,
+        source: t.LINK_SOURCES.seed,
       }))
     )
   );

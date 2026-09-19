@@ -873,6 +873,23 @@ export const specialistSpecialties = pgTable(
   ]
 );
 
+/* WHO PUT A LINK HERE. See drizzle/0013_link_provenance.sql for why
+   this column exists; the short version is that a script which writes
+   links has to be able to delete its own and only its own, and a bare
+   join table gives it nothing to aim at. Use LINK_SOURCES below rather
+   than a bare string, and null means "written before the column
+   existed" — the description pass adopts those. */
+export const LINK_SOURCES = {
+  /** derive-treatments.mjs — the listing's own description. */
+  description: "description",
+  /** derive-from-websites.mjs — the practice's own site, past the gate. */
+  website: "website",
+  /** Somebody edited the profile: a clinician who claimed it, or an admin. */
+  profile: "profile",
+  /** The demo directory. */
+  seed: "seed",
+};
+
 export const specialistConditions = pgTable(
   "specialist_conditions",
   {
@@ -882,10 +899,12 @@ export const specialistConditions = pgTable(
     conditionId: text("condition_id")
       .notNull()
       .references(() => conditions.id, { onDelete: "cascade" }),
+    source: text("source"),
   },
   (t) => [
     primaryKey({ columns: [t.specialistId, t.conditionId] }),
     index("specialist_conditions_condition_idx").on(t.conditionId),
+    index("specialist_conditions_source_idx").on(t.source),
   ]
 );
 
@@ -898,10 +917,12 @@ export const specialistTreatments = pgTable(
     treatmentId: text("treatment_id")
       .notNull()
       .references(() => treatments.id, { onDelete: "cascade" }),
+    source: text("source"),
   },
   (t) => [
     primaryKey({ columns: [t.specialistId, t.treatmentId] }),
     index("specialist_treatments_treatment_idx").on(t.treatmentId),
+    index("specialist_treatments_source_idx").on(t.source),
   ]
 );
 

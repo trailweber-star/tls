@@ -55,6 +55,36 @@ console.log(`    procedure links   ${trLinks.length}`);
 console.log(`    condition links   ${cdLinks.length}`);
 console.log(`    listings with any ${listings.size} of ${specialists.length}`);
 
+/* WHO PUT THEM THERE. The number that matters here is the last one: a
+   link with no source is one no script can clear without clearing
+   everything, which is how the website pass's work got destroyed once.
+   The description pass adopts them, so this should reach zero after one
+   description-then-website cycle and stay there. */
+const bySource = new Map();
+for (const r of [...trLinks, ...cdLinks]) {
+  const k = r.source ?? "(none recorded)";
+  bySource.set(k, (bySource.get(k) ?? 0) + 1);
+}
+const label = {
+  description: "the listing's own description",
+  website: "the practice's own website",
+  profile: "somebody edited the profile",
+  seed: "the demo directory",
+  "(none recorded)": "written before source was recorded",
+};
+console.log(`\n  ${c.bold}where each link came from${c.off}`);
+for (const [k, n] of [...bySource].sort((a, b) => b[1] - a[1])) {
+  const line = `    ${String(n).padStart(5)}  ${k.padEnd(16)} ${c.dim}${label[k] ?? ""}${c.off}`;
+  console.log(k === "(none recorded)" ? `${c.warn}${line}` : line);
+}
+if (bySource.get("(none recorded)")) {
+  console.log(
+    `${c.dim}    Those cannot be attributed to either derivation pass, so --replace on\n` +
+      `    treatments:derive clears them with its own. Re-run treatments:websites\n` +
+      `    once afterwards and the column is complete.${c.off}`
+  );
+}
+
 const tally = (rows, byId) => {
   const m = new Map();
   for (const r of rows) {

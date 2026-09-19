@@ -75,7 +75,23 @@ const WRITE_KINDS = has("--kinds");
 
    It only ever clears UNCLAIMED listings. Once a clinician has taken
    ownership, what is on their profile may be theirs rather than
-   derived, and no script should quietly delete it. */
+   derived, and no script should quietly delete it.
+
+   AND IT ONLY EVER CLEARS ITS OWN ROWS. That took a column to make
+   true. The delete here used to be "every link on this listing", which
+   is the only thing a bare join table lets you say, and on the run of
+   17 September it destroyed the 1,787 links the website pass had
+   written on every listing the two passes had in common. They came back
+   because that pass is deterministic and could be run again; nothing
+   about the delete made that certain. specialist_treatments.source now
+   records which writer produced each row, so this clears
+   source = 'description' and leaves every other writer alone.
+
+   The exception is the rows written before that column existed, which
+   are null and cannot be attributed to either pass. This script adopts
+   them — it clears them too, exactly as it did before, and says how
+   many. After one description-then-website cycle there are none left
+   and the order of the two passes stops mattering. */
 const REPLACE = has("--replace");
 const LIMIT = (() => {
   const hit = args.find((a) => a.startsWith("--sample="));
@@ -299,8 +315,14 @@ if (FROM_CSV || !WRITE) {
 /* ---------------------------------------------------------- the write */
 
 const { db, t, disconnectDb } = globalThis.__db;
-const { eq, inArray } = await import("drizzle-orm");
+const { eq, and, or, inArray, isNull, sql } = await import("drizzle-orm");
 const { newId } = t;
+
+/* What this pass signs its work with. Taken from the schema, not
+   spelled out here, so the writer below and the delete above can never
+   drift apart — a typo in one of two string literals is a pass that
+   writes rows it can no longer find. */
+const MY_SOURCE = t.LINK_SOURCES.description;
 
 const specialties = await db.select().from(t.specialties);
 const specialtyBySlug = new Map(specialties.map((s) => [s.slug, s]));
@@ -379,20 +401,69 @@ if (unresolved.length) {
 let cleared = 0;
 
 if (REPLACE) {
-  const ids = [...found.keys()];
+  /* Every unclaimed listing that carries a row this pass owns — not
+     just the ones it matched something on today. A listing whose bio
+     stopped naming anything, or that a guard has since decided against,
+     is exactly the case a re-do needs to reach, and scoping the clear
+     to today's matches would leave it holding what a looser rule gave
+     it. Broad is safe here only because the delete is scoped by source.
+
+     The null rows go with them, everywhere, for the same reason: leave
+     any behind and the audit's "(none recorded)" never reaches zero, so
+     the ambiguity outlives the migration that was meant to end it. */
   const claimed = new Set(
     (await db.select({ id: t.specialists.id }).from(t.specialists).where(eq(t.specialists.claimed, true))).map((r) => r.id)
   );
+  const owned = await Promise.all([
+    db.select({ id: t.specialistTreatments.specialistId }).from(t.specialistTreatments)
+      .where(or(eq(t.specialistTreatments.source, MY_SOURCE), isNull(t.specialistTreatments.source))),
+    db.select({ id: t.specialistConditions.specialistId }).from(t.specialistConditions)
+      .where(or(eq(t.specialistConditions.source, MY_SOURCE), isNull(t.specialistConditions.source))),
+  ]);
+  const ids = [...new Set(owned.flat().map((r) => r.id))];
   const clearable = ids.filter((id) => !claimed.has(id));
+
+  /* Count the unattributed rows before touching them, so the one run
+     that adopts them says so out loud instead of after the fact. */
+  const legacy = clearable.length
+    ? (
+        await Promise.all([
+          db.select({ n: sql`count(*)::int` }).from(t.specialistTreatments)
+            .where(and(inArray(t.specialistTreatments.specialistId, clearable), isNull(t.specialistTreatments.source))),
+          db.select({ n: sql`count(*)::int` }).from(t.specialistConditions)
+            .where(and(inArray(t.specialistConditions.specialistId, clearable), isNull(t.specialistConditions.source))),
+        ])
+      ).reduce((a, r) => a + (r[0]?.n ?? 0), 0)
+    : 0;
+
+  /* Mine, plus the ones nobody signed for. Everything else — a claimed
+     clinician's own list, an admin's edit, the website pass's finds —
+     is somebody else's row and stays where it is. */
+  const mine = (col) => or(eq(col, MY_SOURCE), isNull(col));
   for (let i = 0; i < clearable.length; i += 200) {
     const chunk = clearable.slice(i, i + 200);
-    await db.delete(t.specialistTreatments).where(inArray(t.specialistTreatments.specialistId, chunk));
-    await db.delete(t.specialistConditions).where(inArray(t.specialistConditions.specialistId, chunk));
+    await db.delete(t.specialistTreatments).where(
+      and(inArray(t.specialistTreatments.specialistId, chunk), mine(t.specialistTreatments.source))
+    );
+    await db.delete(t.specialistConditions).where(
+      and(inArray(t.specialistConditions.specialistId, chunk), mine(t.specialistConditions.source))
+    );
     cleared += chunk.length;
   }
   const skipped = ids.length - clearable.length;
-  console.log(`${c.dim}cleared the previous derivation on ${cleared} unclaimed listing(s)` +
+  console.log(`${c.dim}cleared this pass's own links on ${cleared} unclaimed listing(s)` +
     (skipped ? `, left ${skipped} claimed one(s) alone` : "") + `${c.off}`);
+  if (legacy) {
+    console.log(
+      `${c.warn}! ${legacy} of those had no source recorded${c.off} — written before the column existed,\n` +
+        `  so unattributable to either pass. This pass adopts them, which is the only\n` +
+        `  way to end the ambiguity, and it means this one run clears the website pass's\n` +
+        `  earlier work along with its own.\n` +
+        `  ${c.dim}Re-run ${c.off}npm run treatments:websites -- --write${c.dim} after this, once, to put it back.\n` +
+        `  From then on every row is signed, each pass deletes only what it wrote, and\n` +
+        `  the order of the two stops mattering.${c.off}`
+    );
+  }
 }
 
 const treatmentLinks = [];
@@ -401,8 +472,8 @@ for (const [personId, picks] of found) {
   for (const { leaf } of picks) {
     const id = idBySlug[leaf.kind].get(leaf.slug);
     if (!id) continue;
-    if (leaf.kind === "treatment") treatmentLinks.push({ specialistId: personId, treatmentId: id });
-    else conditionLinks.push({ specialistId: personId, conditionId: id });
+    if (leaf.kind === "treatment") treatmentLinks.push({ specialistId: personId, treatmentId: id, source: MY_SOURCE });
+    else conditionLinks.push({ specialistId: personId, conditionId: id, source: MY_SOURCE });
   }
 }
 /* Say something on every batch. The previous run's silence is the whole
