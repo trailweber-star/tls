@@ -55,26 +55,41 @@ function tabsFor(specialist: SpecialistWithRelations) {
 /* ------------------------------------------------------------------ *
  * What the Treatments section actually has to show
  *
- * Three states, and until this was written only the first was handled.
+ * Two states, and each fact on this page belongs to exactly one of
+ * them.
  *
- *   1. The listing names procedures. Show them.
- *   2. The listing names only conditions. In a 623-listing sample, one
- *      in three of the listings that named anything at all named a
- *      condition and no procedure. The page told those visitors the
- *      clinician "hasn't listed individual treatments yet" while the record held
- *      Tennis Elbow, Endometriosis, Sciatica. That was not a missing
- *      feature, it was the page contradicting its own database.
- *   3. The listing names neither. Every listing still carries the
- *      subcategories the mapper resolved -- no listing has none -- so
- *      show those rather than ending on a dead sentence, and label them
- *      as what they are. "Areas of practice" is not a claim that this
- *      person performs a procedure; it is where the listing is filed,
- *      and the note under it says so.
+ *   1. The listing names procedures, or conditions, or both. Show them.
+ *      Conditions count: in a 623-listing sample, one in three of the
+ *      listings that named anything at all named a condition and no
+ *      procedure, and the page used to tell those visitors the
+ *      clinician "hasn't listed individual treatments yet" while the
+ *      record held Tennis Elbow, Endometriosis, Sciatica. That was not
+ *      a missing feature, it was the page contradicting its database.
+ *   2. The listing names neither. Say so, and stop.
  *
- * Every row links to a search that finds others in the same area, which
- * is the one thing the Expertise chips above it do not do. A named
- * treatment or condition goes to free-text search, which matches those
- * names; a subcategory goes to its own filter value, which is exact.
+ * THERE WAS A THIRD STATE AND IT WAS A MISTAKE. When a listing named
+ * nothing, this filled the section with the subcategories the mapper
+ * resolved, labelled "Areas of practice", under a note explaining that
+ * they were not procedures. The intention was to avoid ending on a
+ * dead sentence. The effect was that Treatments restated Areas of
+ * Expertise, verbatim, one screen below it -- on the 1,042 listings
+ * that name nothing the two sections were word-for-word identical, and
+ * on every other listing Expertise was ALSO rendering the treatments
+ * and conditions, so the repetition was there too, just less obvious.
+ * Two headings over one set of facts does not add information; it makes
+ * a page look padded, and it teaches a reader that the second heading
+ * is not worth reading.
+ *
+ * So the division is now by kind, and each fact appears once:
+ *
+ *   Areas of Expertise   where the listing is FILED -- its specialties
+ *   Treatments           what it DOES -- procedures and conditions
+ *
+ * The one thing the old block genuinely added was a link out to others
+ * in the same area, which the Expertise chips did not have. They have
+ * it now, so nothing was lost by deleting the block. A named treatment
+ * or condition goes to free-text search, which matches those names; a
+ * specialty goes to its own filter value, which is exact.
  * ------------------------------------------------------------------ */
 type PracticeGroup = {
   key: string;
@@ -82,7 +97,26 @@ type PracticeGroup = {
   items: { key: string; name: string; href: string }[];
 };
 
-function practiceGroups(s: SpecialistWithRelations): { groups: PracticeGroup[]; areAreas: boolean } {
+/* A root branch and a subcategory are different filters, and sending a
+   root to ?subspecialty= matches nothing — a link that looks like it
+   works and returns an empty directory.
+
+   Which one a chip is has to come from the taxonomy, not from the
+   profile payload: the payload does carry parentId, but the type it is
+   declared under does not promise it, and a link that silently depends
+   on an undeclared field is one refactor away from breaking quietly.
+   Until the taxonomy has loaded, free-text search — it matches the same
+   names and is never empty for a specialty that exists. */
+function specialtyHrefIn(taxonomy: Specialty[]) {
+  const bySlug = new Map(taxonomy.map((s) => [s.slug, s]));
+  return (sp: { slug: string; name: string }) => {
+    const node = bySlug.get(sp.slug);
+    if (!node) return `/search?q=${encodeURIComponent(sp.name)}`;
+    return `/search?${node.parentId ? "subspecialty" : "specialty"}=${encodeURIComponent(sp.slug)}`;
+  };
+}
+
+function practiceGroups(s: SpecialistWithRelations): { groups: PracticeGroup[] } {
   /* One shared seen-set across the groups: a name that appeared as a
      procedure should not appear again under conditions. */
   const seen = new Set<string>();
@@ -115,24 +149,7 @@ function practiceGroups(s: SpecialistWithRelations): { groups: PracticeGroup[]; 
     });
   }
 
-  if (groups.length) return { groups, areAreas: false };
-
-  const areas = fresh(s.specialties);
-  if (!areas.length) return { groups: [], areAreas: false };
-  return {
-    groups: [
-      {
-        key: "areas",
-        label: "Areas of practice",
-        items: areas.map((sp) => ({
-          key: `sp-${sp.id}`,
-          name: sp.name,
-          href: `/search?subspecialty=${encodeURIComponent(sp.slug)}`,
-        })),
-      },
-    ],
-    areAreas: true,
-  };
+  return { groups };
 }
 
 const TAB_BAR_HEIGHT = 56;
@@ -185,6 +202,8 @@ export default function SpecialistProfile() {
     while (node?.parentId) node = byId.get(node.parentId) ?? null;
     return node?.slug ?? null;
   }, [specialist, specialties]);
+
+  const hrefForSpecialty = useMemo(() => specialtyHrefIn(specialties), [specialties]);
 
   // Highlight the tab whose section is currently in view.
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -522,25 +541,34 @@ export default function SpecialistProfile() {
           className="scroll-mt-32 border-t border-line py-10"
         >
           <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">Areas of Expertise</h2>
+          {/* THE SPECIALTIES, AND NOTHING ELSE. This used to append every
+              condition and every treatment as well, which made it a
+              second copy of the Treatments section below — see the note
+              above practiceGroups. "Areas of expertise" means the
+              branches this listing is filed under; what it treats has
+              its own heading.
+
+              Each chip is a link because that is the one thing the
+              duplicated block did that these did not. */}
           <div className="mt-5 flex flex-wrap gap-2.5">
-            {[
-              ...specialist.specialties.map((s) => ({ key: `sp-${s.id}`, name: s.name, primary: true })),
-              ...specialist.conditions.map((c) => ({ key: `co-${c.id}`, name: c.name, primary: false })),
-              ...specialist.treatments.map((t) => ({ key: `tr-${t.id}`, name: t.name, primary: false })),
-            ]
-              .filter((item, i, arr) => arr.findIndex((x) => x.name === item.name) === i)
-              .map((item, i) => (
-              <span
-                key={item.key}
-                className={`rounded-full px-4 py-2 text-[13px] font-semibold transition ${
-                  i === 0
-                    ? "bg-teal-100 text-teal-700 ring-1 ring-teal-100"
-                    : "border border-line bg-white text-ink-muted"
-                }`}
-              >
-                {item.name}
-              </span>
-            ))}
+            {specialist.specialties
+              .filter((sp, i, arr) => arr.findIndex((x) => x.name === sp.name) === i)
+              .map((sp) => {
+                const isPrimary = sp.id === specialist.primarySpecialty?.id;
+                return (
+                  <Link
+                    key={`sp-${sp.id}`}
+                    to={hrefForSpecialty(sp)}
+                    className={`rounded-full px-4 py-2 text-[13px] font-semibold transition ${
+                      isPrimary
+                        ? "bg-teal-100 text-teal-700 ring-1 ring-teal-100 hover:bg-teal-200"
+                        : "border border-line bg-white text-ink-muted hover:border-teal-300 hover:text-ink"
+                    }`}
+                  >
+                    {sp.name}
+                  </Link>
+                );
+              })}
           </div>
           {specialist.languages.length > 0 && (
             <p className="mt-5 text-[13.5px] text-ink-muted">
@@ -583,16 +611,17 @@ export default function SpecialistProfile() {
                   </ul>
                 </div>
               ))}
-              {practice.areAreas && (
-                <p className="text-[13px] leading-relaxed text-ink-muted">
-                  This listing doesn&apos;t name individual procedures. These are the areas it is filed
-                  under, and each one searches the directory for others in the same area.
-                </p>
-              )}
             </div>
           ) : (
-            <p className="mt-4 text-[13.5px] text-ink-muted">
-              {specialist.fullName} hasn&apos;t listed individual treatments yet.
+            /* Nothing, said once. Not "hasn't listed yet", which blames a
+               clinician who has never seen this page — most of these
+               listings were migrated, and what the old site held was a
+               category and a paragraph, never a list of procedures. The
+               specialties are above under their own heading; repeating
+               them here is what this sentence replaced. */
+            <p className="mt-4 text-[13.5px] leading-relaxed text-ink-muted">
+              No individual procedures or conditions are listed for {specialist.fullName}. The areas
+              above are where this listing is filed.
             </p>
           )}
 
