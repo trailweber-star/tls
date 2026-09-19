@@ -100,8 +100,27 @@ services:
       # anyway. Set PUBLIC_API_URL by hand only if the API is ever
       # served from a different domain than the site.
 
-      # Email stays in log-only mode on a preview: nothing is sent to a
-      # real clinician by accident. Add a provider key and MAIL_ALLOWLIST
-      # when you want to test delivery for real.
+      # Email: live through Resend. The domain toplocalspecialists.com is
+      # verified in Resend (DKIM, SPF and DMARC records live at Namecheap)
+      # — removing any of those records breaks sending, not just
+      # verification.
+      #
+      # MAIL_PROVIDER belongs here rather than in the dashboard: a value
+      # defined in this file is blueprint-managed, so a dashboard edit is
+      # reverted on the next sync and mail drops back to log-only with
+      # nothing in the logs to say why.
       - key: MAIL_PROVIDER
-        value: console
+        value: resend
+
+      - key: MAIL_FROM
+        value: Top Local Specialists <no-reply@toplocalspecialists.com>
+
+      # Set in the Render dashboard. Never in this file, never in git.
+      - key: RESEND_API_KEY
+        sync: false
+
+      # Safety net while testing: set this in the dashboard to your own
+      # address and every message goes there instead of the real
+      # recipient. Remove it once a real send is confirmed.
+      - key: MAIL_REDIRECT_TO
+        sync: false
