@@ -27,8 +27,22 @@
  * specialty tags, and they have no treatments or conditions -- so the
  * script refuses to move any listing that has treatments or conditions
  * on it, rather than dropping them silently. At the time the csv was
- * written not one of the fourteen had any; if that has changed since,
- * you will be told rather than robbed.
+ * written not one of the fourteen had any; the website pass has since
+ * read the hospitals' own sites and given five of them some, which is
+ * what the refusal is for.
+ *
+ *   --drop-derived   move them anyway, naming every link discarded
+ *
+ * That flag is safe on these fourteen and would not be safe in general.
+ * Nothing in the join tables records where a link came from, so the
+ * script cannot tell a derived link from one a clinician typed. What it
+ * can tell is whether a real person owns the listing, and it still
+ * refuses a claimed one whatever flags you pass. For an unclaimed
+ * hospital the links can only have come from a derivation pass, and a
+ * hospital does not perform an operation: the facility's categories say
+ * what it is, and the surgeons who work there carry their own lists.
+ * The pass no longer reads these fourteen at all, so a re-run will not
+ * put the links back -- see scripts/lib/place-listings.mjs.
  *
  * The regulator fields are left empty on purpose. A CQC reference is a
  * fact to look up, and this repository already contains one worked
@@ -46,6 +60,7 @@ import * as t from "../src/db/schema.js";
 const BACKEND = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const WRITE = args.includes("--write");
+const DROP_DERIVED = args.includes("--drop-derived");
 
 const c = { off: "\u001b[0m", dim: "\u001b[2m", warn: "\u001b[33m", bad: "\u001b[31m", good: "\u001b[32m", bold: "\u001b[1m" };
 const dim = (s) => console.log(`${c.dim}${s}${c.off}`);
@@ -142,8 +157,16 @@ const [locLinks, leads, articles, reviews, treatmentLinks, conditionLinks] = awa
   ids.length ? db.select({ k: t.leads.specialistId }).from(t.leads).where(inArray(t.leads.specialistId, ids)) : [],
   ids.length ? db.select({ k: t.articles.authorSpecialistId }).from(t.articles).where(inArray(t.articles.authorSpecialistId, ids)) : [],
   ids.length ? db.select({ k: t.reviews.subjectId }).from(t.reviews).where(inArray(t.reviews.subjectId, ids)) : [],
-  ids.length ? db.select({ k: t.specialistTreatments.specialistId }).from(t.specialistTreatments).where(inArray(t.specialistTreatments.specialistId, ids)) : [],
-  ids.length ? db.select({ k: t.specialistConditions.specialistId }).from(t.specialistConditions).where(inArray(t.specialistConditions.specialistId, ids)) : [],
+  /* The names, not just a count. A refusal that says "has 4
+     treatment(s)" cannot be judged; one that names them can. */
+  ids.length ? db.select({ k: t.specialistTreatments.specialistId, name: t.treatments.name })
+    .from(t.specialistTreatments)
+    .innerJoin(t.treatments, eq(t.treatments.id, t.specialistTreatments.treatmentId))
+    .where(inArray(t.specialistTreatments.specialistId, ids)) : [],
+  ids.length ? db.select({ k: t.specialistConditions.specialistId, name: t.conditions.name })
+    .from(t.specialistConditions)
+    .innerJoin(t.conditions, eq(t.conditions.id, t.specialistConditions.conditionId))
+    .where(inArray(t.specialistConditions.specialistId, ids)) : [],
 ]);
 
 const tally = (rows) => { const m = new Map(); for (const r of rows) m.set(r.k, (m.get(r.k) ?? 0) + 1); return m; };
@@ -152,6 +175,18 @@ const articleCount = tally(articles);
 const reviewCount = tally(reviews);
 const treatmentCount = tally(treatmentLinks);
 const conditionCount = tally(conditionLinks);
+
+const namesOf = (rows, kind) => {
+  const m = new Map();
+  for (const r of rows) {
+    if (!m.has(r.k)) m.set(r.k, []);
+    m.get(r.k).push({ kind, name: r.name });
+  }
+  return m;
+};
+const treatmentNames = namesOf(treatmentLinks, "procedure");
+const conditionNames = namesOf(conditionLinks, "condition");
+const linksOf = (id) => [...(treatmentNames.get(id) ?? []), ...(conditionNames.get(id) ?? [])];
 
 const locationIds = [...new Set(locLinks.map((l) => l.clinicLocationId))];
 const locations = locationIds.length
@@ -178,6 +213,7 @@ for (const [facilitySlug, rows] of groups) {
   if (!members.length) continue;
 
   const reasons = [];
+  const discards = [];
   for (const m of members) {
     const s = m.specialist;
     const user = s.userId ? userById.get(s.userId) : null;
@@ -190,7 +226,14 @@ for (const [facilitySlug, rows] of groups) {
     if (l) reasons.push(`${s.fullName} has ${l} patient enquir${l === 1 ? "y" : "ies"}`);
     if (a) reasons.push(`${s.fullName} has ${a} article(s)`);
     if (v) reasons.push(`${s.fullName} has ${v} review(s)`);
-    if (tr || cd) reasons.push(`${s.fullName} has ${tr} treatment(s) and ${cd} condition(s), which a facility cannot hold`);
+    if (tr || cd) {
+      /* A facility has nowhere to put these. Either that stops the
+         move, or --drop-derived says to lose them on purpose -- in
+         which case every one is named below, and deleting the listing
+         takes the link rows with it (the join tables cascade). */
+      if (DROP_DERIVED) discards.push({ specialist: s, links: linksOf(s.id) });
+      else reasons.push(`${s.fullName} has ${tr} treatment(s) and ${cd} condition(s), which a facility cannot hold — see --drop-derived`);
+    }
   }
 
   const primary = members.find((m) => m.decision.primary?.toLowerCase() === "yes");
@@ -198,7 +241,7 @@ for (const [facilitySlug, rows] of groups) {
   const primaryLocation = primary ? locationsOf(primary.specialist.id)[0] : null;
   if (primary && !primaryLocation) reasons.push(`${primary.specialist.fullName} has no address, and a facility needs a city`);
 
-  const entry = { facilitySlug, rows, members, primary, primaryLocation, reasons };
+  const entry = { facilitySlug, rows, members, primary, primaryLocation, reasons, discards };
   if (reasons.length) held.push(entry); else ready.push(entry);
 }
 
@@ -221,12 +264,19 @@ for (const g of ready) {
     const mark = m === g.primary ? `${c.good}keeps its details${c.off}` : `${c.dim}merged in${c.off}`;
     console.log(`      ${m.specialist.fullName.slice(0, 54).padEnd(54)} ${mark}`);
   }
+  for (const d of g.discards) {
+    console.log(`      ${c.warn}discards ${d.links.length} link(s) from ${d.specialist.fullName}${c.off}`);
+    for (const l of d.links) dim(`        ${l.kind.padEnd(9)} ${l.name}`);
+  }
   console.log("");
 }
 
+const discardTotal = ready.reduce((n, g) => n + g.discards.reduce((k, d) => k + d.links.length, 0), 0);
+
 console.log(
   `${c.bold}${ready.length} facility/ies${c.off} from ${ready.reduce((n, g) => n + g.members.length, 0)} listing(s)` +
-    (held.length ? `, ${held.length} held back` : "") + "\n"
+    (held.length ? `, ${held.length} held back` : "") +
+    (discardTotal ? `, ${c.warn}${discardTotal} derived link(s) discarded${c.off}` : "") + "\n"
 );
 
 if (!WRITE) {
@@ -304,6 +354,7 @@ for (const g of ready) {
 console.log(
   `\n${c.good}${made} facility/ies created, ${removed} member listing(s) removed.${c.off}` +
     (held.length ? ` ${held.length} group(s) held back — see above.` : "") +
+    (discardTotal ? ` ${discardTotal} derived treatment/condition link(s) went with them, named above.` : "") +
     `\nThe regulator fields are empty on all of them, deliberately.\n`
 );
 

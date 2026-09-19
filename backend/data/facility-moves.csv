@@ -15,11 +15,21 @@
 # the facility exists.
 #
 # WHAT IS LOST. Facilities carry facility categories, not specialty
-# tags, and they have no treatments or conditions. All 14 of these were
-# checked first: none is claimed, none has a review, an enquiry or an
-# article, and not one has a single treatment or condition on it. So
-# nothing goes except the two specialty tags each, which the facility
-# categories below replace.
+# tags, and they have no treatments or conditions. All 14 were checked
+# when this file was written: none is claimed, none has a review, an
+# enquiry or an article, and not one had a treatment or a condition on
+# it. So nothing went except the two specialty tags each, which the
+# facility categories below replace.
+#
+# That last part has since changed. The website pass read these
+# hospitals' own sites and filed procedures against five of them, and
+# move-to-facilities refused to move those five rather than drop the
+# links quietly. Two things followed. The derivation passes now skip
+# every slug in this file, so a re-run will not put them back -- see
+# scripts/lib/place-listings.mjs. And the move takes --drop-derived,
+# which discards the links that are already there, naming every one.
+# A hospital does not perform an operation; its surgeons do, and they
+# carry their own lists.
 #
 # WHAT IS NOT FILLED IN. regulator, regulatorRef and regulatorRating are
 # left empty. A CQC number is a fact to be looked up, not one to be

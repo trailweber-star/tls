@@ -41,6 +41,7 @@ import { getDb, disconnectDb, isDbConfigured } from "../src/db/client.js";
 import * as t from "../src/db/schema.js";
 import { verdict } from "./lib/source-match.mjs";
 import { leaves, matchers, matchIn } from "./lib/treatment-matcher.mjs";
+import { placeListingSlugs } from "./lib/place-listings.mjs";
 
 const BACKEND = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SITES = path.join(BACKEND, "data", "harvest", "sites");
@@ -160,6 +161,10 @@ const results = [];
 const refused = new Map();
 let noListing = 0;
 let unreadable = 0;
+let places = 0;
+
+/* A hospital is not a clinician. See scripts/lib/place-listings.mjs. */
+const PLACES = placeListingSlugs();
 let cappedCount = 0;
 const totals = { negated: 0, crossBranch: 0, redundant: 0, academicOnly: 0 };
 
@@ -168,6 +173,7 @@ for (const f of files) {
   try { rec = JSON.parse(fs.readFileSync(path.join(SITES, f), "utf8")); } catch { continue; }
   const s = bySlug.get(rec.slug);
   if (!s) { noListing += 1; continue; }
+  if (PLACES.has(rec.slug)) { places += 1; continue; }
 
   const text = (rec.pages ?? []).map((p) => p.text ?? "").join("\n");
   if (!text.trim()) { unreadable += 1; continue; }
@@ -231,6 +237,7 @@ const asCondition = allPicks.filter((x) => x.leaf.kind === "condition");
 console.log(`  cached sites read                  ${files.length}`);
 if (noListing) console.log(`  ${c.dim}cached but no longer a listing     ${noListing}${c.off}`);
 if (unreadable) console.log(`  ${c.dim}cached with no text                ${unreadable}${c.off}`);
+if (places) console.log(`  ${c.dim}a place, not a person — skipped    ${places}${c.off}`);
 console.log(`  ${c.good}the gate allowed${c.off}                   ${passed.length}`);
 console.log(`  ${c.warn}the gate refused${c.off}                   ${results.length - passed.length}`);
 for (const [k, n] of [...refused].sort((a, b) => b[1] - a[1])) console.log(`${c.dim}      ${String(n).padStart(4)}  ${k}${c.off}`);

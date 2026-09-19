@@ -56,6 +56,7 @@ import { fileURLToPath } from "node:url";
    the website pass uses exactly these rules rather than a copy that
    drifts the first time somebody fixes one of them. */
 import { leaves, matchers, aliasesFor, readCsvText, matchIn } from "./lib/treatment-matcher.mjs";
+import { placeListingSlugs } from "./lib/place-listings.mjs";
 
 const BACKEND = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -125,6 +126,7 @@ if (FROM_CSV) {
   }
   people = readCsvText(fs.readFileSync(file, "utf8")).map((r) => ({
     id: r.slug,
+    slug: r.slug,
     name: r.name,
     bio: r.description,
     root: r.primarySpecialtySlug,
@@ -144,7 +146,7 @@ if (FROM_CSV) {
   const t = await import("../src/db/schema.js");
   const db = getDb();
   const rows = await db
-    .select({ id: t.specialists.id, name: t.specialists.fullName, bio: t.specialists.bio, primarySpecialtyId: t.specialists.primarySpecialtyId })
+    .select({ id: t.specialists.id, slug: t.specialists.slug, name: t.specialists.fullName, bio: t.specialists.bio, primarySpecialtyId: t.specialists.primarySpecialtyId })
     .from(t.specialists);
   const specialties = await db.select().from(t.specialties);
   const byId = new Map(specialties.map((s) => [s.id, s]));
@@ -168,8 +170,13 @@ let negatedHits = 0;
 let redundant = 0;
 let academicOnly = 0;
 let withBio = 0;
+let places = 0;
+
+/* A hospital is not a clinician. See scripts/lib/place-listings.mjs. */
+const PLACES = placeListingSlugs();
 
 for (const p of people) {
+  if (PLACES.has(p.slug)) { places += 1; continue; }
   if (!String(p.bio ?? "").trim()) continue;
   withBio += 1;
   const r = matchIn(p.bio, p.root);
@@ -186,6 +193,7 @@ const asCondition = all.filter((x) => x.leaf.kind === "condition");
 
 console.log(`${c.dim}leaves    ${matchers.length} matchable of ${leaves.length}${c.off}\n`);
 console.log(`  listings with a description        ${withBio}`);
+if (places) console.log(`  ${c.dim}a place, not a person — skipped    ${places}${c.off}`);
 console.log(`  listings that named something      ${found.size}  (${Math.round((100 * found.size) / people.length)}% of all)`);
 console.log(`  procedures to file                 ${asTreatment.length}`);
 console.log(`  conditions to file                 ${asCondition.length}`);
