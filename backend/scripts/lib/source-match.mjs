@@ -63,6 +63,27 @@ const hasWord = (hay, word) => {
   return new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(hay);
 };
 
+/* Businesses glue words to digits: the listing says "76dental", the site
+   says "76 Dental". Prising them apart is narrower than dropping the
+   word boundary, which would match "spa" inside "space". */
+const deglue = (s) => String(s ?? "").replace(/(\d)([a-z])/gi, "$1 $2").replace(/([a-z])(\d)/gi, "$1 $2");
+
+/* The domain is evidence of a name, and for some listings it is the only
+   evidence there is: "Dental Health Care" is three words this file
+   treats as identifying nobody, and its website is
+   dental-health-care.co.uk, which identifies them exactly. Compared with
+   every separator removed, so dental-health-care == dentalhealthcare. */
+const bareName = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+function domainNames(url) {
+  try {
+    const host = new URL(String(url)).hostname.toLowerCase().replace(/^www\./, "");
+    const label = host.split(".")[0];
+    return { host: bareName(host), label: bareName(label) };
+  } catch {
+    return { host: "", label: "" };
+  }
+}
+
 /* A name the old site decorated with its category: strip the category
    back off before deciding which word is the surname. */
 const stripDisciplines = (s) =>
@@ -157,14 +178,41 @@ export function verdict({ listing, source, kind }) {
         words must appear, not merely the word "clinic". */
   let named = false;
   let namedDetail = "";
-  const parts = nameWords(stripDisciplines(listing.fullName));
-  if (isOrg) {
+  let parts = nameWords(stripDisciplines(listing.fullName));
+
+  /* A two-word business this file does not recognise as one -- the name
+     "Dermaesthetix UK" has no word in the org list -- was being read as a
+     person whose surname is "UK", and then refused for not finding it. A
+     surname that short, or that generic, is not a surname. */
+  let treatAsOrg = isOrg;
+  if (!treatAsOrg) {
+    const surname = parts[parts.length - 1] ?? "";
+    if (surname.length < 3 || EMPTY.has(surname)) treatAsOrg = true;
+  }
+
+  const domain = domainNames(source?.url);
+  const nameBare = bareName(listing.fullName);
+  /* Boolean(), because these are string operands: an empty domain makes
+     the && chain evaluate to "" and a check whose pass is "" is neither
+     true nor false when somebody reads the report. */
+  const domainSaysSo = Boolean(
+    nameBare.length >= 6 &&
+      ((domain.label && (domain.label.includes(nameBare) || nameBare.includes(domain.label))) ||
+        (domain.host && domain.host.includes(nameBare)))
+  );
+
+  if (treatAsOrg) {
     const distinctive = parts.filter((w) => !EMPTY.has(w));
-    const hits = distinctive.filter((w) => hasWord(hay, w));
+    const hits = distinctive.filter((w) => hasWord(hay, w) || hasWord(deglue(hay), deglue(w)));
     named = distinctive.length > 0 && hits.length >= Math.max(1, Math.ceil(distinctive.length / 2));
     namedDetail = distinctive.length
       ? `${hits.length}/${distinctive.length} distinctive word(s): ${hits.join(", ") || "none"}`
-      : "the name has no distinctive words";
+      : "the name is made only of words that identify nobody";
+    /* Failing that, the address they are published at. */
+    if (!named && domainSaysSo) {
+      named = true;
+      namedDetail = `the name matches the domain it is published at`;
+    }
   } else {
     const surname = parts[parts.length - 1] ?? "";
     const given = parts.slice(0, -1);
@@ -173,8 +221,12 @@ export function verdict({ listing, source, kind }) {
       given.length === 0 ||
       given.some((g) => hasWord(hay, g)) ||
       given.some((g) => new RegExp(`\\b${g[0]}\\.?\\s+${surname}\\b`, "i").test(hay));
-    named = surnameOk && givenOk;
-    namedDetail = `surname "${surname}" ${surnameOk ? "found" : "absent"}; given name ${givenOk ? "agrees" : "does not appear"}`;
+    named = (surnameOk && givenOk) || domainSaysSo;
+    namedDetail = surnameOk && givenOk
+      ? `surname "${surname}" found; given name agrees`
+      : domainSaysSo
+        ? "the name matches the domain it is published at"
+        : `surname "${surname}" ${surnameOk ? "found" : "absent"}; given name ${givenOk ? "agrees" : "does not appear"}`;
   }
   add("named", named, namedDetail);
 
@@ -207,11 +259,11 @@ export function verdict({ listing, source, kind }) {
   /* 6. Not a team page -- people only. Everything on a page that
         introduces several clinicians belongs to the practice, not to
         whichever of them we happen to be filing. */
-  const others = isOrg ? [] : otherClinicians(text, listing.fullName);
+  const others = treatAsOrg ? [] : otherClinicians(text, listing.fullName);
   add(
     "attributable",
-    isOrg || others.length < 3,
-    isOrg
+    treatAsOrg || others.length < 3,
+    treatAsOrg
       ? "organisation listing — a team page is its own page"
       : others.length
         ? `page also names ${others.length} other clinician(s): ${others.slice(0, 3).join(", ")}`
@@ -231,7 +283,7 @@ export function verdict({ listing, source, kind }) {
     ? `passed on ${checks.filter((c) => c.pass).map((c) => c.name).join(" + ")}`
     : `failed: ${checks.filter((c) => !c.pass).map((c) => c.name).join(", ")}`;
 
-  return { pass, checks, why, isOrg };
+  return { pass, checks, why, isOrg: treatAsOrg };
 }
 
 export default verdict;

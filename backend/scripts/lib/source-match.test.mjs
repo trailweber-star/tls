@@ -210,3 +210,59 @@ test("a business named after its discipline is an organisation, not a person cal
   });
   assert.equal(v.checks.find((c) => c.name === "named").pass, false, "'psychology' alone is not the name");
 });
+
+/* ------------------------------------------------------------------ *
+ * Found by running the gate over all 673 fetched sites. Three ways a
+ * page that plainly belonged to a listing was being refused.
+ * ------------------------------------------------------------------ */
+
+test("a name glued to digits still matches when the page spaces it out", () => {
+  const v = verdict({
+    listing: { fullName: "76dental", town: "Birmingham", postcode: "B46 1RD", leafNames: ["Dental Implants"], branch: "dentistry" },
+    source: {
+      claimedByOtherListings: 0,
+      url: "http://www.76dental.com/",
+      text: "76 Dental, 112 Coleshill Road, Water Orton, Birmingham B46 1RD. General dentistry and dental implants. " + filler,
+    },
+  });
+  assert.equal(v.checks.find((c) => c.name === "named").pass, true, v.why);
+  assert.equal(v.pass, true, v.why);
+});
+
+test("a name made only of generic words is identified by the domain instead", () => {
+  const v = verdict({
+    listing: { fullName: "Dental Health Care", town: "Solihull", postcode: "B93 0LL", leafNames: ["Dental Hygiene"], branch: "dentistry" },
+    source: {
+      claimedByOtherListings: 0,
+      url: "https://www.dental-health-care.co.uk/",
+      text: "Solihull based dental practice offering dental hygiene and routine care. " + filler,
+    },
+  });
+  assert.equal(v.checks.find((c) => c.name === "named").pass, true, v.why);
+
+  /* And the domain must not rescue a page that is simply somebody
+     else's: Garry Savin's listing points at a charity's website. */
+  const no = verdict({
+    listing: { fullName: "Garry Savin", town: "Birmingham", postcode: "B15 1TH", leafNames: ["Talking Therapy"], branch: "psychology" },
+    source: {
+      claimedByOtherListings: 0,
+      url: "https://www.doctors-in-distress.org.uk/",
+      text: "Doctors in Distress. Support for healthcare workers, including talking therapy, across Birmingham. " + filler,
+    },
+  });
+  assert.equal(no.pass, false, no.why);
+  assert.ok(failed(no).includes("named"), `failed ${failed(no)}`);
+});
+
+test("a two-word business is not a person whose surname is UK", () => {
+  const v = verdict({
+    listing: { fullName: "Dermaesthetix UK", town: "Birmingham", postcode: "B15 1TH", leafNames: ["Dermal Fillers"], branch: "aesthetics-specialists" },
+    source: {
+      claimedByOtherListings: 0,
+      url: "https://www.dermaesthetix.uk/",
+      text: "Dermaesthetix. Facial treatments, skin boosters and dermal fillers in Birmingham. " + filler,
+    },
+  });
+  assert.equal(v.checks.find((c) => c.name === "named").pass, true, v.why);
+  assert.equal(v.isOrg, true, "two words, no honorific, surname would be 'uk'");
+});
