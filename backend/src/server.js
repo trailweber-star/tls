@@ -4,6 +4,7 @@ import { connectDB, isDbConfigured } from "./config/db.js";
 import { startReminderSweep } from "./lib/reminders.js";
 import { registerGeocoder } from "./lib/geocoders.js";
 import { registerMailer } from "./lib/mailer.js";
+import { registerStorageProvider } from "./lib/storage.js";
 import { registerPaymentProvider } from "./lib/paymentProviders.js";
 import { registerPushProvider } from "./lib/pushProvider.js";
 import { registerClinWell } from "./lib/clinwellProvider.js";
@@ -25,6 +26,11 @@ async function main() {
   // Outbound email. Picks a provider from the environment, or logs every
   // message when none is configured — see lib/mailer.js.
   await registerMailer();
+
+  // Uploaded photos and videos. Local disk by default, which does not
+  // survive a deploy on a host with no persistent disk — Cloudinary
+  // when CLOUDINARY_URL is set. See lib/storage.js.
+  await registerStorageProvider();
 
   // Card payments. Simulated until Stripe's keys are present — see
   // lib/paymentProviders.js.

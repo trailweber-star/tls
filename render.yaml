@@ -161,3 +161,13 @@ services:
       # recipient. Remove it once a real send is confirmed.
       - key: MAIL_REDIRECT_TO
         sync: false
+
+      # Photo/video uploads. This service has no persistent disk, so
+      # local-disk storage (lib/storage.js's default) is wiped on every
+      # deploy and restart — every specialist photo would be lost the
+      # next time this blueprint syncs. Set this in the dashboard to a
+      # Cloudinary product-environment URL (Settings -> API Keys) and
+      # uploads move there instead; unset, the app still boots and just
+      # logs that it fell back to local disk.
+      - key: CLOUDINARY_URL
+        sync: false

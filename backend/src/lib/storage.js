@@ -308,3 +308,78 @@ export async function removeImage(url) {
     return { removed: false };
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Cloudinary, wired in when CLOUDINARY_URL is set
+ *
+ * The SDK reads CLOUDINARY_URL from the environment on its own
+ * (config() with no arguments), so there is nothing to parse here —
+ * only to detect. Uploads go up as a stream since saveImage/saveVideo
+ * already hold the file as a Buffer. public_id is namespaced under
+ * tls/<kind>/ so photos and videos are easy to tell apart in the
+ * Cloudinary console and this app's uploads stay out of the way of
+ * anything else later put on the same account.
+ * ------------------------------------------------------------------ */
+
+async function cloudinaryProvider() {
+  const { v2: cloudinary } = await import("cloudinary");
+  cloudinary.config({ secure: true });
+
+  const upload = (buffer, { filename, kind }) =>
+    new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          public_id: `tls/${kind}/${path.parse(filename).name}`,
+          resource_type: "auto",
+          overwrite: false,
+        },
+        (err, result) => (err ? reject(err) : resolve(result))
+      );
+      stream.end(buffer);
+    });
+
+  return {
+    name: "cloudinary",
+    async save({ buffer, filename, kind }) {
+      const result = await upload(buffer, { filename, kind });
+      return { url: result.secure_url };
+    },
+    // Best effort, same contract as removeImage's local-disk branch —
+    // a file Cloudinary fails to delete costs a few kilobytes, not a
+    // failed save.
+    async remove(url) {
+      const publicId = publicIdFromUrl(url);
+      if (!publicId) return;
+      await cloudinary.uploader.destroy(publicId, { resource_type: "auto" }).catch(() => {});
+    },
+  };
+}
+
+/** Recover the public_id Cloudinary needs to delete, from its own URL:
+ *  https://res.cloudinary.com/<cloud>/image/upload/v169.../tls/photo/xyz.jpg
+ *                                                        ^^^^^^^^^^^^^^ this */
+function publicIdFromUrl(url) {
+  const m = String(url).match(/\/upload\/(?:v\d+\/)?(.+?)\.[a-zA-Z0-9]+$/);
+  return m?.[1] ?? null;
+}
+
+/**
+ * Picks a storage provider from the environment. Called once at boot —
+ * same shape as registerMailer / registerGeocoder, see server.js.
+ */
+export async function registerStorageProvider() {
+  if (!process.env.CLOUDINARY_URL) {
+    console.log("[storage] no CLOUDINARY_URL — uploads are going to local disk (see .env.example)");
+    return { provider: "local-disk" };
+  }
+  try {
+    setStorageProvider(await cloudinaryProvider());
+    console.log("[storage] uploads are going to Cloudinary");
+    return { provider: "cloudinary" };
+  } catch (err) {
+    console.error(
+      `[storage] could not start Cloudinary: ${err?.message ?? err} — falling back to local disk`
+    );
+    return { provider: "local-disk" };
+  }
+}
