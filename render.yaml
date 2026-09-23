@@ -15,10 +15,30 @@ databases:
   - name: tls-db
     databaseName: tls
     # Was `free`. Free Postgres is deleted 30 days after creation, with a
-    # 14-day grace period after that — a clock the live directory cannot
-    # sit under. 0.5 CPU / 1 GB is the floor once real search traffic
-    # arrives; 0.1c-256mb is the same specs as free without the expiry,
-    # if the bill matters more than the headroom.
+    # 14-day grace period after that — a clock a live directory cannot sit
+    # under. 0.1c-256mb ($6) also clears that clock and briefly held this
+    # spot, but this is 0.5 CPU / 1 GB ($19), chosen for the launch window
+    # rather than for the size of the data.
+    #
+    # The data itself is small: 2,441 listings, and the searches over them
+    # are cheap. What is not small is the crawl. When DNS moves, Google
+    # re-crawls the whole site to process data/redirects.csv — 2,733 301s
+    # and 17 410s — and decides whether the old domain's rankings follow.
+    # That is thousands of page requests, each one a query, sustained over
+    # days. 256 MB is thin for it: Postgres wants ~50 MB to exist, plus
+    # shared buffers, plus 5-10 MB per pooled connection, and this app
+    # opens nine at boot. 0.1 CPU is burstable, not dedicated, so sustained
+    # load is the shape it handles worst.
+    #
+    # The cost of being wrong is asymmetric. Googlebot slows its crawl rate
+    # when it meets slow responses, which stretches out the very redirect
+    # processing the migration depends on. $13/month is a cheap hedge
+    # against a ranking transfer taking months instead of weeks.
+    #
+    # Revisit ~60 days after cutover, once the Metrics tab shows real
+    # numbers. If memory and CPU sit well under the ceiling, 0.1c-256mb is
+    # the honest plan and saves $156/year. Resizing either way is a
+    # ~45-second restart with no data loss.
     plan: 0.5c-1g
     postgresMajorVersion: "16"
     # Must match the web service's region. DATABASE_URL uses the
