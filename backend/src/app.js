@@ -19,6 +19,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
    the wrong origin on every uploaded-image URL we hand out. */
 app.set("trust proxy", 1);
 
+// Send the old onrender.com preview links to the real domain now that
+// it's live. Render's own custom-domain config already redirects
+// www -> toplocalspecialists.com, so that's the canonical host here too.
+const LIVE_HOST = "toplocalspecialists.com";
+app.use((req, res, next) => {
+  const host = req.hostname;
+  if (host && host !== LIVE_HOST && /\.onrender\.com$/.test(host)) {
+    return res.redirect(301, `https://${LIVE_HOST}${req.originalUrl}`);
+  }
+  next();
+});
+
 /* ------------------------------------------------------------------ *
  * A shareable preview
  *
