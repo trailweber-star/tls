@@ -10,6 +10,7 @@ import { isDbConfigured } from "./config/db.js";
 import { robotsTxt, sitemapXml } from "./controllers/sitemap.controller.js";
 import { previewGate } from "./middleware/previewGate.js";
 import { redirects } from "./middleware/redirects.js";
+import { botSeo } from "./middleware/botSeo.js";
 
 const app = express();
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -140,6 +141,18 @@ app.use("/api", (req, res) => {
 app.use(redirects);
 
 if (servingClient) {
+  /* Real tags, for the bots that never run the JavaScript which would
+     otherwise render them — see middleware/botSeo.js. A normal browser
+     never reaches this; it falls straight through to the static file
+     handler below exactly as before. */
+  app.use(
+    botSeo({
+      clientDir: CLIENT_DIR,
+      siteUrl: process.env.SITE_URL || "https://www.toplocalspecialists.com",
+      siteName: "Top Local Specialists",
+    })
+  );
+
   /* Hashed filenames can be cached forever; index.html never can, or a
      deploy lands and everybody keeps the previous build. */
   app.use(
