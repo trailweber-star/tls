@@ -3012,5 +3012,45 @@
         ]
       }
     ]
+  },
+  {
+    "name": "Expert Witness",
+    "slug": "expert-witness",
+    "children": [
+      {
+        "name": "Medical",
+        "slug": "expert-witness-medical",
+        "children": [
+          {
+            "name": "Personal Injury",
+            "slug": "personal-injury"
+          },
+          {
+            "name": "Medical Negligence",
+            "slug": "medical-negligence"
+          },
+          {
+            "name": "Court of Protection",
+            "slug": "court-of-protection"
+          },
+          {
+            "name": "Family Law",
+            "slug": "family-law-expert-witness"
+          },
+          {
+            "name": "Criminal Law",
+            "slug": "criminal-law-expert-witness"
+          },
+          {
+            "name": "Immigration & Asylum",
+            "slug": "immigration-asylum-expert-witness"
+          },
+          {
+            "name": "Fitness to Practise",
+            "slug": "fitness-to-practise"
+          }
+        ]
+      }
+    ]
   }
 ]
