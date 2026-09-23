@@ -878,15 +878,23 @@ function writeCsv() {
 
     if (rec.error) { reject.push({ line, url: rec.url, reason: rec.error }); continue; }
     if (!rec.name) { reject.push({ line, url: rec.url, reason: "no name on the record" }); continue; }
-    if (rec.locationSource === "none") {
-      reject.push({ line, url: rec.url, reason: "no location of any kind — not geo, not address, not slug" });
-      continue;
-    }
-
-    // Outside the UK — out, and said plainly.
+    // Outside the UK — out, and said plainly. This runs BEFORE the
+    // location gate on purpose. ukVerdict reads only the URL, the
+    // country field and the postcode, so it does not need a location;
+    // and a foreign listing that also has no address must be recorded
+    // as foreign, not as "no location". The reason text is not
+    // decoration — build-redirects.mjs reads it to decide between a
+    // 301 and a 410, and a Hong Kong vet filed under "no location"
+    // ends up redirected to a UK search page. Both gates reject the
+    // same rows either way; only the stated reason changes.
     const uk = ukVerdict(rec);
     if (uk.uk === false) {
       reject.push({ line, url: rec.url, reason: `not in the UK — ${uk.why}` });
+      continue;
+    }
+
+    if (rec.locationSource === "none") {
+      reject.push({ line, url: rec.url, reason: "no location of any kind — not geo, not address, not slug" });
       continue;
     }
 
