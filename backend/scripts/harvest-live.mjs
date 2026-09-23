@@ -643,10 +643,13 @@ const HEALTH_WORDS = new RegExp(
 
 const NOT_HEALTH_WORDS = new RegExp(
   [
-    "crypto", "bitcoin", "\\bnft\\b", "blockchain", "\\bforex\\b", "\\btrading\\b",
+    // "crypto" unanchored matched "Cryptogenic shoulder pain".
+    "\\bcrypto\\b", "cryptocurrenc", "bitcoin", "\\bnft\\b", "blockchain", "\\bforex\\b", "\\btrading\\b",
     "casino", "betting", "gambl", "\\bloan", "payday", "mortgage broker",
     "puzzle", "\\btoys?\\b", "\\bgames?\\b", "escort", "\\bvape\\b", "\\bcbd shop\\b",
-    "plumb", "roofing", "scaffold", "locksmith", "removals", "\\btaxi\\b",
+    // "scaffold" is a collagen implant in a knee before it is a
+    // building site; the trade calls itself scaffolding.
+    "plumb", "roofing", "\\bscaffolding\\b", "locksmith", "removals", "\\btaxi\\b",
     "car hire", "car rental", "\\bcarpet", "\\blandscap", "\\bpaving\\b",
     "seo agency", "web design", "digital marketing", "\\bcourier\\b", "shipping",
     "\\btravel agen", "\\bholiday", "\\bcatering\\b", "\\bbakery\\b", "\\bcafe\\b",
@@ -674,12 +677,28 @@ const HEALTH_CATEGORIES = new Set([
 function healthVerdict(rec) {
   const haystack = `${rec.name} ${rec.category} ${rec.description ?? ""}`;
 
-  const bad = haystack.match(NOT_HEALTH_WORDS);
-  if (bad) return { health: false, why: `"${bad[0]}" in the name or description` };
-
+  /* The old site's own category is checked FIRST, and it wins.
+   *
+   * This used to run the other way round, and the blocklist deleted 39
+   * real clinicians. An orthopaedic surgeon who worked at the Olympic
+   * GAMES. A physiotherapist whose bio mentions the Commonwealth GAMES.
+   * A knee surgeon implanting a collagen SCAFFOLD. A counsellor who
+   * treats GAMBLING addiction — where the blocked word IS the service.
+   * Professor Fares Haddad and Andrew Goldberg OBE were among them.
+   *
+   * A record the old site filed under Orthopaedics, Physiotherapist or
+   * Psychologist is a healthcare listing. A word further down its
+   * description does not get to overrule that; the blocklist exists to
+   * catch the plumber who bought a listing, and a plumber is not filed
+   * under Orthopaedics. So the blocklist now only runs on records with
+   * no healthcare category to speak for them. */
   if (rec.category && HEALTH_CATEGORIES.has(rec.category.trim().toLowerCase())) {
     return { health: true };
   }
+
+  const bad = haystack.match(NOT_HEALTH_WORDS);
+  if (bad) return { health: false, why: `"${bad[0]}" in the name or description` };
+
   if (HEALTH_WORDS.test(haystack)) return { health: true };
 
   // No category, nothing that reads as healthcare, but nothing damning
