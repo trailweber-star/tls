@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { SMTPServer } from "smtp-server";
 import {
   buildTestEmail,
   mailProviderName,
@@ -40,6 +39,12 @@ function check(label, condition, detail = "") {
 /* ------------------------------------------------------- local proof */
 
 if (local) {
+  /* Imported here, not at the top of the file, because smtp-server is a
+     devDependency and a production host installs production dependencies
+     only. A top-level import killed this script on Render before it
+     reached the send path — which never needed the catcher at all. */
+  const { SMTPServer } = await import("smtp-server");
+
   const inbox = [];
   const server = new SMTPServer({
     authOptional: true,
