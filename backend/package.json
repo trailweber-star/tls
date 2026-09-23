@@ -14,6 +14,7 @@
     "smoke": "node scripts/smoke.mjs",
     "import": "node scripts/import-specialists.mjs",
     "mail:test": "node scripts/mail-test.mjs",
+    "user:check": "node scripts/check-user.mjs",
     "payments:test": "node scripts/payments-test.mjs",
     "prepare:db": "node scripts/prepare.mjs",
     "start:prod": "node scripts/prepare.mjs && node src/server.js",
