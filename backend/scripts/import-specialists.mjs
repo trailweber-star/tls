@@ -41,6 +41,7 @@ import path from "node:path";
 import { eq, inArray } from "drizzle-orm";
 import { getDb, disconnectDb, isDbConfigured } from "../src/db/client.js";
 import * as t from "../src/db/schema.js";
+import { placeListingSlugs, PLACE_LISTINGS_FILE } from "./lib/place-listings.mjs";
 import { newId } from "../src/db/schema.js";
 import { registerGeocoder } from "../src/lib/geocoders.js";
 import { geocode, hasGeocoder } from "../src/lib/geo.js";
@@ -359,6 +360,25 @@ const WITH_PHOTOS = flag("photos");
    by running without the flag, deliberately, and re-running geotag
    afterwards. */
 const ONLY_NEW = flag("only-new");
+
+/* The listings that are places, not people.
+
+   data/facility-moves.csv is the record of a decision somebody made by
+   reading each listing: this one is a hospital. move-to-facilities.mjs
+   turns them into facilities at /facilities/<slug> and removes the
+   member listing, and the two derivation passes already skip them --
+   see scripts/lib/place-listings.mjs.
+
+   The importer did not, so a later --only-new run read the same rows
+   out of mapped.csv and stood every one of those hospitals back up as a
+   specialist listing, beside the facility that had replaced it. Two
+   URLs for one hospital, which is a duplicate in the directory and a
+   duplicate to Google, and the redirect map cannot say which is canonical.
+
+   A row in that file is a decision that this thing is not a clinician.
+   It holds whether the facility has been created yet or not, so the
+   check is on the file alone and needs no database lookup. */
+const PLACES = placeListingSlugs();
 
 if (!file) {
   console.error(`
@@ -698,7 +718,7 @@ async function fetchPhoto(url, slug) {
 
 /* ------------------------------------------------------------ importing */
 
-const summary = { created: 0, updated: 0, skipped: 0, untouched: 0, cities: 0, photos: 0, accounts: 0, problems: [] };
+const summary = { created: 0, updated: 0, skipped: 0, untouched: 0, places: 0, cities: 0, photos: 0, accounts: 0, problems: [] };
 
 const preview = [];
 
@@ -710,6 +730,12 @@ for (const [index, row] of rows.entries()) {
   if (facts?.error) {
     summary.skipped += 1;
     summary.problems.push(`row ${line}: ${facts.error}`);
+    continue;
+  }
+
+  const rowSlug = clean(HARVEST ? row.slug : null);
+  if (rowSlug && PLACES.has(rowSlug)) {
+    summary.places += 1;
     continue;
   }
 
@@ -1085,9 +1111,11 @@ console.log(
   DRY
     ? `\nDry run — nothing was written. Drop --dry-run to apply.` +
         (summary.untouched ? `\n${summary.untouched} existing listing(s) would be left untouched (--only-new).` : "") +
+        (summary.places ? `\n${summary.places} row(s) are places, not people — skipped (${PLACE_LISTINGS_FILE}).` : "") +
         "\n"
     : `\nDone. ${summary.created} created, ${summary.updated} updated, ${summary.skipped} skipped` +
         (summary.untouched ? `, ${summary.untouched} left untouched (--only-new)` : "") +
+        (summary.places ? `, ${summary.places} places skipped` : "") +
         (summary.accounts ? `, ${summary.accounts} shell accounts` : "") +
         (summary.photos ? `, ${summary.photos} photos stored` : "") +
         ".\n" +

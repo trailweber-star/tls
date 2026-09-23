@@ -147,19 +147,30 @@ const takenFacilitySlugs = new Set(existingFacilities.map((f) => f.slug));
  * that slug -- the csv is pointing a second group at a facility that
  * already exists -- and creating it would either fail on the unique
  * index or merge two unrelated places. That still stops everything. */
+/* A third case turned up in practice, and it used to be fatal.
+
+   A facility exists AND its member listings are back. That reads like
+   the csv pointing a second group at somebody else's facility, which is
+   what the die below used to say. It is not. This file is keyed on
+   facilitySlug, so no two groups can ever claim the same one; what
+   actually happened is that a later import-specialists run read the
+   same rows out of mapped.csv and stood the hospitals back up beside
+   the facilities that had replaced them. (import-specialists now skips
+   every slug in this file, so it cannot happen again -- but the rows it
+   already created still have to come out.)
+
+   So that case re-absorbs instead: the facility is left exactly as it
+   is, and the resurrected member listings are removed. It goes through
+   the same verdicts as a first move -- claimed, reviewed, enquired
+   about or carrying derived links all hold it back just the same -- so
+   nothing is deleted here that a move would have refused to touch. */
 const done = [];
-const collisions = [];
+const reabsorb = new Set();
 for (const [facilitySlug, rows] of groups) {
   if (!takenFacilitySlugs.has(facilitySlug)) continue;
   const stillListed = rows.map((r) => r.slug).filter((s) => bySlug.has(s));
-  if (stillListed.length) collisions.push(`${facilitySlug} — still a listing: ${stillListed.join(", ")}`);
+  if (stillListed.length) reabsorb.add(facilitySlug);
   else done.push({ facilitySlug, rows });
-}
-if (collisions.length) {
-  die(
-    "These facility slugs already exist while the listings behind them are still here, " +
-      `so the csv is pointing a second group at an existing facility:\n    ${collisions.join("\n    ")}`
-  );
 }
 for (const g of done) groups.delete(g.facilitySlug);
 
@@ -281,11 +292,17 @@ for (const [facilitySlug, rows] of groups) {
   }
 
   const primary = members.find((m) => m.decision.primary?.toLowerCase() === "yes");
-  if (!primary) reasons.push("its primary row matches no listing in the database");
   const primaryLocation = primary ? locationsOf(primary.specialist.id)[0] : null;
-  if (primary && !primaryLocation) reasons.push(`${primary.specialist.fullName} has no address, and a facility needs a city`);
+  /* Both of these are what a NEW facility is built out of. A re-absorb
+     builds nothing -- the facility is already there, with its address
+     on it -- so neither is required, and a resurrected primary that
+     lost its address is not a reason to leave a duplicate standing. */
+  if (!reabsorb.has(facilitySlug)) {
+    if (!primary) reasons.push("its primary row matches no listing in the database");
+    if (primary && !primaryLocation) reasons.push(`${primary.specialist.fullName} has no address, and a facility needs a city`);
+  }
 
-  const entry = { facilitySlug, rows, members, primary, primaryLocation, reasons, discards };
+  const entry = { facilitySlug, rows, members, primary, primaryLocation, reasons, discards, existing: reabsorb.has(facilitySlug) };
   if (reasons.length) held.push(entry); else ready.push(entry);
 }
 
@@ -298,14 +315,21 @@ for (const g of held) {
 if (held.length) console.log("");
 
 for (const g of ready) {
-  const d = g.primary.decision;
+  const d = g.rows[0];
   const cats = (d.categories ?? "").split(/\s+/).filter(Boolean).map((s) => categoryBySlug.get(s).name);
-  console.log(`${c.bold}${d.facilityName}${c.off}  ${c.dim}${d.facilityType} · ${cats.join(", ")}${c.off}`);
+  console.log(
+    `${c.bold}${d.facilityName}${c.off}  ${c.dim}${d.facilityType} · ${cats.join(", ")}${c.off}` +
+      (g.existing ? `  ${c.warn}already a facility — removing the listing(s) that came back${c.off}` : "")
+  );
   dim(`    /organisations/${g.facilitySlug}`);
-  dim(`    ${g.primaryLocation.address}${g.primaryLocation.postcode ? ` · ${g.primaryLocation.postcode}` : ""}`);
-  if (g.primary.specialist.websiteUrl) dim(`    ${g.primary.specialist.websiteUrl}`);
+  if (!g.existing) {
+    dim(`    ${g.primaryLocation.address}${g.primaryLocation.postcode ? ` · ${g.primaryLocation.postcode}` : ""}`);
+    if (g.primary.specialist.websiteUrl) dim(`    ${g.primary.specialist.websiteUrl}`);
+  }
   for (const m of g.members) {
-    const mark = m === g.primary ? `${c.good}keeps its details${c.off}` : `${c.dim}merged in${c.off}`;
+    const mark = g.existing
+      ? `${c.warn}removed${c.off}`
+      : m === g.primary ? `${c.good}keeps its details${c.off}` : `${c.dim}merged in${c.off}`;
     console.log(`      ${m.specialist.fullName.slice(0, 54).padEnd(54)} ${mark}`);
   }
   for (const d of g.discards) {
@@ -317,8 +341,11 @@ for (const g of ready) {
 
 const discardTotal = ready.reduce((n, g) => n + g.discards.reduce((k, d) => k + d.links.length, 0), 0);
 
+const reabsorbCount = ready.filter((g) => g.existing).length;
+
 console.log(
-  `${c.bold}${ready.length} facility/ies${c.off} from ${ready.reduce((n, g) => n + g.members.length, 0)} listing(s)` +
+  `${c.bold}${ready.length - reabsorbCount} facility/ies${c.off} from ${ready.filter((g) => !g.existing).reduce((n, g) => n + g.members.length, 0)} listing(s)` +
+    (reabsorbCount ? `, ${c.warn}${reabsorbCount} already a facility — ${ready.filter((g) => g.existing).reduce((n, g) => n + g.members.length, 0)} listing(s) to remove${c.off}` : "") +
     (held.length ? `, ${held.length} held back` : "") +
     (discardTotal ? `, ${c.warn}${discardTotal} derived link(s) discarded${c.off}` : "") + "\n"
 );
@@ -335,7 +362,36 @@ const { newId } = t;
 let made = 0;
 let removed = 0;
 
+async function removeMember(sp) {
+  /* Addresses this listing owns outright are not a foreign key on
+     specialists, so nothing cascades them. Read them before the row
+     goes. A merged hospital's own address has just been copied onto
+     the facility, so the old row is no longer anybody's. */
+  const own = locationsOf(sp.id).filter((l) => l.ownedBySpecialistId === sp.id).map((l) => l.id);
+  await db.delete(t.specialists).where(eq(t.specialists.id, sp.id));
+  if (own.length) await db.delete(t.clinicLocations).where(inArray(t.clinicLocations.id, own));
+
+  if (sp.userId) {
+    const user = userById.get(sp.userId);
+    if (user && isShellAccount(user.email)) await db.delete(t.users).where(eq(t.users.id, user.id));
+    else if (user) dim(`    kept the account ${user.email}`);
+  }
+  removed += 1;
+  dim(`    removed the member listing ${sp.slug}`);
+}
+
+let reabsorbed = 0;
+
 for (const g of ready) {
+  if (g.existing) {
+    /* The facility is already there and is not touched. Only the
+       listings that came back on top of it go. */
+    reabsorbed += 1;
+    console.log(`${c.warn}~${c.off} /organisations/${g.facilitySlug} already exists — leaving it as it is`);
+    for (const m of g.members) await removeMember(m.specialist);
+    continue;
+  }
+
   const d = g.primary.decision;
   const s = g.primary.specialist;
   const loc = g.primaryLocation;
@@ -375,28 +431,12 @@ for (const g of ready) {
   made += 1;
   console.log(`${c.good}✓${c.off} created /organisations/${g.facilitySlug}`);
 
-  for (const m of g.members) {
-    const sp = m.specialist;
-    /* Addresses this listing owns outright are not a foreign key on
-       specialists, so nothing cascades them. Read them before the row
-       goes. A merged hospital's own address has just been copied onto
-       the facility, so the old row is no longer anybody's. */
-    const own = locationsOf(sp.id).filter((l) => l.ownedBySpecialistId === sp.id).map((l) => l.id);
-    await db.delete(t.specialists).where(eq(t.specialists.id, sp.id));
-    if (own.length) await db.delete(t.clinicLocations).where(inArray(t.clinicLocations.id, own));
-
-    if (sp.userId) {
-      const user = userById.get(sp.userId);
-      if (user && isShellAccount(user.email)) await db.delete(t.users).where(eq(t.users.id, user.id));
-      else if (user) dim(`    kept the account ${user.email}`);
-    }
-    removed += 1;
-    dim(`    removed the member listing ${sp.slug}`);
-  }
+  for (const m of g.members) await removeMember(m.specialist);
 }
 
 console.log(
   `\n${c.good}${made} facility/ies created, ${removed} member listing(s) removed.${c.off}` +
+    (reabsorbed ? ` ${reabsorbed} facility/ies already existed and were left alone.` : "") +
     (held.length ? ` ${held.length} group(s) held back — see above.` : "") +
     (discardTotal ? ` ${discardTotal} derived treatment/condition link(s) went with them, named above.` : "") +
     `\nThe regulator fields are empty on all of them, deliberately.\n`
