@@ -9,6 +9,7 @@ import apiRoutes from "./routes/index.js";
 import { isDbConfigured } from "./config/db.js";
 import { robotsTxt, sitemapXml } from "./controllers/sitemap.controller.js";
 import { previewGate } from "./middleware/previewGate.js";
+import { redirects } from "./middleware/redirects.js";
 
 const app = express();
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -114,6 +115,17 @@ app.use("/api", apiRoutes);
 app.use("/api", (req, res) => {
   res.status(404).json({ error: "Not found" });
 });
+
+/* The old Brilliant Directories URLs. This sits below /api, so an API
+   path can never be swallowed by a redirect, and above the static and
+   single-page-app handlers, so an old URL is answered with a 301 or a
+   410 rather than falling through to index.html with a 200 — which is
+   what a single-page app does with every unknown path, and what would
+   otherwise tell Google that all 2,750 of them still exist. It is also
+   below previewGate on purpose: while the site is gated, a redirect
+   should not leak the shape of the new URLs to anyone without the
+   password. See middleware/redirects.js. */
+app.use(redirects);
 
 if (servingClient) {
   /* Hashed filenames can be cached forever; index.html never can, or a
