@@ -31,7 +31,7 @@ export default function Home() {
   useEffect(() => {
     // The search bar fetches its own taxonomy on demand now, so the
     // homepage only loads what it renders itself.
-    Promise.all([getTopLevelSpecialties(), getCities(), getFeaturedSpecialists(3)])
+    Promise.all([getTopLevelSpecialties(), getCities(), getFeaturedSpecialists(4)])
       .then(([top, cityList, featuredList]) => {
         setTopLevelSpecialties(top);
         setCities(cityList);
@@ -223,7 +223,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((specialist) => (
               <SpecialistCard key={specialist.id} specialist={specialist} />
             ))}
