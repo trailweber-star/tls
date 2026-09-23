@@ -14,7 +14,12 @@
 databases:
   - name: tls-db
     databaseName: tls
-    plan: free
+    # Was `free`. Free Postgres is deleted 30 days after creation, with a
+    # 14-day grace period after that — a clock the live directory cannot
+    # sit under. 0.5 CPU / 1 GB is the floor once real search traffic
+    # arrives; 0.1c-256mb is the same specs as free without the expiry,
+    # if the bill matters more than the headroom.
+    plan: 0.5c-1g
     postgresMajorVersion: "16"
     # Must match the web service's region. DATABASE_URL uses the
     # database's internal hostname, and internal hostnames only resolve
@@ -28,8 +33,12 @@ services:
   - type: web
     name: tls-preview
     runtime: node
-    plan: free
-    region: frankfurt # closest to a UK audience on the free tier
+    # Was `free`. Free web services spin down after 15 minutes idle and
+    # take about a minute to wake. On a preview link that is a shrug; on
+    # a domain Google already ranks it is a ranking problem, because
+    # Googlebot meets the wake screen, not the page.
+    plan: 0.5c-512mb
+    region: frankfurt # closest to a UK audience
     branch: main
     buildCommand: npm run build
     startCommand: npm start
@@ -59,8 +68,14 @@ services:
 
       # A preview is not a search result. STAGING adds noindex headers
       # and a robots.txt that disallows everything.
+      #
+      # Now "0", for the live domain. This alone does NOT open the site:
+      # app.js reads STAGING === "1" || Boolean(SITE_PASSWORD), so the
+      # noindex headers and the gate both stay on until SITE_PASSWORD is
+      # also deleted in the Render dashboard. Two switches, deliberately
+      # — neither one can drop the site into Google by itself.
       - key: STAGING
-        value: "1"
+        value: "0"
 
       # The shared password for the link you send the client. Set this in
       # the Render dashboard — anyone with the URL and this password can
