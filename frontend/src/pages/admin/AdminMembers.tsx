@@ -175,6 +175,25 @@ const MENU_GROUPS: { title: string; actions: BulkAction[] }[] = [
   { title: "Tags", actions: ["tag", "untag"] },
 ];
 
+/* Windowed page numbers for the pager below: first, last, and a run of
+   up to 5 around the current page, with a single "…" filling each gap
+   -- so jumping from page 1 to page 5 (or page 98) is one click instead
+   of clicking Next repeatedly. */
+function pageNumbers(current: number, total: number): (number | "…")[] {
+  if (total <= 1) return [1];
+  const delta = 2;
+  const middle: number[] = [];
+  for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i += 1) {
+    middle.push(i);
+  }
+  const out: (number | "…")[] = [1];
+  if (middle[0] > 2) out.push("…");
+  out.push(...middle);
+  if (middle[middle.length - 1] < total - 1) out.push("…");
+  if (total > 1) out.push(total);
+  return out;
+}
+
 export default function AdminMembers() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
@@ -870,11 +889,20 @@ export default function AdminMembers() {
           </Panel>
 
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-[12.5px] text-ink-faint">
                 Page {page} of {totalPages}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => update({ page: "1" }, true)}
+                  title="First page"
+                  className="rounded-full bg-paper-tint px-3 py-2 text-[12.5px] font-bold text-ink-muted transition hover:bg-line-soft disabled:opacity-40"
+                >
+                  « First
+                </button>
                 <button
                   type="button"
                   disabled={page <= 1}
@@ -883,6 +911,28 @@ export default function AdminMembers() {
                 >
                   Previous
                 </button>
+                {pageNumbers(page, totalPages).map((n, i) =>
+                  n === "…" ? (
+                    <span key={`gap-${i}`} className="px-1 text-[12.5px] text-ink-faint">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-current={n === page ? "page" : undefined}
+                      disabled={n === page}
+                      onClick={() => update({ page: String(n) }, true)}
+                      className={`min-w-[34px] rounded-full px-2.5 py-2 text-[12.5px] font-bold transition ${
+                        n === page
+                          ? "bg-teal-500 text-navy-950"
+                          : "bg-paper-tint text-ink-muted hover:bg-line-soft"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  )
+                )}
                 <button
                   type="button"
                   disabled={page >= totalPages}
@@ -890,6 +940,15 @@ export default function AdminMembers() {
                   className="rounded-full bg-paper-tint px-4 py-2 text-[12.5px] font-bold text-ink-muted transition hover:bg-line-soft disabled:opacity-40"
                 >
                   Next
+                </button>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => update({ page: String(totalPages) }, true)}
+                  title="Last page"
+                  className="rounded-full bg-paper-tint px-3 py-2 text-[12.5px] font-bold text-ink-muted transition hover:bg-line-soft disabled:opacity-40"
+                >
+                  Last »
                 </button>
               </div>
             </div>

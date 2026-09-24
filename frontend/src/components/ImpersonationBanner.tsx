@@ -32,8 +32,13 @@ export function ImpersonationBanner() {
     if (!active) return;
     const previous = document.body.style.paddingBottom;
     document.body.style.paddingBottom = "72px";
+    /* Any other fixed bottom-0 bar (the profile editor's save bar, for
+       one) needs to know this banner is there so it can stack above it
+       instead of hiding underneath it -- see ProfileEditor.tsx. */
+    document.documentElement.style.setProperty("--impersonation-bar-h", "72px");
     return () => {
       document.body.style.paddingBottom = previous;
+      document.documentElement.style.removeProperty("--impersonation-bar-h");
     };
   }, [active]);
 

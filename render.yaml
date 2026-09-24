@@ -171,3 +171,19 @@ services:
       # logs that it fell back to local disk.
       - key: CLOUDINARY_URL
         sync: false
+
+      # One key, three features upgraded at once (lib/maps.js,
+      # lib/geocoders.js): the map embed becomes a real Google map
+      # instead of OpenStreetMap, the address field starts suggesting
+      # full street addresses via Places instead of just UK postcodes,
+      # and geocoding covers anywhere instead of UK-only. No code
+      # change needed either way -- that is the whole point of the
+      # seam. Unset, everything still works on the free OSM/postcodes.io
+      # path.
+      #
+      # In Google Cloud Console this key needs Maps Embed API, Places
+      # API and Geocoding API enabled, and should be restricted by HTTP
+      # referrer to this site's domain -- the embed URL puts the key in
+      # the page source, visible to anyone who views it.
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false

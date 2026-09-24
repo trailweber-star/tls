@@ -909,8 +909,22 @@ export default function ProfileEditor() {
               desktop, and the sidebar sits on a higher layer — so the
               status message, which lives at the left end of the bar,
               was covered by it. Someone pressing Save saw nothing
-              happen. The bar now begins where the sidebar ends. */}
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-navy-950/95 px-5 py-3 backdrop-blur sm:px-7 lg:left-[248px]">
+              happen. The bar now begins where the sidebar ends.
+
+              Same failure, different cause, during a support session:
+              ImpersonationBanner is also fixed to the bottom edge, at a
+              higher z-index, so it sat directly on top of this bar and
+              hid the button entirely -- an admin editing a member's
+              profile had no visible way to save. ImpersonationBanner
+              publishes its own height as --impersonation-bar-h while
+              active; reading it here lifts this bar to sit above the
+              banner instead of underneath it. Outside a support
+              session the variable is unset and this is bottom: 0, same
+              as before. */}
+          <div
+            className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-navy-950/95 px-5 py-3 backdrop-blur sm:px-7 lg:left-[248px]"
+            style={{ bottom: "var(--impersonation-bar-h, 0px)" }}
+          >
             {/* Confirmation deserves more than a line of grey text: it
                 is the only answer to "did that work?", and it has to be
                 unmissable from wherever on the page the eye happens to
