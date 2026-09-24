@@ -740,26 +740,39 @@ export default function SpecialistProfile() {
 
             {/* The right-hand rail. One map, of the main address: a
                 sidebar is not the place to list every practice — the
-                column on the left does that. */}
+                column on the left does that.
+
+                Framed the same way as the address cards beside it —
+                white, bordered, padded — rather than a bare square
+                touching the column's edges. The old bare frame is also
+                what made a failed provider (an unauthorised Google key,
+                for instance) read as a broken white box: the label and
+                border now stay put and only the picture inside changes. */}
             {primaryLocation && (
-              <MapPreview
-                lat={primaryLocation.lat}
-                lng={primaryLocation.lng}
-                address={[primaryLocation.address, primaryLocation.postcode, primaryLocation.city?.name]
-                  .filter(Boolean)
-                  .join(", ")}
-                fallback={
-                  primaryLocation.city
-                    ? {
-                        lat: primaryLocation.city.lat,
-                        lng: primaryLocation.city.lng,
-                        label: primaryLocation.city.name,
-                      }
-                    : null
-                }
-                fill
-                quiet
-              />
+              <div className="rounded-xl border border-line bg-white p-5">
+                <p className="mb-3 flex items-center gap-2 text-[12.5px] font-bold uppercase tracking-wide text-ink-faint">
+                  <MapPin className="h-3.5 w-3.5 text-teal-600" strokeWidth={2.5} />
+                  Map
+                </p>
+                <MapPreview
+                  lat={primaryLocation.lat}
+                  lng={primaryLocation.lng}
+                  address={[primaryLocation.address, primaryLocation.postcode, primaryLocation.city?.name]
+                    .filter(Boolean)
+                    .join(", ")}
+                  fallback={
+                    primaryLocation.city
+                      ? {
+                          lat: primaryLocation.city.lat,
+                          lng: primaryLocation.city.lng,
+                          label: primaryLocation.city.name,
+                        }
+                      : null
+                  }
+                  fill
+                  quiet
+                />
+              </div>
             )}
           </div>
           {specialist.regulator && specialist.registrationNumber && (

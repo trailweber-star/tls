@@ -27,7 +27,9 @@ import DashboardOverview from "./pages/dashboard/Overview";
 import ProfileEditor from "./pages/dashboard/ProfileEditor";
 import Enquiries from "./pages/dashboard/Enquiries";
 import Reviews from "./pages/dashboard/Reviews";
-import ComingSoon from "./pages/dashboard/ComingSoon";
+import DashboardAppointments from "./pages/dashboard/Appointments";
+import DashboardAnalytics from "./pages/dashboard/Analytics";
+import DashboardMessages from "./pages/dashboard/Messages";
 import DashboardArticles from "./pages/dashboard/Articles";
 import Billing from "./pages/dashboard/Billing";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -39,8 +41,8 @@ import AdminAudit from "./pages/admin/AdminAudit";
 import AdminMessages from "./pages/admin/AdminMessages";
 import AdminArticles from "./pages/admin/AdminArticles";
 import AdminOrganisations from "./pages/admin/AdminOrganisations";
+import ReplyThread from "./pages/ReplyThread";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
-import { BarChart3, CalendarDays, MessageSquare } from "lucide-react";
 
 /**
  * The public site is chrome-wrapped (header, footer, paper background).
@@ -98,6 +100,7 @@ export default function App() {
           <Route path="/articles" element={<Navigate to="/blog" replace />} />
           <Route path="/articles/:slug" element={<ArticleRedirect />} />
           <Route path="/specialists/:slug" element={<SpecialistProfile />} />
+          <Route path="/reply/:token" element={<ReplyThread />} />
           <Route path="/clinics/:slug" element={<ClinicProfile />} />
           {/* The places directory and the specialist directory are one
               search now; the old path still resolves so nothing that was
@@ -134,54 +137,9 @@ export default function App() {
           <Route path="enquiries" element={<Enquiries />} />
           <Route path="reviews" element={<Reviews />} />
           <Route path="articles" element={<DashboardArticles />} />
-          <Route
-            path="appointments"
-            element={
-              <ComingSoon
-                icon={CalendarDays}
-                instead={{ to: "/dashboard/enquiries", label: "See your enquiries" }}
-                title="Appointments"
-                description="Your schedule, once patients can book through the platform."
-                needs={[
-                  "An appointment model, so bookings exist as records rather than emails",
-                  "Availability rules — the days and hours you consult",
-                  "A booking form on your public profile",
-                ]}
-              />
-            }
-          />
-          <Route
-            path="analytics"
-            element={
-              <ComingSoon
-                icon={BarChart3}
-                instead={{ to: "/dashboard", label: "Your 30-day figures are on the dashboard" }}
-                title="Analytics"
-                description="Where your profile views and enquiries come from."
-                needs={[
-                  "Profile views are already being counted — the 30-day figure on your dashboard is real",
-                  "Referrer and search-term capture, to show how patients found you",
-                  "A longer retention window than the current in-memory store",
-                ]}
-              />
-            }
-          />
-          <Route
-            path="messages"
-            element={
-              <ComingSoon
-                icon={MessageSquare}
-                instead={{ to: "/dashboard/enquiries", label: "Answer patient enquiries" }}
-                title="Messages"
-                description="Threaded conversations with patients."
-                needs={[
-                  "A message thread model — enquiries are currently single messages with one reply",
-                  "Read receipts and unread counts",
-                  "Email delivery, so replies reach patients who don't sign in",
-                ]}
-              />
-            }
-          />
+          <Route path="appointments" element={<DashboardAppointments />} />
+          <Route path="analytics" element={<DashboardAnalytics />} />
+          <Route path="messages" element={<DashboardMessages />} />
           {/* Was a "coming soon" placeholder whose first listed need was
               a password change. It now is one. */}
           <Route path="settings" element={<AccountSecurity />} />

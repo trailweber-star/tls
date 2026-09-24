@@ -488,3 +488,55 @@ export function getMapView(params: {
   if (params.zoom) qs.set("zoom", String(params.zoom));
   return get(`/geo/map?${qs.toString()}`);
 }
+
+/* ------------------------------------------------------------------ *
+ * A patient's own side of a message thread -- no account, the token in
+ * the URL is the whole of their access. See backend/reply.controller.js.
+ * ------------------------------------------------------------------ */
+
+export interface ReplyThreadMessage {
+  id: string;
+  senderRole: "specialist" | "patient";
+  body: string;
+  createdAt: string;
+}
+
+export interface ReplyThreadData {
+  specialist: { fullName: string; title: string | null; photoUrl: string | null; slug: string } | null;
+  messages: ReplyThreadMessage[];
+}
+
+export function getReplyThread(token: string): Promise<ReplyThreadData> {
+  return get(`/reply/${encodeURIComponent(token)}`);
+}
+
+export function postReply(
+  token: string,
+  body: string
+): Promise<{ ok: boolean; message: ReplyThreadMessage; delivery: { sent: boolean; reason?: string } }> {
+  return post(`/reply/${encodeURIComponent(token)}`, { body });
+}
+
+/* ------------------------------------------------------------------ *
+ * Booking, from a specialist's public profile -- see
+ * backend/booking.controller.js.
+ * ------------------------------------------------------------------ */
+
+export function getAvailableSlots(slug: string, date: string): Promise<{ slots: string[]; slotMinutes: number }> {
+  return get(`/specialists/${encodeURIComponent(slug)}/availability?date=${date}`);
+}
+
+export interface BookingInput {
+  startsAt: string;
+  patientName: string;
+  patientEmail?: string | null;
+  patientPhone?: string | null;
+  notes?: string | null;
+}
+
+export function createAppointment(
+  slug: string,
+  input: BookingInput
+): Promise<{ ok: boolean; appointment: { id: string; startsAt: string; endsAt: string; status: string } }> {
+  return post(`/specialists/${encodeURIComponent(slug)}/appointments`, input);
+}

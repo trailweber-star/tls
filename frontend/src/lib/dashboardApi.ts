@@ -142,6 +142,8 @@ const post = <T,>(path: string, data?: unknown) =>
 const patch = <T,>(path: string, data: unknown) =>
   request<T>(path, { method: "PATCH", body: JSON.stringify(data) });
 const del = <T,>(path: string) => request<T>(path, { method: "DELETE" });
+const put = <T,>(path: string, data: unknown) =>
+  request<T>(path, { method: "PUT", body: JSON.stringify(data) });
 
 /* ----------------------------------------------------------- types */
 
@@ -572,7 +574,104 @@ export const dashboardApi = {
       status,
     }),
   reviews: () => get<ReviewsResponse>("/dashboard/reviews"),
+
+  // Analytics -- persistent view/referrer/search-term tracking.
+  analytics: (days = 30) => get<AnalyticsData>(`/dashboard/analytics?days=${days}`),
+
+  // Messages -- the rest of a conversation past a lead's first reply.
+  messageThreads: () => get<{ results: MessageThreadSummary[] }>("/dashboard/messages"),
+  messageThread: (leadId: string) => get<MessageThreadDetail>(`/dashboard/messages/${leadId}`),
+  sendMessage: (leadId: string, body: string) =>
+    post<{ ok: boolean; message: ThreadMessage; delivery: { sent: boolean; reason?: string } }>(
+      `/dashboard/messages/${leadId}`,
+      { body }
+    ),
+
+  // Appointments -- weekly availability rules, and the bookings made
+  // against them.
+  availability: () => get<{ results: AvailabilityBlock[] }>("/dashboard/availability"),
+  setAvailability: (blocks: AvailabilityBlock[]) =>
+    put<{ results: AvailabilityBlock[] }>("/dashboard/availability", { blocks }),
+  appointments: (range?: { from?: string; to?: string }) => {
+    const qs = new URLSearchParams();
+    if (range?.from) qs.set("from", range.from);
+    if (range?.to) qs.set("to", range.to);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return get<{ results: Appointment[] }>(`/dashboard/appointments${suffix}`);
+  },
+  updateAppointmentStatus: (id: string, status: Appointment["status"]) =>
+    post<{ ok: boolean; appointment: Appointment }>(`/dashboard/appointments/${id}/status`, { status }),
 };
+
+/* --------------------------------------------------- analytics types */
+
+export interface AnalyticsData {
+  days: number;
+  profileViews: {
+    total: number;
+    series: { date: string; count: number }[];
+    previousPeriod: number;
+    changePct: number | null;
+  };
+  sources: {
+    referrers: { referrer: string; count: number }[];
+    searchTerms: { term: string | null; count: number }[];
+  };
+  enquiries: { total: number; conversionPct: number | null };
+}
+
+/* ---------------------------------------------------- messages types */
+
+export interface MessageThreadSummary {
+  leadId: string;
+  patientName: string;
+  preview: string;
+  messageCount: number;
+  unread: number;
+  lastActivity: string;
+}
+
+export interface ThreadMessage {
+  id: string;
+  senderRole: "specialist" | "patient";
+  body: string;
+  createdAt: string;
+  readAt?: string | null;
+}
+
+export interface MessageThreadDetail {
+  lead: {
+    id: string;
+    patientName: string;
+    email: string | null;
+    phone: string | null;
+    message: string | null;
+    createdAt: string;
+  };
+  messages: ThreadMessage[];
+}
+
+/* ------------------------------------------------- appointments types */
+
+export interface AvailabilityBlock {
+  weekday: number; // 0 = Sunday ... 6 = Saturday, matches Date#getUTCDay()
+  startMinute: number;
+  endMinute: number;
+}
+
+export interface Appointment {
+  id: string;
+  specialistId: string;
+  clinicLocationId: string | null;
+  patientName: string;
+  patientEmail: string | null;
+  patientPhone: string | null;
+  startsAt: string;
+  endsAt: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  notes: string | null;
+  createdAt: string;
+}
 
 export interface OwnReview {
   id: string;

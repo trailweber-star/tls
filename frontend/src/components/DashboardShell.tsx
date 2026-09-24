@@ -48,12 +48,12 @@ interface NavItem {
 const SPECIALIST_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/dashboard/profile", label: "Profile", icon: UserRound },
-  { to: "/dashboard/appointments", label: "Appointments", icon: CalendarDays, soon: true },
+  { to: "/dashboard/appointments", label: "Appointments", icon: CalendarDays },
   { to: "/dashboard/enquiries", label: "Enquiries", icon: Mail },
   { to: "/dashboard/reviews", label: "Reviews", icon: Star },
   { to: "/dashboard/articles", label: "Write a guide", icon: BookOpen },
-  { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3, soon: true },
-  { to: "/dashboard/messages", label: "Messages", icon: MessageSquare, soon: true },
+  { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/dashboard/messages", label: "Messages", icon: MessageSquare },
   { to: "/dashboard/billing", label: "Plan & billing", icon: CreditCard },
   { to: "/dashboard/settings", label: "Account & security", icon: ShieldCheck },
 ];
