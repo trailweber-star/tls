@@ -75,7 +75,11 @@ const PHOTOS_DIR = path.join(OUT, "photos");
 const CSV_PATH = path.join(OUT, "listings.csv");
 const REJECTS_PATH = path.join(OUT, "rejected.csv");
 
-const ORIGIN = "https://www.toplocalspecialists.com";
+const ORIGIN = "https://stillmytoplocalspecialst.directoryup.com";
+// Brilliant Directories moved the old site off toplocalspecialists.com and onto this
+// directoryup.com subdomain once the custom domain got repointed to the new tls-mern
+// app -- toplocalspecialists.com now answers everything with the new app's own 200,
+// so a photo fetch against it silently downloads the wrong page instead of failing.
 const CONCURRENCY = 3;
 const BATCH_DELAY_MS = 400;
 const UA = "TopLocalSpecialists-migration/1.0 (first-party data export; contact site owner)";
