@@ -244,9 +244,9 @@ export function SearchBar({
     return medicolegal ? mlAll.filter((s) => s.parentId === medicolegal.id) : [];
   }, [mlAll]);
 
-  // Only shown if the chosen practice area turns out to have children of
-  // its own -- none of the current 14 leaves do, so this stays hidden
-  // today, but nothing here assumes that stays true.
+  // Only shown if the chosen practice area has children of its own --
+  // most of the seven do (e.g. Personal Injury's five, Clinical
+  // Negligence's seven), so this is the common case, not the exception.
   const mlSubSubOptions = useMemo(() => {
     if (!mlAll || !mlPracticeArea) return [];
     const parent = mlAreas.find((s) => s.slug === mlPracticeArea);

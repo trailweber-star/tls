@@ -41,35 +41,30 @@ const FORCE = process.argv.includes("--force");
  * time, so each child's parent_id points at a row that already exists.
  * Returns a slug -> row map covering every level.
  */
+// Depth-by-depth, so a child is never inserted before the parent row
+// whose generated id it needs. Recurses to whatever depth a branch
+// actually has -- a tree hard-coded to top/sub/leaf silently drops
+// anything nested a level deeper than that (Expert Witness ->
+// Medicolegal -> Personal Injury -> Orthopaedic & Musculoskeletal
+// Injury is 4 levels), which is worse than an error because nothing
+// here would tell you rows went missing.
 async function insertTaxonomyTree(db, table, tree) {
   const bySlug = {};
+  let frontier = tree.map((node) => ({ node, parentSlug: null }));
 
-  const tops = await db
-    .insert(table)
-    .values(tree.map((top) => ({ id: newId(), parentId: null, slug: top.slug, name: top.name })))
-    .returning();
-  tops.forEach((r) => (bySlug[r.slug] = r));
+  while (frontier.length) {
+    const inputs = frontier.map(({ node, parentSlug }) => ({
+      id: newId(),
+      parentId: parentSlug ? bySlug[parentSlug].id : null,
+      slug: node.slug,
+      name: node.name,
+    }));
+    const inserted = await db.insert(table).values(inputs).returning();
+    inserted.forEach((r) => (bySlug[r.slug] = r));
 
-  const subInputs = [];
-  for (const top of tree) {
-    for (const sub of top.children) {
-      subInputs.push({ id: newId(), parentId: bySlug[top.slug].id, slug: sub.slug, name: sub.name });
-    }
-  }
-  const subs = await db.insert(table).values(subInputs).returning();
-  subs.forEach((r) => (bySlug[r.slug] = r));
-
-  const leafInputs = [];
-  for (const top of tree) {
-    for (const sub of top.children) {
-      for (const leaf of sub.children) {
-        leafInputs.push({ id: newId(), parentId: bySlug[sub.slug].id, slug: leaf.slug, name: leaf.name });
-      }
-    }
-  }
-  if (leafInputs.length) {
-    const leaves = await db.insert(table).values(leafInputs).returning();
-    leaves.forEach((r) => (bySlug[r.slug] = r));
+    frontier = frontier.flatMap(({ node }) =>
+      (node.children ?? []).map((child) => ({ node: child, parentSlug: node.slug }))
+    );
   }
 
   return bySlug;

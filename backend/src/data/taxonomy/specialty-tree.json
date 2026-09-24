@@ -3023,59 +3023,177 @@
         "children": [
           {
             "name": "Personal Injury",
-            "slug": "personal-injury"
+            "slug": "personal-injury",
+            "children": [
+              {
+                "name": "Orthopaedic & Musculoskeletal Injury",
+                "slug": "orthopaedic-musculoskeletal-injury"
+              },
+              {
+                "name": "Traumatic & Catastrophic Brain Injury",
+                "slug": "traumatic-catastrophic-brain-injury"
+              },
+              {
+                "name": "Spinal Cord Injury",
+                "slug": "spinal-cord-injury"
+              },
+              {
+                "name": "Workplace Accidents",
+                "slug": "workplace-accidents"
+              },
+              {
+                "name": "Public Liability Claims",
+                "slug": "public-liability-claims"
+              }
+            ]
           },
           {
             "name": "Clinical Negligence",
-            "slug": "clinical-negligence"
-          },
-          {
-            "name": "Criminal Injuries Compensation",
-            "slug": "criminal-injuries-compensation"
+            "slug": "clinical-negligence",
+            "children": [
+              {
+                "name": "Birth Injury & Obstetric Negligence",
+                "slug": "birth-injury-obstetric-negligence"
+              },
+              {
+                "name": "Surgical Error",
+                "slug": "surgical-error"
+              },
+              {
+                "name": "Diagnostic Delay & Misdiagnosis",
+                "slug": "diagnostic-delay-misdiagnosis"
+              },
+              {
+                "name": "Medication & Prescribing Errors",
+                "slug": "medication-prescribing-errors"
+              },
+              {
+                "name": "A&E & Emergency Care Negligence",
+                "slug": "ae-emergency-care-negligence"
+              },
+              {
+                "name": "Dental Negligence",
+                "slug": "dental-negligence"
+              },
+              {
+                "name": "Mental Health Negligence",
+                "slug": "mental-health-negligence"
+              }
+            ]
           },
           {
             "name": "Court of Protection & Mental Capacity",
-            "slug": "court-of-protection-mental-capacity"
-          },
-          {
-            "name": "Family Law Reports",
-            "slug": "family-law-reports"
-          },
-          {
-            "name": "Immigration & Asylum Reports",
-            "slug": "immigration-asylum-reports"
-          },
-          {
-            "name": "Fitness to Practise & Regulatory",
-            "slug": "fitness-to-practise-regulatory"
-          },
-          {
-            "name": "Employment & Occupational Health",
-            "slug": "employment-occupational-health"
+            "slug": "court-of-protection-mental-capacity",
+            "children": [
+              {
+                "name": "Mental Capacity Assessment",
+                "slug": "mental-capacity-assessment"
+              },
+              {
+                "name": "Cognitive & Neurological Impairment",
+                "slug": "cognitive-neurological-impairment"
+              },
+              {
+                "name": "Deprivation of Liberty",
+                "slug": "deprivation-of-liberty"
+              },
+              {
+                "name": "Best Interests Assessment",
+                "slug": "best-interests-assessment"
+              }
+            ]
           },
           {
             "name": "Industrial Disease",
-            "slug": "industrial-disease"
+            "slug": "industrial-disease",
+            "children": [
+              {
+                "name": "Occupational Lung Disease",
+                "slug": "occupational-lung-disease"
+              },
+              {
+                "name": "Noise-Induced Hearing Loss",
+                "slug": "noise-induced-hearing-loss"
+              },
+              {
+                "name": "Repetitive Strain & Vibration Injury",
+                "slug": "repetitive-strain-vibration-injury"
+              },
+              {
+                "name": "Occupational Cancer",
+                "slug": "occupational-cancer"
+              }
+            ]
           },
           {
             "name": "Inquest & Coronial Reports",
-            "slug": "inquest-coronial-reports"
+            "slug": "inquest-coronial-reports",
+            "children": [
+              {
+                "name": "Cause of Death Reports",
+                "slug": "cause-of-death-reports"
+              },
+              {
+                "name": "Sudden & Unexpected Death",
+                "slug": "sudden-unexpected-death"
+              },
+              {
+                "name": "Neonatal & Perinatal Death",
+                "slug": "neonatal-perinatal-death"
+              },
+              {
+                "name": "Prevention of Future Deaths Reports",
+                "slug": "prevention-of-future-deaths-reports"
+              }
+            ]
           },
           {
             "name": "Road Traffic Collision",
-            "slug": "road-traffic-collision"
-          },
-          {
-            "name": "Product Liability",
-            "slug": "product-liability"
+            "slug": "road-traffic-collision",
+            "children": [
+              {
+                "name": "Whiplash & Soft Tissue Injury",
+                "slug": "whiplash-soft-tissue-injury"
+              },
+              {
+                "name": "Fracture & Orthopaedic Trauma",
+                "slug": "rtc-fracture-orthopaedic-trauma"
+              },
+              {
+                "name": "Traumatic Brain Injury (RTC)",
+                "slug": "rtc-traumatic-brain-injury"
+              },
+              {
+                "name": "Psychological Injury & PTSD",
+                "slug": "psychological-injury-ptsd"
+              }
+            ]
           },
           {
             "name": "Care Proceedings",
-            "slug": "care-proceedings"
-          },
-          {
-            "name": "Housing Disrepair (Damp & Mould)",
-            "slug": "housing-disrepair"
+            "slug": "care-proceedings",
+            "children": [
+              {
+                "name": "Non-Accidental Injury",
+                "slug": "non-accidental-injury"
+              },
+              {
+                "name": "Fabricated or Induced Illness",
+                "slug": "fabricated-or-induced-illness"
+              },
+              {
+                "name": "Neglect & Safeguarding",
+                "slug": "neglect-safeguarding"
+              },
+              {
+                "name": "Parenting Capacity Assessment",
+                "slug": "parenting-capacity-assessment"
+              },
+              {
+                "name": "Neurodevelopmental & Learning Assessment",
+                "slug": "neurodevelopmental-learning-assessment"
+              }
+            ]
           }
         ]
       }

@@ -1,25 +1,30 @@
-// Turns a 3-level taxonomy tree (top category -> subcategory ->
-// sub-subcategory) into a flat, self-referencing list shaped like the
+// Turns a taxonomy tree — top category, subcategory, and however many
+// further levels of narrower subcategory a given branch actually has —
+// into a flat, self-referencing list shaped like the
 // Specialty/FacilityCategory Mongoose schemas: { id, parentId, slug,
 // name, level }. Shared by the Specialty taxonomy (Orthopaedics,
-// Physiotherapy, Dentistry, Aesthetics Specialists, ENT, Gynaecology)
-// and the FacilityCategory taxonomy (Hospital Care, Care Homes,
-// Pharmacy, Clinics, Hospitals) — same shape, different tree, different
-// idPrefix so the two id-spaces never collide.
+// Physiotherapy, Dentistry, Aesthetics Specialists, ENT, Gynaecology,
+// Expert Witness) and the FacilityCategory taxonomy (Hospital Care,
+// Care Homes, Pharmacy, Clinics, Hospitals) — same shape, different
+// tree, different idPrefix so the two id-spaces never collide.
+//
+// Depth is not assumed. Most branches are top -> sub -> leaf (3
+// levels), but Expert Witness -> Medicolegal -> Personal Injury ->
+// Orthopaedic & Musculoskeletal Injury is 4, and a hard-coded 3-level
+// walk here silently drops that 4th level rather than erroring, which
+// is exactly the kind of bug that goes unnoticed until someone asks
+// why a dropdown that should narrow further doesn't. So this recurses
+// to whatever depth each branch actually has.
 export function flattenTaxonomyTree(tree, idPrefix) {
   const flat = [];
-  for (const top of tree) {
-    const topId = `${idPrefix}-${top.slug}`;
-    flat.push({ id: topId, parentId: null, slug: top.slug, name: top.name, level: 0 });
-    for (const sub of top.children) {
-      const subId = `${idPrefix}-${sub.slug}`;
-      flat.push({ id: subId, parentId: topId, slug: sub.slug, name: sub.name, level: 1 });
-      for (const leaf of sub.children) {
-        const leafId = `${idPrefix}-${leaf.slug}`;
-        flat.push({ id: leafId, parentId: subId, slug: leaf.slug, name: leaf.name, level: 2 });
-      }
+  function walk(nodes, parentId, level) {
+    for (const node of nodes) {
+      const id = `${idPrefix}-${node.slug}`;
+      flat.push({ id, parentId, slug: node.slug, name: node.name, level });
+      if (node.children?.length) walk(node.children, id, level + 1);
     }
   }
+  walk(tree, null, 0);
   return flat;
 }
 
