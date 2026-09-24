@@ -471,6 +471,82 @@ export function buildEnquiryEmail({ specialist, lead, profileUrl }) {
   };
 }
 
+/**
+ * A specialist's reply in a message thread, to the patient -- who has
+ * no account, so the link back is the token in the URL, not a sign-in.
+ */
+export function buildMessageEmail({ specialist, lead, body, replyUrl }) {
+  const lines = [
+    `${specialist.fullName} replied to your enquiry on Top Local Specialists.`,
+    ``,
+    body,
+    ``,
+    replyUrl ? `Reply here: ${replyUrl}` : null,
+  ].filter((l) => l !== null);
+  return {
+    to: lead.email,
+    replyTo: specialist.contactEmail || undefined,
+    subject: `New message from ${specialist.fullName}`,
+    text: lines.join("\n"),
+  };
+}
+
+/** A patient's reply, to the specialist -- an ordinary notification,
+ *  since the specialist always has an account to sign in to. */
+export function buildPatientReplyEmail({ specialist, lead, body, profileUrl }) {
+  const lines = [
+    `${lead.patientName} replied to your message thread.`,
+    ``,
+    body,
+    ``,
+    profileUrl ? `Open the thread from your dashboard: ${profileUrl}` : null,
+  ].filter((l) => l !== null);
+  return {
+    to: specialist.contactEmail,
+    replyTo: lead.email || undefined,
+    subject: `${lead.patientName} replied`,
+    text: lines.join("\n"),
+  };
+}
+
+/** An appointment just booked through a specialist's public profile. */
+export function buildAppointmentEmails({ specialist, appointment, profileUrl }) {
+  const when = new Date(appointment.startsAt).toLocaleString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const toSpecialist = {
+    to: specialist.contactEmail,
+    replyTo: appointment.patientEmail || undefined,
+    subject: `New appointment booked -- ${when}`,
+    text: [
+      `${appointment.patientName} booked an appointment with you for ${when}.`,
+      ``,
+      appointment.patientEmail ? `Email: ${appointment.patientEmail}` : null,
+      appointment.patientPhone ? `Phone: ${appointment.patientPhone}` : null,
+      appointment.notes ? `Notes: ${appointment.notes}` : null,
+      ``,
+      profileUrl ? `Manage it from your dashboard: ${profileUrl}` : null,
+    ].filter((l) => l !== null).join("\n"),
+  };
+  const toPatient = appointment.patientEmail
+    ? {
+        to: appointment.patientEmail,
+        subject: `Appointment confirmed with ${specialist.fullName} -- ${when}`,
+        text: [
+          `Your appointment with ${specialist.fullName} is confirmed for ${when}.`,
+          specialist.title ? specialist.title : null,
+          ``,
+          `If you need to change or cancel it, reply to this email.`,
+        ].filter((l) => l !== null).join("\n"),
+      }
+    : null;
+  return { toSpecialist, toPatient };
+}
+
 /** The message sent by the "send a test email" button in the admin console. */
 export function buildTestEmail({ to, byName }) {
   return {

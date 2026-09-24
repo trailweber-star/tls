@@ -141,6 +141,13 @@ export const leadStatusEnum = pgEnum("lead_status", [
   "no_response",
 ]);
 
+export const appointmentStatusEnum = pgEnum("appointment_status", [
+  "pending",
+  "confirmed",
+  "cancelled",
+  "completed",
+]);
+
 export const orderStatusEnum = pgEnum("order_status", [
   "awaiting_payment",
   "paid",
@@ -1174,6 +1181,16 @@ export const leads = pgTable(
     // rather than re-posted.
     clinwellLeadId: text("clinwell_lead_id"),
 
+    // A message thread's front door for the patient, who has no account
+    // to sign in to. Emailed as a link (/reply/:token); unique so the
+    // link can never be guessed from another lead's, and generated at
+    // creation so the column is never null for a row a specialist might
+    // reply to.
+    replyToken: text("reply_token")
+      .notNull()
+      .unique()
+      .$defaultFn(() => newId("rt")),
+
     createdAt: createdAt(),
   },
   (t) => [
@@ -1181,6 +1198,110 @@ export const leads = pgTable(
     index("leads_status_idx").on(t.status),
     index("leads_held_idx").on(t.held),
     index("leads_clinwell_pending_idx").on(t.clinwellNextAttemptAt),
+  ]
+);
+
+/* ------------------------------------------------------------------ *
+ * Messages
+ *
+ * leads.response/respondedAt is the specialist's first reply -- kept
+ * exactly as it was, so nothing that reads it has to change. A thread
+ * can run past that one reply, and this is where the rest of it lives:
+ * one row per message, in order, on either side. A thread is just "the
+ * messages for this lead" -- there is one per enquiry, which is also
+ * the natural cap on who a specialist can message: nobody who never
+ * enquired.
+ * ------------------------------------------------------------------ */
+export const leadMessages = pgTable(
+  "lead_messages",
+  {
+    id: id(),
+    leadId: text("lead_id")
+      .notNull()
+      .references(() => leads.id, { onDelete: "cascade" }),
+    senderRole: text("sender_role").notNull(), // "specialist" | "patient"
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+  },
+  (t) => [index("lead_messages_lead_idx").on(t.leadId, t.createdAt)]
+);
+
+/* ------------------------------------------------------------------ *
+ * Analytics
+ *
+ * lib/analytics.js counted views in memory, which resets on every
+ * deploy and restart -- true of this service more often than most,
+ * since it redeploys on every push. One row per view keeps that history
+ * past a restart and carries the referrer and search term a raw
+ * in-memory counter never could, without slowing down the view itself:
+ * the write is fire-and-forget, off the request that serves the page.
+ * ------------------------------------------------------------------ */
+export const profileViewEvents = pgTable(
+  "profile_view_events",
+  {
+    id: id(),
+    specialistId: text("specialist_id")
+      .notNull()
+      .references(() => specialists.id, { onDelete: "cascade" }),
+    occurredAt: createdAt(),
+    referrer: text("referrer"),
+    searchTerm: text("search_term"),
+    path: text("path"),
+  },
+  (t) => [index("profile_view_events_specialist_idx").on(t.specialistId, t.occurredAt)]
+);
+
+/* ------------------------------------------------------------------ *
+ * Appointments
+ *
+ * Two tables because they change at a different pace. Availability is
+ * a standing rule -- "Tuesdays 9 to 5" -- edited rarely and read every
+ * time a patient opens the booking widget. An appointment is one
+ * booked slot, created once and then only its status changes. Folding
+ * both into one table would mean either a rule with no date or a
+ * booking with a weekday, and the query for "is this slot free" would
+ * have to tell the two kinds of row apart every time it ran.
+ * ------------------------------------------------------------------ */
+export const specialistAvailability = pgTable(
+  "specialist_availability",
+  {
+    id: id(),
+    specialistId: text("specialist_id")
+      .notNull()
+      .references(() => specialists.id, { onDelete: "cascade" }),
+    // 0 = Sunday .. 6 = Saturday, matching Date#getDay() so the booking
+    // widget and this table never disagree about which day is which.
+    weekday: integer("weekday").notNull(),
+    // Minutes since local midnight. Two integers sort and compare
+    // without a timezone in sight -- the clinic's own hours don't need
+    // one, only the booked appointment does.
+    startMinute: integer("start_minute").notNull(),
+    endMinute: integer("end_minute").notNull(),
+  },
+  (t) => [index("specialist_availability_specialist_idx").on(t.specialistId, t.weekday)]
+);
+
+export const appointments = pgTable(
+  "appointments",
+  {
+    id: id(),
+    specialistId: text("specialist_id")
+      .notNull()
+      .references(() => specialists.id, { onDelete: "cascade" }),
+    clinicLocationId: text("clinic_location_id").references(() => clinicLocations.id),
+    patientName: text("patient_name").notNull(),
+    patientEmail: text("patient_email"),
+    patientPhone: text("patient_phone"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    status: appointmentStatusEnum("status").notNull().default("confirmed"),
+    notes: text("notes"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("appointments_specialist_idx").on(t.specialistId, t.startsAt),
+    index("appointments_status_idx").on(t.status),
   ]
 );
 
@@ -1490,6 +1611,9 @@ export const specialistsRelations = relations(specialists, ({ one, many }) => ({
   leads: many(leads),
   orders: many(orders),
   claims: many(claims),
+  profileViewEvents: many(profileViewEvents),
+  availability: many(specialistAvailability),
+  appointments: many(appointments),
 }));
 
 export const specialistSpecialtiesRelations = relations(specialistSpecialties, ({ one }) => ({
@@ -1724,6 +1848,23 @@ export const leadsRelations = relations(leads, ({ one }) => ({
   clinic: one(clinics, { fields: [leads.clinicId], references: [clinics.id] }),
   facility: one(facilities, { fields: [leads.facilityId], references: [facilities.id] }),
   condition: one(conditions, { fields: [leads.conditionId], references: [conditions.id] }),
+}));
+
+export const leadMessagesRelations = relations(leadMessages, ({ one }) => ({
+  lead: one(leads, { fields: [leadMessages.leadId], references: [leads.id] }),
+}));
+
+export const profileViewEventsRelations = relations(profileViewEvents, ({ one }) => ({
+  specialist: one(specialists, { fields: [profileViewEvents.specialistId], references: [specialists.id] }),
+}));
+
+export const specialistAvailabilityRelations = relations(specialistAvailability, ({ one }) => ({
+  specialist: one(specialists, { fields: [specialistAvailability.specialistId], references: [specialists.id] }),
+}));
+
+export const appointmentsRelations = relations(appointments, ({ one }) => ({
+  specialist: one(specialists, { fields: [appointments.specialistId], references: [specialists.id] }),
+  clinicLocation: one(clinicLocations, { fields: [appointments.clinicLocationId], references: [clinicLocations.id] }),
 }));
 
 export const ordersRelations = relations(orders, ({ one }) => ({

@@ -74,7 +74,17 @@ import {
   respondToEnquiry,
   listOwnReviews,
   respondToOwnReview,
+  getAnalytics,
+  listMessageThreads,
+  getMessageThread,
+  sendMessage,
+  getAvailability,
+  setAvailability,
+  listAppointments,
+  updateAppointmentStatus,
 } from "../controllers/dashboard.controller.js";
+import { getAvailableSlots, createAppointment } from "../controllers/booking.controller.js";
+import { getReplyThread, postReply } from "../controllers/reply.controller.js";
 import {
   decideVerification,
   getAdminOverview,
@@ -165,6 +175,11 @@ router.get("/specialists/:slug/reviews", listSpecialistReviews);
 router.post("/specialists/:slug/reviews", createSpecialistReview);
 router.get("/specialists/:slug", getSpecialistBySlug);
 
+// Public booking widget on a specialist's own profile -- no account,
+// same reasoning as an enquiry.
+router.get("/specialists/:slug/availability", getAvailableSlots);
+router.post("/specialists/:slug/appointments", createAppointment);
+
 router.get("/search/panel", searchPanel);
 
 /* The blog. Public read; everything that writes is admin-only, including
@@ -230,6 +245,12 @@ router.get("/facilities/:slug/reviews", listFacilityReviews);
 router.post("/facilities/:slug/reviews", createFacilityReview);
 
 router.post("/leads", createLead);
+
+// A patient's own side of a message thread -- the reply_token in the
+// URL is their whole access control, no account needed. See
+// reply.controller.js.
+router.get("/reply/:token", getReplyThread);
+router.post("/reply/:token", postReply);
 
 /* ------------------------------------------------------- organisations
    Hospitals, clinics, pharmacies and care homes are priced on how many
@@ -342,6 +363,22 @@ router.get("/dashboard/reviews", requireAuth, requireRole("specialist"), listOwn
 // A provider replying to a published review of their own listing. Not
 // moderated — see the note on respondToOwnReview.
 router.post("/dashboard/reviews/:id/respond", requireAuth, requireRole("specialist"), respondToOwnReview);
+
+// Analytics -- persistent view/referrer/search-term tracking, replacing
+// the in-memory counters lib/analytics.js used to reset on every deploy.
+router.get("/dashboard/analytics", requireAuth, requireRole("specialist"), getAnalytics);
+
+// Messages -- the rest of a conversation past a lead's first reply.
+router.get("/dashboard/messages", requireAuth, requireRole("specialist"), listMessageThreads);
+router.get("/dashboard/messages/:leadId", requireAuth, requireRole("specialist"), getMessageThread);
+router.post("/dashboard/messages/:leadId", requireAuth, requireRole("specialist"), sendMessage);
+
+// Appointments -- weekly availability rules the specialist sets, and the
+// bookings patients make against them.
+router.get("/dashboard/availability", requireAuth, requireRole("specialist"), getAvailability);
+router.put("/dashboard/availability", requireAuth, requireRole("specialist"), setAvailability);
+router.get("/dashboard/appointments", requireAuth, requireRole("specialist"), listAppointments);
+router.post("/dashboard/appointments/:id/status", requireAuth, requireRole("specialist"), updateAppointmentStatus);
 
 /* --------------------------------------------------------------- admin */
 router.get("/admin/overview", requireAuth, requireRole("admin"), getAdminOverview);

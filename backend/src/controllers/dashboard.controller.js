@@ -4,6 +4,9 @@ import { isDbConfigured } from "../config/db.js";
 import {
   clinicLocations as locationRepo,
   leads as leadRepo,
+  leadMessages as messageRepo,
+  specialistAvailability as availabilityRepo,
+  appointments as appointmentRepo,
   reviews as reviewRepo,
   specialists as specialistRepo,
   taxonomy as taxonomyRepo,
@@ -20,8 +23,8 @@ import {
 } from "../data/mock.js";
 import { demoLeads } from "../data/leads-store.js";
 import { specialistIdOf } from "../middleware/auth.js";
-import { viewStats } from "../lib/analytics.js";
-import { sendMail } from "../lib/mailer.js";
+import { viewStats, dbViewStats, viewSources } from "../lib/analytics.js";
+import { sendMail, buildMessageEmail, buildPatientReplyEmail } from "../lib/mailer.js";
 import { aggregateReviewScores } from "../lib/reviews.js";
 import { entitlementsFor } from "../lib/plans.js";
 
@@ -641,6 +644,206 @@ export async function respondToOwnReview(req, res) {
   }
   const updated = await reviewRepo.respond(id, parsed.data.response);
   res.json({ ok: true, review: updated });
+}
+
+/* ------------------------------------------------------------------ *
+ * Analytics
+ * ------------------------------------------------------------------ */
+
+// GET /api/dashboard/analytics?days=30
+export async function getAnalytics(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  const days = Math.min(Math.max(Number(req.query.days) || 30, 7), 90);
+
+  const views = isDbConfigured() ? await dbViewStats(id, days) : viewStats(id, days);
+  const sources = isDbConfigured() ? await viewSources(id, days) : { referrers: [], searchTerms: [] };
+  const leads = await loadLeads(id);
+  const periodStart = new Date();
+  periodStart.setUTCDate(periodStart.getUTCDate() - days);
+  const enquiriesInPeriod = leads.filter((l) => new Date(l.createdAt) >= periodStart).length;
+
+  res.json({
+    days,
+    profileViews: views,
+    sources,
+    enquiries: {
+      total: enquiriesInPeriod,
+      // One decimal place -- "12.5%" is honest about a small sample,
+      // "13%" implies more precision than 8 enquiries out of 60 views has.
+      conversionPct: views.total > 0 ? Math.round((enquiriesInPeriod / views.total) * 1000) / 10 : null,
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Messages
+ *
+ * A thread is the messages for one lead -- see schema.js. The specialist
+ * side lives here, behind requireAuth; the patient's side (no account)
+ * is reply.controller.js, behind the lead's own reply token instead.
+ * ------------------------------------------------------------------ */
+
+// GET /api/dashboard/messages -- newest activity first.
+export async function listMessageThreads(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.json({ results: [] });
+
+  const leads = await leadRepo.forSpecialist(id);
+  const unread = await messageRepo.unreadCountsFor(id);
+
+  const threads = await Promise.all(
+    leads.map(async (lead) => {
+      const messages = await messageRepo.forLead(lead.id);
+      const lastMessage = messages[messages.length - 1] ?? null;
+      const lastActivity = lastMessage?.createdAt ?? lead.respondedAt ?? lead.createdAt;
+      return {
+        leadId: lead.id,
+        patientName: lead.patientName,
+        preview: lastMessage?.body ?? lead.response ?? lead.message ?? "",
+        messageCount: messages.length,
+        unread: unread.get(lead.id) ?? 0,
+        lastActivity: lastActivity instanceof Date ? lastActivity.toISOString() : lastActivity,
+      };
+    })
+  );
+  threads.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+  res.json({ results: threads });
+}
+
+// GET /api/dashboard/messages/:leadId -- opening a thread marks the
+// patient's messages read, same as opening an inbox conversation would.
+export async function getMessageThread(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.status(404).json({ error: "Thread not found" });
+
+  const lead = await leadRepo.findById(req.params.leadId);
+  if (!lead || lead.specialistId !== id) return res.status(404).json({ error: "Thread not found" });
+
+  await messageRepo.markRead(lead.id, "specialist");
+  const messages = await messageRepo.forLead(lead.id);
+  res.json({
+    lead: {
+      id: lead.id,
+      patientName: lead.patientName,
+      email: lead.email,
+      phone: lead.phone,
+      message: lead.message,
+      createdAt: lead.createdAt,
+    },
+    messages: messages.map((m) => ({
+      id: m.id,
+      senderRole: m.senderRole,
+      body: m.body,
+      createdAt: m.createdAt,
+      readAt: m.readAt,
+    })),
+  });
+}
+
+const sendMessageSchema = z.object({ body: z.string().min(1).max(4000) });
+
+// POST /api/dashboard/messages/:leadId  { body }
+export async function sendMessage(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.status(501).json({ error: "Messages need a database" });
+
+  const parsed = sendMessageSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid message", issues: parsed.error.issues });
+
+  const lead = await leadRepo.findById(req.params.leadId);
+  if (!lead || lead.specialistId !== id) return res.status(404).json({ error: "Thread not found" });
+
+  const message = await messageRepo.create({ leadId: lead.id, senderRole: "specialist", body: parsed.data.body });
+
+  // A patient with no email on file still gets the message stored and
+  // visible if they ever open the thread link again -- it just never
+  // reaches an inbox to tell them it is waiting.
+  let delivery = { sent: false, reason: "no-recipient" };
+  if (lead.email) {
+    const specialist = await loadSpecialist(id);
+    const replyUrl = `${(process.env.SITE_URL || "").replace(/\/+$/, "")}/reply/${lead.replyToken}`;
+    delivery = await sendMail(buildMessageEmail({ specialist, lead, body: parsed.data.body, replyUrl }));
+  }
+  res.status(201).json({ ok: true, message, delivery });
+}
+
+/* ------------------------------------------------------------------ *
+ * Appointments
+ * ------------------------------------------------------------------ */
+
+// GET /api/dashboard/availability
+export async function getAvailability(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.json({ results: [] });
+  const rows = await availabilityRepo.forSpecialist(id);
+  res.json({ results: rows.map((r) => ({ weekday: r.weekday, startMinute: r.startMinute, endMinute: r.endMinute })) });
+}
+
+const availabilitySchema = z.object({
+  blocks: z
+    .array(
+      z.object({
+        weekday: z.number().int().min(0).max(6),
+        startMinute: z.number().int().min(0).max(1439),
+        endMinute: z.number().int().min(1).max(1440),
+      })
+    )
+    .max(56)
+    .refine((blocks) => blocks.every((b) => b.endMinute > b.startMinute), {
+      message: "Each block must end after it starts",
+    }),
+});
+
+// PUT /api/dashboard/availability  { blocks: [{ weekday, startMinute, endMinute }] }
+// Whole-week replace, same reasoning as the profile editor's locations:
+// the form holds the whole set, so the server does not try to diff two
+// lists of time blocks against each other.
+export async function setAvailability(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.status(501).json({ error: "Availability needs a database" });
+
+  const parsed = availabilitySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid availability", issues: parsed.error.issues });
+
+  const rows = await availabilityRepo.replaceWeek(id, parsed.data.blocks);
+  res.json({ results: rows.map((r) => ({ weekday: r.weekday, startMinute: r.startMinute, endMinute: r.endMinute })) });
+}
+
+// GET /api/dashboard/appointments?from=&to=
+export async function listAppointments(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.json({ results: [] });
+
+  const from = req.query.from ? new Date(req.query.from) : undefined;
+  const to = req.query.to ? new Date(req.query.to) : undefined;
+  const rows = await appointmentRepo.forSpecialist(id, { from, to });
+  res.json({ results: rows });
+}
+
+const appointmentStatusSchema = z.object({ status: z.enum(["confirmed", "cancelled", "completed"]) });
+
+// POST /api/dashboard/appointments/:id/status  { status }
+// A specialist can confirm, cancel or complete their own booking -- not
+// delete it, so a cancelled slot stays visible as a record of what was
+// asked for rather than disappearing.
+export async function updateAppointmentStatus(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.status(501).json({ error: "Appointments need a database" });
+
+  const parsed = appointmentStatusSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid status", issues: parsed.error.issues });
+
+  const row = await appointmentRepo.setStatus(req.params.id, id, parsed.data.status);
+  if (!row) return res.status(404).json({ error: "Appointment not found" });
+  res.json({ ok: true, appointment: row });
 }
 
 export { mockSpecialists };

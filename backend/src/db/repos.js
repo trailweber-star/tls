@@ -1844,3 +1844,123 @@ export const recoveryCodes = {
     await db().delete(t.mfaRecoveryCodes).where(eq(t.mfaRecoveryCodes.userId, userId));
   },
 };
+
+/* ------------------------------------------------------------------ *
+ * Messages -- the thread behind a lead
+ * ------------------------------------------------------------------ */
+export const leadMessages = {
+  async forLead(leadId) {
+    return db().select().from(t.leadMessages).where(eq(t.leadMessages.leadId, leadId)).orderBy(asc(t.leadMessages.createdAt));
+  },
+
+  async create({ leadId, senderRole, body }) {
+    const [row] = await db().insert(t.leadMessages).values({ leadId, senderRole, body }).returning();
+    return row;
+  },
+
+  /** Everything the OTHER side sent, marked read -- a specialist opening
+   *  a thread reads the patient's messages, never their own. */
+  async markRead(leadId, readerRole) {
+    const otherRole = readerRole === "specialist" ? "patient" : "specialist";
+    await db()
+      .update(t.leadMessages)
+      .set({ readAt: new Date() })
+      .where(and(eq(t.leadMessages.leadId, leadId), eq(t.leadMessages.senderRole, otherRole), isNull(t.leadMessages.readAt)));
+  },
+
+  /** Unread-from-patient counts for every lead of a specialist, in one
+   *  query rather than one per thread. */
+  async unreadCountsFor(specialistId) {
+    const rows = await db()
+      .select({ leadId: t.leadMessages.leadId, count: sql`count(*)::int` })
+      .from(t.leadMessages)
+      .innerJoin(t.leads, eq(t.leads.id, t.leadMessages.leadId))
+      .where(
+        and(
+          eq(t.leads.specialistId, specialistId),
+          eq(t.leadMessages.senderRole, "patient"),
+          isNull(t.leadMessages.readAt)
+        )
+      )
+      .groupBy(t.leadMessages.leadId);
+    return new Map(rows.map((r) => [r.leadId, r.count]));
+  },
+
+  async findLeadByToken(token) {
+    const [row] = await db().select().from(t.leads).where(eq(t.leads.replyToken, token)).limit(1);
+    return row ?? null;
+  },
+};
+
+/* ------------------------------------------------------------------ *
+ * Appointments
+ * ------------------------------------------------------------------ */
+export const specialistAvailability = {
+  async forSpecialist(specialistId) {
+    return db()
+      .select()
+      .from(t.specialistAvailability)
+      .where(eq(t.specialistAvailability.specialistId, specialistId))
+      .orderBy(asc(t.specialistAvailability.weekday), asc(t.specialistAvailability.startMinute));
+  },
+
+  /** Replace the whole week in one go -- the editor holds the whole set,
+   *  same reasoning as specialists.setLinks. */
+  async replaceWeek(specialistId, blocks) {
+    await db().transaction(async (tx) => {
+      await tx.delete(t.specialistAvailability).where(eq(t.specialistAvailability.specialistId, specialistId));
+      if (blocks.length) {
+        await tx.insert(t.specialistAvailability).values(blocks.map((b) => ({ ...b, specialistId })));
+      }
+    });
+    return specialistAvailability.forSpecialist(specialistId);
+  },
+};
+
+export const appointments = {
+  async forSpecialist(specialistId, { from, to } = {}) {
+    const conditions = [eq(t.appointments.specialistId, specialistId)];
+    if (from) conditions.push(gte(t.appointments.startsAt, from));
+    if (to) conditions.push(lt(t.appointments.startsAt, to));
+    return db()
+      .select()
+      .from(t.appointments)
+      .where(and(...conditions))
+      .orderBy(asc(t.appointments.startsAt));
+  },
+
+  async findById(id) {
+    const [row] = await db().select().from(t.appointments).where(eq(t.appointments.id, id)).limit(1);
+    return row ?? null;
+  },
+
+  /** Booked, non-cancelled slots for one day -- what a booking widget
+   *  subtracts from the day's availability rule to find open slots. */
+  async activeOnDay(specialistId, dayStart, dayEnd) {
+    return db()
+      .select()
+      .from(t.appointments)
+      .where(
+        and(
+          eq(t.appointments.specialistId, specialistId),
+          ne(t.appointments.status, "cancelled"),
+          gte(t.appointments.startsAt, dayStart),
+          lt(t.appointments.startsAt, dayEnd)
+        )
+      );
+  },
+
+  async create(input) {
+    const [row] = await db().insert(t.appointments).values(input).returning();
+    return row;
+  },
+
+  async setStatus(id, specialistId, status) {
+    const [row] = await db()
+      .update(t.appointments)
+      .set({ status })
+      .where(and(eq(t.appointments.id, id), eq(t.appointments.specialistId, specialistId)))
+      .returning();
+    return row ?? null;
+  },
+};

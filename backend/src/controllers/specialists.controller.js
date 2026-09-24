@@ -9,7 +9,7 @@ import {
   cities as mockCities,
 } from "../data/mock.js";
 import { matchesLocation, nearestDistanceKm, resolveLocation } from "../lib/geo.js";
-import { recordProfileView } from "../lib/analytics.js";
+import { recordProfileView, persistProfileView, classifyReferrer } from "../lib/analytics.js";
 import { gateCard, gateProfile } from "../lib/profileGate.js";
 import { searchPriorityWeight } from "../lib/plans.js";
 
@@ -107,6 +107,10 @@ export async function getSpecialistBySlug(req, res) {
     return res.status(404).json({ error: "Specialist not found" });
   }
   recordProfileView(specialist.id);
+  // Off the response: a slow write here must never be the reason a
+  // patient waits longer to see the profile they clicked through to.
+  const { referrer, searchTerm } = classifyReferrer(req.get("referer"), process.env.SITE_URL);
+  persistProfileView({ specialistId: specialist.id, referrer, searchTerm, path: req.originalUrl }).catch(() => {});
   res.json(gateProfile(specialist, specialist, viewerRole(req, specialist.id)));
 }
 
