@@ -1,7 +1,7 @@
 {
   "name": "tls-mern-backend",
   "version": "1.0.0",
-  "description": "Top Local Specialists API — Express + Postgres (Drizzle)",
+  "description": "Top Local Specialists API \u2014 Express + Postgres (Drizzle)",
   "main": "index.js",
   "scripts": {
     "dev": "node --watch src/server.js",
@@ -38,7 +38,9 @@
     "treatments:websites": "node scripts/derive-from-websites.mjs",
     "taxonomy:refile": "node scripts/refile-taxonomy.mjs",
     "specialties:correct": "node scripts/correct-specialties.mjs",
-    "treatments:audit": "node scripts/audit-treatments.mjs"
+    "treatments:audit": "node scripts/audit-treatments.mjs",
+    "photos:backfill": "node scripts/backfill-photos.mjs",
+    "experience:backfill": "node scripts/backfill-experience.mjs"
   },
   "keywords": [],
   "author": "",
