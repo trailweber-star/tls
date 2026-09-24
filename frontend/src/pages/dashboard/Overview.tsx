@@ -226,9 +226,6 @@ export default function DashboardOverview() {
               tone="slate"
               label="Today's appointments"
               value={data.kpis.todaysAppointments ?? 0}
-              unavailable={
-                data.kpis.todaysAppointments === null ? "Online booking hasn't been switched on yet." : undefined
-              }
             />
             <KpiCard
               icon={Mail}
@@ -267,15 +264,32 @@ export default function DashboardOverview() {
             <Panel
               title="Today's appointments"
               action={
-                <span className="rounded-full bg-paper-tint px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
-                  Coming soon
-                </span>
+                <Link
+                  to="/dashboard/appointments"
+                  className="inline-flex items-center gap-1 text-[12.5px] font-bold text-teal-700 hover:underline"
+                >
+                  View all
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </Link>
               }
             >
               <EmptyState
                 icon={Clock3}
-                title="Appointments aren't live yet"
-                body="Once online booking is switched on, the day's schedule appears here with patient names and times. Nothing is scheduled through the platform today."
+                title={
+                  data.kpis.todaysAppointments
+                    ? `${data.kpis.todaysAppointments} appointment${data.kpis.todaysAppointments === 1 ? "" : "s"} today`
+                    : "Nothing booked for today"
+                }
+                body="See the full schedule, confirm or cancel a booking, and set the hours patients can book straight from your profile."
+                action={
+                  <Link
+                    to="/dashboard/appointments"
+                    className="inline-flex items-center gap-2 rounded-full bg-teal-600 px-5 py-2.5 text-[13px] font-bold text-white transition hover:bg-teal-700"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    Go to appointments
+                  </Link>
+                }
               />
             </Panel>
 

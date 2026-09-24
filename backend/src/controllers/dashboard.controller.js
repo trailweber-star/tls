@@ -171,6 +171,16 @@ export async function getOverview(req, res) {
 
   const completion = profileCompletion(specialist);
 
+  // Booked, non-cancelled appointments starting today. Left as a
+  // hardcoded null until booking existed at all; it does now (see
+  // booking.controller.js), so this counts the real thing the same
+  // way the booking widget itself does (activeOnDay excludes
+  // cancelled slots) rather than continuing to say "not modelled yet".
+  const endOfToday = new Date(startOfToday.getTime() + 86400000);
+  const todaysAppointments = isDbConfigured()
+    ? (await appointmentRepo.activeOnDay(id, startOfToday, endOfToday)).length
+    : 0;
+
   res.json({
     specialist: {
       id,
@@ -191,10 +201,7 @@ export async function getOverview(req, res) {
       selectedPlanName: entitlementsFor(specialist).selectedPlanName,
     },
     kpis: {
-      // Appointments are not modelled yet; the card is rendered from this
-      // field, so it appears the moment a booking model exists rather than
-      // showing an invented number in the meantime.
-      todaysAppointments: null,
+      todaysAppointments,
       newEnquiries: { value: newLeads.length, changeFromYesterday: leadsLast24h - leadsPrev24h },
       profileViews: { value: views.total, changePct: views.changePct, series: views.series },
       rating: { value: specialist.ratingAvg ?? 0, count: specialist.ratingCount ?? 0 },
