@@ -24,6 +24,7 @@ import {
 import { getAllSpecialties, getSpecialistBySlug, getSpecialistReviews } from "../lib/api";
 import { formatAvailability, formatPrice, formatRating } from "../lib/format";
 import { EnquiryForm } from "../components/EnquiryForm";
+import { BookingWidget } from "../components/BookingWidget";
 import { MapPreview } from "../components/MapPreview";
 import { Dialog } from "../components/Dialog";
 import { ReviewForm } from "../components/ReviewForm";
@@ -181,6 +182,7 @@ export default function SpecialistProfile() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [enquiryOpen, setEnquiryOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
 
   useEffect(() => {
     setSpecialist(undefined);
@@ -811,7 +813,7 @@ export default function SpecialistProfile() {
                 {/* A booking link is a paid feature, so it only appears
                     when the plan carries one. Where it does, it is the
                     stronger action and takes the primary button. */}
-                {specialist.bookingUrl && (
+                {specialist.bookingUrl ? (
                   <a
                     href={specialist.bookingUrl}
                     target="_blank"
@@ -821,15 +823,22 @@ export default function SpecialistProfile() {
                     Book an appointment
                     <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
                   </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setBookingOpen(true)}
+                    className="flex items-center justify-center gap-2 rounded-full bg-teal-400 px-7 py-3.5 text-[13.5px] font-bold text-navy-950 shadow-lg transition hover:bg-teal-300"
+                  >
+                    Book online
+                    <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+                  </button>
                 )}
+                {/* Always the secondary action now: booking -- built-in or
+                    external -- takes the primary slot above either way. */}
                 <button
                   type="button"
                   onClick={() => setEnquiryOpen(true)}
-                  className={`flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[13.5px] font-bold shadow-lg transition ${
-                    specialist.bookingUrl
-                      ? "bg-white/10 text-white ring-1 ring-white/25 hover:bg-white/20"
-                      : "bg-teal-400 text-navy-950 hover:bg-teal-300"
-                  }`}
+                  className="flex items-center justify-center gap-2 rounded-full bg-white/10 px-7 py-3.5 text-[13.5px] font-bold text-white shadow-lg ring-1 ring-white/25 transition hover:bg-white/20"
                 >
                   Send enquiry
                   <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
@@ -867,6 +876,17 @@ export default function SpecialistProfile() {
         ) : (
           <EnquiryForm specialistId={specialist.id} recipientName={specialist.fullName} />
         )}
+      </Dialog>
+
+      {/* The free, built-in alternative to bookingUrl -- see the note on
+          the trigger button above. */}
+      <Dialog
+        open={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        title={`Book an appointment with ${specialist.fullName}`}
+        description="Pick a time that works — no account needed."
+      >
+        <BookingWidget slug={specialist.slug} recipientName={specialist.fullName} />
       </Dialog>
     </main>
   );
