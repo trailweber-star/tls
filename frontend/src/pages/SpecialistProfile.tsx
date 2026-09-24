@@ -420,7 +420,7 @@ export default function SpecialistProfile() {
             for a floating button at this width. */}
         <PrimaryAction
           specialist={specialist}
-          onEnquire={() => setEnquiryOpen(true)}
+          onBook={() => setBookingOpen(true)}
           className="relative mx-auto mt-9 flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-teal-400 px-6 py-3 text-[13px] font-bold text-navy-950 shadow-xl transition hover:bg-teal-300 sm:hidden"
         />
 
@@ -474,7 +474,7 @@ export default function SpecialistProfile() {
             />
             <PrimaryAction
               specialist={specialist}
-              onEnquire={() => setEnquiryOpen(true)}
+              onBook={() => setBookingOpen(true)}
               className="relative flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3 text-[13px] font-bold text-navy-950 shadow-lg transition hover:bg-teal-300"
             />
           </div>
@@ -575,6 +575,11 @@ export default function SpecialistProfile() {
           {specialist.languages.length > 0 && (
             <p className="mt-5 text-[13.5px] text-ink-muted">
               Speaks <span className="font-semibold text-ink">{specialist.languages.join(", ")}</span>
+            </p>
+          )}
+          {(specialist.coveredRegions?.length ?? 0) > 0 && (
+            <p className="mt-2 text-[13.5px] text-ink-muted">
+              Covers <span className="font-semibold text-ink">{specialist.coveredRegions!.join(", ")}</span>
             </p>
           )}
         </section>
@@ -1692,18 +1697,25 @@ function ClaimInvite({ specialist }: { specialist: SpecialistWithRelations }) {
  * "Send enquiry" at the bottom for the same thing, plus "Book an
  * appointment" for a different thing — three verbs for two actions.
  *
- * Now there are exactly two verbs on the whole site. Booking is the
- * stronger action and wins the primary slot wherever the specialist's
- * plan provides a calendar link; otherwise the primary action is the
- * enquiry. The label always says which one it is.
+ * Now there are exactly two verbs on the whole site, and booking always
+ * wins the primary slot: "Book an appointment" links straight out where
+ * the plan carries a calendar link, and "Book online" opens the free,
+ * built-in BookingWidget everywhere else -- the same fallback the
+ * "Enquire about this specialist" section further down offers, brought
+ * up to the one button a visitor sees without scrolling. That used to
+ * fall back to "Send enquiry" instead, so a listing on no paid plan --
+ * which is every unclaimed one -- showed no booking option at all above
+ * the fold, only well below it. Enquiry is always one tap away as the
+ * secondary button beside this one; it just never needs to stand in for
+ * booking again.
  * ------------------------------------------------------------------ */
 function PrimaryAction({
   specialist,
-  onEnquire,
+  onBook,
   className,
 }: {
   specialist: SpecialistWithRelations;
-  onEnquire: () => void;
+  onBook: () => void;
   className: string;
 }) {
   if (specialist.bookingUrl) {
@@ -1715,8 +1727,8 @@ function PrimaryAction({
     );
   }
   return (
-    <button type="button" onClick={onEnquire} className={className}>
-      Send enquiry
+    <button type="button" onClick={onBook} className={className}>
+      Book online
       <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
     </button>
   );
