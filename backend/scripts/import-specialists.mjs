@@ -722,6 +722,50 @@ const summary = { created: 0, updated: 0, skipped: 0, untouched: 0, places: 0, c
 
 const preview = [];
 
+/* A managed Postgres connection can drop mid-run — Render (and most
+   hosted providers) will close a connection out from under a long batch
+   job regardless of how active it is, and node-postgres surfaces that as
+   "Connection terminated unexpectedly" rather than anything named after
+   the query that was running. That is not this row's fault, so it should
+   not cost the rows after it: every write below is keyed on sourceUrl,
+   slug or email, so redoing a half-finished row's queries against a
+   fresh connection just reaches the same rows again rather than
+   duplicating anything. */
+function isConnectionLoss(err) {
+  const msg = String(err?.message ?? "");
+  return (
+    msg.includes("Connection terminated unexpectedly") ||
+    msg.includes("Connection ended unexpectedly") ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("ETIMEDOUT") ||
+    err?.code === "ECONNRESET" ||
+    err?.code === "57P01" || // admin_shutdown
+    err?.code === "57P02" || // crash_shutdown
+    err?.code === "57P03" // cannot_connect_now
+  );
+}
+
+/** Runs one row's writes, retrying from scratch if the connection dropped
+    mid-row. pg's pool hands out a fresh client on the next query on its
+    own -- this only keeps a transient blip from taking down the whole
+    import. Three tries, a short growing pause between them; a row that
+    still fails on the third is a real problem, not a blip, and is
+    recorded rather than retried forever. */
+async function withRowRetry(line, fn) {
+  const attempts = 3;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isConnectionLoss(err) || attempt === attempts) throw err;
+      console.error(
+        `  [row ${line}] connection dropped (attempt ${attempt}/${attempts}) -- retrying: ${err.message}`
+      );
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
+  }
+}
+
 for (const [index, row] of rows.entries()) {
   const at = (field) => (HARVEST ? null : mapping[field] ? row[mapping[field]] : null);
   const line = index + 2; // +1 for the header, +1 because humans count from one
@@ -885,150 +929,156 @@ for (const [index, row] of rows.entries()) {
 
   if (DRY) continue;
 
-  let specialistId = existing?.id ?? null;
-  let specialistSlug = existing?.slug ?? null;
-  if (existing) {
-    await db.update(t.specialists).set(values).where(eq(t.specialists.id, existing.id));
-    summary.updated += 1;
-  } else {
-    const base = slugify(fullName);
-    let slug = base;
-    for (let n = 2; takenSlugs.has(slug); n += 1) slug = `${base}-${n}`;
-    takenSlugs.add(slug);
-    specialistSlug = slug;
-    const [created] = await db
-      .insert(t.specialists)
-      .values({ id: newId("sp"), slug, ...values })
-      .returning();
-    specialistId = created.id;
-    if (sourceUrl) bySourceUrl.set(sourceUrl, { id: specialistId, slug, sourceUrl });
-    summary.created += 1;
-  }
+  try {
+    await withRowRetry(line, async () => {
+      let specialistId = existing?.id ?? null;
+      let specialistSlug = existing?.slug ?? null;
+      if (existing) {
+        await db.update(t.specialists).set(values).where(eq(t.specialists.id, existing.id));
+        summary.updated += 1;
+      } else {
+        const base = slugify(fullName);
+        let slug = base;
+        for (let n = 2; takenSlugs.has(slug); n += 1) slug = `${base}-${n}`;
+        takenSlugs.add(slug);
+        specialistSlug = slug;
+        const [created] = await db
+          .insert(t.specialists)
+          .values({ id: newId("sp"), slug, ...values })
+          .returning();
+        specialistId = created.id;
+        if (sourceUrl) bySourceUrl.set(sourceUrl, { id: specialistId, slug, sourceUrl });
+        summary.created += 1;
+      }
 
-  if (city?.__new === undefined && city && !cities.some((c) => c.id === city.id)) summary.cities += 1;
+      if (city?.__new === undefined && city && !cities.some((c) => c.id === city.id)) summary.cities += 1;
 
-  /* The specialty link table, so search facets and filters see them.
+      /* The specialty link table, so search facets and filters see them.
 
-     A harvest row tags the whole chain — root, subcategory, leaf — and
-     every subcategory the mapper rated equally. "Hip and knee
-     arthroplasty" names two subspecialties and filing it under whichever
-     sorted first was the wrong answer twice over: it loses the person
-     from one filter and misdescribes them in the other. Both go in. */
-  const tagIds = HARVEST ? facts.tagIds : specialty ? [specialty.id] : [];
-  if (tagIds.length) {
-    await db.delete(t.specialistSpecialties).where(eq(t.specialistSpecialties.specialistId, specialistId));
-    await db
-      .insert(t.specialistSpecialties)
-      .values(tagIds.map((specialtyId) => ({ specialistId, specialtyId })))
-      .onConflictDoNothing();
-  }
+         A harvest row tags the whole chain — root, subcategory, leaf — and
+         every subcategory the mapper rated equally. "Hip and knee
+         arthroplasty" names two subspecialties and filing it under whichever
+         sorted first was the wrong answer twice over: it loses the person
+         from one filter and misdescribes them in the other. Both go in. */
+      const tagIds = HARVEST ? facts.tagIds : specialty ? [specialty.id] : [];
+      if (tagIds.length) {
+        await db.delete(t.specialistSpecialties).where(eq(t.specialistSpecialties.specialistId, specialistId));
+        await db
+          .insert(t.specialistSpecialties)
+          .values(tagIds.map((specialtyId) => ({ specialistId, specialtyId })))
+          .onConflictDoNothing();
+      }
 
-  /* The address. Owned by the specialist rather than attached to a
-     clinic: we know where they practise, not which organisation runs
-     the building, and inventing a clinic to hang it on would be
-     inventing a fact. */
-  if (address && city) {
-    const links = await db
-      .select()
-      .from(t.specialistClinicLocations)
-      .where(eq(t.specialistClinicLocations.specialistId, specialistId));
-    if (links.length) {
-      await db.delete(t.specialistClinicLocations).where(eq(t.specialistClinicLocations.specialistId, specialistId));
-      const owned = await db
-        .select()
-        .from(t.clinicLocations)
-        .where(inArray(t.clinicLocations.id, links.map((l) => l.clinicLocationId)));
-      const mine = owned.filter((l) => l.ownedBySpecialistId === specialistId).map((l) => l.id);
-      if (mine.length) await db.delete(t.clinicLocations).where(inArray(t.clinicLocations.id, mine));
-    }
-    const [location] = await db
-      .insert(t.clinicLocations)
-      .values({
-        id: newId("loc"),
-        clinicId: null,
-        ownedBySpecialistId: specialistId,
-        cityId: city.id,
-        address,
-        postcode,
-        phone: null,
-        lat: coords?.lat ?? city.lat,
-        lng: coords?.lng ?? city.lng,
-      })
-      .returning();
-    await db
-      .insert(t.specialistClinicLocations)
-      .values({ specialistId, clinicLocationId: location.id })
-      .onConflictDoNothing();
-  }
+      /* The address. Owned by the specialist rather than attached to a
+         clinic: we know where they practise, not which organisation runs
+         the building, and inventing a clinic to hang it on would be
+         inventing a fact. */
+      if (address && city) {
+        const links = await db
+          .select()
+          .from(t.specialistClinicLocations)
+          .where(eq(t.specialistClinicLocations.specialistId, specialistId));
+        if (links.length) {
+          await db.delete(t.specialistClinicLocations).where(eq(t.specialistClinicLocations.specialistId, specialistId));
+          const owned = await db
+            .select()
+            .from(t.clinicLocations)
+            .where(inArray(t.clinicLocations.id, links.map((l) => l.clinicLocationId)));
+          const mine = owned.filter((l) => l.ownedBySpecialistId === specialistId).map((l) => l.id);
+          if (mine.length) await db.delete(t.clinicLocations).where(inArray(t.clinicLocations.id, mine));
+        }
+        const [location] = await db
+          .insert(t.clinicLocations)
+          .values({
+            id: newId("loc"),
+            clinicId: null,
+            ownedBySpecialistId: specialistId,
+            cityId: city.id,
+            address,
+            postcode,
+            phone: null,
+            lat: coords?.lat ?? city.lat,
+            lng: coords?.lng ?? city.lng,
+          })
+          .returning();
+        await db
+          .insert(t.specialistClinicLocations)
+          .values({ specialistId, clinicLocationId: location.id })
+          .onConflictDoNothing();
+      }
 
-  /* ----------------------------------------------- the shell account
+      /* ----------------------------------------------- the shell account
 
-     An imported listing with no account behind it is a listing an
-     administrator cannot open: impersonation borrows a member's
-     session, and there is no session to borrow. So every import gets an
-     account — with no password anybody has ever chosen.
+         An imported listing with no account behind it is a listing an
+         administrator cannot open: impersonation borrows a member's
+         session, and there is no session to borrow. So every import gets an
+         account — with no password anybody has ever chosen.
 
-     UNUSABLE_PASSWORD is not a scrypt string and verifyPassword only
-     accepts one, so no password on earth signs in to it, and the
-     forgot-password route refuses it for the same reason. That second
-     part is the one that matters: without it, anybody who could receive
-     mail at this address could reset their way in and skip the claim
-     review against the regulator's register.
+         UNUSABLE_PASSWORD is not a scrypt string and verifyPassword only
+         accepts one, so no password on earth signs in to it, and the
+         forgot-password route refuses it for the same reason. That second
+         part is the one that matters: without it, anybody who could receive
+         mail at this address could reset their way in and skip the claim
+         review against the regulator's register.
 
-     No email is harvested and none is guessed. Brilliant Directories
-     routes member contact through /connect precisely so addresses
-     cannot be scraped, and an address scraped off a page would not be
-     consent to be emailed anyway. The account is keyed on the slug at a
-     domain that goes nowhere: it exists to be borrowed by an admin, not
-     written to, and the real address arrives when the clinician claims
-     the listing. */
-  const accountEmail = `${specialistSlug}@unclaimed.toplocalspecialists.com`;
-  let userId = existingUsers.get(accountEmail.toLowerCase()) ?? null;
-  if (!userId) {
-    userId = newId("usr");
-    await db.insert(t.users).values({
-      id: userId,
-      email: accountEmail,
-      passwordHash: UNUSABLE_PASSWORD,
-      fullName,
-      role: "specialist",
-      active: true,
-      adminNotes:
-        `Unclaimed listing imported from ${SOURCE}. No password has been set; an admin ` +
-        `can sign in as them from the members list, and claiming goes through /claims.`,
+         No email is harvested and none is guessed. Brilliant Directories
+         routes member contact through /connect precisely so addresses
+         cannot be scraped, and an address scraped off a page would not be
+         consent to be emailed anyway. The account is keyed on the slug at a
+         domain that goes nowhere: it exists to be borrowed by an admin, not
+         written to, and the real address arrives when the clinician claims
+         the listing. */
+      const accountEmail = `${specialistSlug}@unclaimed.toplocalspecialists.com`;
+      let userId = existingUsers.get(accountEmail.toLowerCase()) ?? null;
+      if (!userId) {
+        userId = newId("usr");
+        await db.insert(t.users).values({
+          id: userId,
+          email: accountEmail,
+          passwordHash: UNUSABLE_PASSWORD,
+          fullName,
+          role: "specialist",
+          active: true,
+          adminNotes:
+            `Unclaimed listing imported from ${SOURCE}. No password has been set; an admin ` +
+            `can sign in as them from the members list, and claiming goes through /claims.`,
+        });
+        existingUsers.set(accountEmail.toLowerCase(), userId);
+        summary.accounts += 1;
+      }
+      await db.update(t.specialists).set({ userId }).where(eq(t.specialists.id, specialistId));
+
+      if (WITH_PHOTOS) {
+        /* A harvest row names a file that harvest-live.mjs --photos already
+           downloaded and checked the magic bytes of. Reading it off disk
+           rather than fetching it again is not just faster: the old site is
+           not reachable from every machine this might run on, and a photo
+           that verified as a real image an hour ago should not get a second
+           chance to arrive as a 404 page. */
+        const local = facts?.photoFile
+          ? path.join(BACKEND_DATA_PHOTOS, facts.photoFile)
+          : null;
+        try {
+          let stored = null;
+          if (local && fs.existsSync(local)) {
+            stored = await storeBuffer(fs.readFileSync(local));
+          } else if (!HARVEST) {
+            const photo = clean(at("photoUrl"));
+            if (photo) stored = await fetchPhoto(photo, slugify(fullName));
+          } else if (facts?.photoFile) {
+            summary.problems.push(`row ${line}: ${facts.photoFile} is named in the CSV but not on disk — run harvest-live.mjs --photos`);
+          }
+          if (stored) {
+            await db.update(t.specialists).set({ photoUrl: stored }).where(eq(t.specialists.id, specialistId));
+            summary.photos += 1;
+          }
+        } catch (err) {
+          summary.problems.push(`row ${line}: photo not stored — ${err.message}`);
+        }
+      }
     });
-    existingUsers.set(accountEmail.toLowerCase(), userId);
-    summary.accounts += 1;
-  }
-  await db.update(t.specialists).set({ userId }).where(eq(t.specialists.id, specialistId));
-
-  if (WITH_PHOTOS) {
-    /* A harvest row names a file that harvest-live.mjs --photos already
-       downloaded and checked the magic bytes of. Reading it off disk
-       rather than fetching it again is not just faster: the old site is
-       not reachable from every machine this might run on, and a photo
-       that verified as a real image an hour ago should not get a second
-       chance to arrive as a 404 page. */
-    const local = facts?.photoFile
-      ? path.join(BACKEND_DATA_PHOTOS, facts.photoFile)
-      : null;
-    try {
-      let stored = null;
-      if (local && fs.existsSync(local)) {
-        stored = await storeBuffer(fs.readFileSync(local));
-      } else if (!HARVEST) {
-        const photo = clean(at("photoUrl"));
-        if (photo) stored = await fetchPhoto(photo, slugify(fullName));
-      } else if (facts?.photoFile) {
-        summary.problems.push(`row ${line}: ${facts.photoFile} is named in the CSV but not on disk — run harvest-live.mjs --photos`);
-      }
-      if (stored) {
-        await db.update(t.specialists).set({ photoUrl: stored }).where(eq(t.specialists.id, specialistId));
-        summary.photos += 1;
-      }
-    } catch (err) {
-      summary.problems.push(`row ${line}: photo not stored — ${err.message}`);
-    }
+  } catch (err) {
+    summary.problems.push(`row ${line}: import failed -- ${err.message}`);
   }
 }
 

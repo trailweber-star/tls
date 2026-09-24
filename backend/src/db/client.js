@@ -42,6 +42,14 @@ export function getDb() {
       ssl: sslOption(),
       max: Number(process.env.DATABASE_POOL_MAX ?? 10),
       idleTimeoutMillis: 30_000,
+      // Managed Postgres (Render included) will silently close a
+      // connection out from under a long-running script -- a batch
+      // import can run for many minutes without the socket ever going
+      // idle, and it still gets cut. TCP keepalive is what tells the
+      // network path this connection is alive, so it does not get
+      // treated as abandoned and dropped mid-query.
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10_000,
     });
     pool.on("error", (err) => {
       // An idle client erroring is not fatal — the pool replaces it.
