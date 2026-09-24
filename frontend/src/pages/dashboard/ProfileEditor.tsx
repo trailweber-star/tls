@@ -10,6 +10,7 @@ import {
   Loader2,
   Lock,
   MapPin,
+  Phone,
   Plus,
   Save,
   Stethoscope,
@@ -95,6 +96,8 @@ type Draft = {
   facebook: string;
   youtube: string;
   bookingUrl: string;
+  publicEmail: string;
+  publicPhone: string;
 };
 
 function toDraft(p: DashboardProfile): Draft {
@@ -138,6 +141,8 @@ function toDraft(p: DashboardProfile): Draft {
     facebook: p.socials?.facebook ?? "",
     youtube: p.socials?.youtube ?? "",
     bookingUrl: p.bookingUrl ?? "",
+    publicEmail: p.publicEmail ?? "",
+    publicPhone: p.publicPhone ?? "",
   };
 }
 
@@ -211,6 +216,8 @@ function toPatch(d: Draft): ProfilePatch {
           }
         : null,
     bookingUrl: nullable(d.bookingUrl),
+    publicEmail: nullable(d.publicEmail),
+    publicPhone: nullable(d.publicPhone),
   };
 }
 
@@ -819,6 +826,48 @@ export default function ProfileEditor() {
                 className={input}
               />
             </Labelled>
+          </GatedSection>
+
+          {/* Distinct from the enquiry address above: that one is
+              private and never leaves your inbox. These two are
+              click-to-reveal details on your public profile -- leave
+              either blank and there's simply nothing for a patient to
+              reveal there. Each field is only shown when its own plan
+              feature allows it, so Basic can publish a phone number
+              without also publishing an email address. */}
+          <GatedSection
+            id="public-contact"
+            icon={Phone}
+            title="Published contact details"
+            hint="Shown as click-to-reveal buttons on your profile, separate from where enquiries land."
+            entitled={can("phoneReveal") || can("publicContactEmail")}
+            planName={planName}
+          >
+            {can("phoneReveal") && (
+              <Labelled label="Published phone" hint="What a patient sees after tapping “Reveal phone” on your profile.">
+                <input
+                  type="tel"
+                  value={draft.publicPhone}
+                  onChange={(e) => set("publicPhone", e.target.value)}
+                  placeholder="020 7946 0958"
+                  className={input}
+                />
+              </Labelled>
+            )}
+            {can("publicContactEmail") && (
+              <Labelled
+                label="Published email"
+                hint="What a patient sees after tapping “Reveal email” on your profile."
+              >
+                <input
+                  type="email"
+                  value={draft.publicEmail}
+                  onChange={(e) => set("publicEmail", e.target.value)}
+                  placeholder="reception@yourclinic.co.uk"
+                  className={input}
+                />
+              </Labelled>
+            )}
           </GatedSection>
 
           <GatedSection

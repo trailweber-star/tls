@@ -774,6 +774,15 @@ export const specialists = pgTable(
     contactEmail: text("contact_email"),
     contactPhone: text("contact_phone"),
 
+    // The opposite of the pair above: a number and address the
+    // specialist has chosen to publish, shown to patients as a
+    // click-to-reveal detail on their profile — gated by plan in
+    // lib/profileGate.js (publicContactEmail / phoneReveal), same as
+    // the gallery and video bio. Nobody is required to fill these in,
+    // and leaving them blank just means nothing to reveal.
+    publicEmail: text("public_email"),
+    publicPhone: text("public_phone"),
+
     yearsExperience: integer("years_experience"),
 
     // All three travel together: without a url the card is not rendered.

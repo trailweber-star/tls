@@ -263,6 +263,8 @@ export interface DashboardProfile {
   websiteUrl: string | null;
   socials: { linkedin?: string | null; x?: string | null; instagram?: string | null; facebook?: string | null; youtube?: string | null } | null;
   bookingUrl: string | null;
+  publicEmail: string | null;
+  publicPhone: string | null;
   verificationStatus: VerificationStatus;
   primarySpecialty: { slug: string | null; name: string | null } | null;
   treatments: { id: string; name: string }[];
@@ -308,6 +310,8 @@ export interface ProfilePatch {
   websiteUrl?: string | null;
   socials?: Record<string, string | null> | null;
   bookingUrl?: string | null;
+  publicEmail?: string | null;
+  publicPhone?: string | null;
   primarySpecialtySlug?: string | null;
   treatmentNames?: string[];
   locations?: {

@@ -1083,7 +1083,14 @@ function StatsBar({ specialist }: { specialist: SpecialistWithRelations }) {
       : { icon: ShieldCheck, value: "Pending", label: "verification" },
   ].filter(Boolean) as { icon: typeof Activity; value: string; label: string }[];
 
-  if (!stats.length) return null;
+  // Click-to-reveal, not plain display: each needs its own tile
+  // component rather than the {value, label} shape above. Omitted
+  // entirely when entitled but nothing has been published — there is
+  // nothing to reveal, same reasoning as the plain stats hiding on null.
+  const showPhoneTile = specialist.plan?.features.phoneReveal ? Boolean(specialist.publicPhone) : true;
+  const showEmailTile = specialist.plan?.features.publicContactEmail ? Boolean(specialist.publicEmail) : true;
+
+  if (!stats.length && !showPhoneTile && !showEmailTile) return null;
 
   return (
     <div className="mt-8 grid grid-cols-2 gap-4 rounded-[1.25rem] border border-line bg-white px-5 py-5 shadow-sm sm:grid-cols-4 sm:px-7">
@@ -1098,7 +1105,93 @@ function StatsBar({ specialist }: { specialist: SpecialistWithRelations }) {
           </span>
         </div>
       ))}
+      {showPhoneTile && (
+        <RevealTile
+          icon={Phone}
+          label="phone"
+          entitled={Boolean(specialist.plan?.features.phoneReveal)}
+          value={specialist.publicPhone ?? null}
+          href={(v) => `tel:${v.replace(/\s/g, "")}`}
+        />
+      )}
+      {showEmailTile && (
+        <RevealTile
+          icon={Mail}
+          label="email"
+          entitled={Boolean(specialist.plan?.features.publicContactEmail)}
+          value={specialist.publicEmail ?? null}
+          href={(v) => `mailto:${v}`}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * One click-to-reveal tile: a phone number or email address, hidden
+ * until tapped so the page itself doesn't publish it to anything
+ * scraping the rendered HTML, and gated to "Upgrade to reveal" when the
+ * specialist's plan doesn't include it.
+ */
+function RevealTile({
+  icon: Icon,
+  label,
+  entitled,
+  value,
+  href,
+}: {
+  icon: typeof Activity;
+  label: string;
+  entitled: boolean;
+  value: string | null;
+  href: (value: string) => string;
+}) {
+  const [revealed, setRevealed] = useState(false);
+
+  if (!entitled) {
+    return (
+      <Link to="/pricing" className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-paper-tint text-ink-faint ring-1 ring-line">
+          <Lock className="h-4 w-4" strokeWidth={2} />
+        </span>
+        <span className="flex min-w-0 flex-col">
+          <span className="font-display text-[14px] font-bold leading-tight text-teal-700 hover:underline">
+            Upgrade
+          </span>
+          <span className="truncate text-[12px] text-ink-muted">to reveal {label}</span>
+        </span>
+      </Link>
+    );
+  }
+
+  if (!value) return null;
+
+  if (revealed) {
+    return (
+      <a href={href(value)} className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-600 ring-1 ring-teal-100">
+          <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+        </span>
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-display text-[14px] font-bold leading-tight text-ink hover:text-teal-700">
+            {value}
+          </span>
+          <span className="truncate text-[12px] text-ink-muted">{label}</span>
+        </span>
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => setRevealed(true)} className="flex items-center gap-3 text-left">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-600 ring-1 ring-teal-100">
+        <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="font-display text-[14px] font-bold leading-tight text-ink">Reveal</span>
+        <span className="truncate text-[12px] text-ink-muted">{label}</span>
+      </span>
+    </button>
   );
 }
 

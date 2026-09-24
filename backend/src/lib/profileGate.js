@@ -123,9 +123,10 @@ const GATED = [
   { field: "bookingUrl", feature: "bookingLink", empty: null },
   { field: "websiteUrl", feature: "websiteAndSocial", empty: null },
   { field: "socials", feature: "websiteAndSocial", empty: null },
-  // The published contact address, distinct from the private inbox
-  // enquiries are routed to — that one is never serialised at all.
+  // The published contact details, distinct from the private inbox
+  // enquiries are routed to — that pair is never serialised at all.
   { field: "publicEmail", feature: "publicContactEmail", empty: null },
+  { field: "publicPhone", feature: "phoneReveal", empty: null },
 ];
 
 /**

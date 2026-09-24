@@ -250,6 +250,10 @@ const profileSchema = z.object({
     .nullable()
     .optional(),
   bookingUrl: optionalUrlField({ max: 300 }),
+  // Published contact details -- distinct from contactEmail/contactPhone
+  // above, which stay private. See the note on the columns in schema.js.
+  publicEmail: z.string().email().nullable().optional(),
+  publicPhone: z.string().max(50).nullable().optional(),
   // Joined collections. Sent as complete sets — the server replaces what
   // the specialist has rather than trying to diff two lists.
   treatmentNames: z.array(z.string().min(2).max(120)).max(40).optional(),
@@ -303,6 +307,8 @@ export async function getProfile(req, res) {
       websiteUrl: plain.websiteUrl ?? null,
       socials: plain.socials ?? null,
       bookingUrl: plain.bookingUrl ?? null,
+      publicEmail: plain.publicEmail ?? null,
+      publicPhone: plain.publicPhone ?? null,
       verificationStatus: plain.verificationStatus,
       primarySpecialty: plain.primarySpecialty
         ? {

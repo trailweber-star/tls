@@ -193,6 +193,7 @@ export interface SpecialistWithRelations {
   socials?: { linkedin?: string | null; x?: string | null; instagram?: string | null; facebook?: string | null; youtube?: string | null } | null;
   bookingUrl?: string | null;
   publicEmail?: string | null;
+  publicPhone?: string | null;
   /** Search cards only. */
   verifiedBadge?: boolean;
   planTier?: "basic" | "premium" | "clinwell";
