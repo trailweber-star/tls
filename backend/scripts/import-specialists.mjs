@@ -46,6 +46,7 @@ import { newId } from "../src/db/schema.js";
 import { registerGeocoder } from "../src/lib/geocoders.js";
 import { geocode, hasGeocoder } from "../src/lib/geo.js";
 import { UNUSABLE_PASSWORD } from "../src/lib/auth.js";
+import { registerStorageProvider } from "../src/lib/storage.js";
 
 /* ----------------------------------------------------------- the file */
 
@@ -695,6 +696,38 @@ if (WITH_PHOTOS) {
   person's initials, and let them upload their own when they claim the
   listing.
 `);
+
+  /* registerStorageProvider() is normally called once at boot, by
+     server.js. This script is not the server -- it is a one-off run
+     against a remote database -- so nothing calls it, and saveImage()
+     silently falls back to writing the file to THIS machine's local
+     disk (backend/uploads/) and returning a URL built from
+     PUBLIC_API_URL, which is almost never set on a laptop's shell.
+
+     The result was invisible: the run reports "N photos stored", the
+     row succeeds, and the photoUrl written to the production database
+     is either a bare "/uploads/..." path (resolves against whatever
+     origin the browser happens to be on, not this API) or an absolute
+     URL pointing at a file that only ever existed on this laptop --
+     never uploaded anywhere the live site can read it. Either way,
+     every photo "imported" this way is a broken image on the live
+     specialist's profile, not a stored one. Registering the provider
+     here, the same way server.js does, is what actually sends the
+     bytes to Cloudinary instead of the local disk fallback. */
+  const storage = await registerStorageProvider();
+  if (storage.provider !== "cloudinary") {
+    console.error(
+      `\n  STOPPING: --photos was passed but photos are going to "${storage.provider}", not Cloudinary.\n` +
+      `  CLOUDINARY_URL is not set (or failed to initialise) in this shell, so every\n` +
+      `  photoUrl this run wrote would point at a file sitting only on this laptop --\n` +
+      `  broken on the live site the moment this terminal closes.\n\n` +
+      `  Set CLOUDINARY_URL in the same command and run again, e.g.:\n` +
+      `    CLOUDINARY_URL="cloudinary://<key>:<secret>@<cloud name>" DATABASE_URL="..." \\\n` +
+      `      node scripts/import-specialists.mjs ${file} --source "..." --photos\n`
+    );
+    process.exit(1);
+  }
+  console.log(`  Photos are going to Cloudinary. Good to run.\n`);
 }
 
 /** Where harvest-live.mjs --photos leaves what it downloaded. */
