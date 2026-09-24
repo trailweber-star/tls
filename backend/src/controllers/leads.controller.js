@@ -7,7 +7,8 @@ import { FORWARD_BACKOFF_MS, forwardSavedLead, forwardingGate } from "../lib/cli
 import { demoLeads } from "../data/leads-store.js";
 import { entitlementsFor } from "../lib/plans.js";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+import { siteUrl } from "../lib/urls.js";
+const SITE_URL = siteUrl();
 
 // Look up who the enquiry is for, in whichever storage mode is active.
 async function findSpecialist(id) {

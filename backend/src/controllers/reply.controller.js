@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import { leadMessages as messageRepo, specialists as specialistRepo } from "../db/repos.js";
 import { sendMail, buildPatientReplyEmail } from "../lib/mailer.js";
+import { siteUrl } from "../lib/urls.js";
 
 /* ------------------------------------------------------------------ *
  * A patient's side of a message thread
@@ -49,7 +50,7 @@ export async function postReply(req, res) {
   const specialist = await specialistRepo.findById(lead.specialistId);
   let delivery = { sent: false, reason: "no-recipient" };
   if (specialist?.contactEmail) {
-    const profileUrl = `${(process.env.SITE_URL || "").replace(/\/+$/, "")}/dashboard/messages`;
+    const profileUrl = `${siteUrl()}/dashboard/messages`;
     delivery = await sendMail(buildPatientReplyEmail({ specialist, lead, body: parsed.data.body, profileUrl }));
   }
   res.status(201).json({ ok: true, message, delivery });

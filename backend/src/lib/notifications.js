@@ -4,6 +4,7 @@ import { getDb, isDbConfigured } from "../db/client.js";
 import { notifications as notificationsTable } from "../db/schema.js";
 import { sendMail } from "./mailer.js";
 import { sendPush } from "./push.js";
+import { siteUrl } from "./urls.js";
 
 /* ------------------------------------------------------------------ *
  * Notifications
@@ -23,6 +24,11 @@ const notifications = [];
 
 export const NOTIFICATION_TYPES = {
   SIGNUP_PENDING: "signup_pending",
+  // Sent to the specialist themselves the moment they apply -- not to be
+  // confused with SIGNUP_PENDING above, which is the admin's copy of the
+  // same event. Informational only (nothing for the specialist to act on
+  // yet), so it is deliberately left out of ACTIONABLE below.
+  APPLICATION_RECEIVED: "application_received",
   CLAIM_PENDING: "claim_pending",
   APPROVAL_OVERDUE: "approval_overdue",
   PAYMENT_RECEIVED: "payment_received",
@@ -37,6 +43,10 @@ export const NOTIFICATION_TYPES = {
   CLINWELL_EVENT_FAILED: "clinwell_event_failed",
   // A hospital, clinic, pharmacy or care home has asked to be quoted.
   ORG_APPLICATION: "org_application",
+  // Someone emailed the receiving domain -- see controllers/mail.controller.js.
+  INBOUND_MAIL: "inbound_mail",
+  // A sent email bounced or was marked as spam -- same controller.
+  MAIL_BOUNCED: "mail_bounced",
 };
 
 /** Which notifications count as work an admin still has to do. */
@@ -58,6 +68,12 @@ const ACTIONABLE = new Set([
   // An organisation waiting on a quote is work, and the most expensive
   // kind to leave sitting: they are asking to give us money.
   NOTIFICATION_TYPES.ORG_APPLICATION,
+  // An email from a real person is waiting on a reply from a human, same
+  // as any other unanswered message would be.
+  NOTIFICATION_TYPES.INBOUND_MAIL,
+  // A bounce or complaint is a delivery problem that degrades the
+  // sending domain for every other member until someone looks at it.
+  NOTIFICATION_TYPES.MAIL_BOUNCED,
 ]);
 
 function normalise(row) {
@@ -290,7 +306,7 @@ export async function notify({
     delivery.email = await sendMail({
       to: email,
       subject: title,
-      text: `${body}\n\n${url ? `${process.env.SITE_URL || "http://localhost:5173"}${url}` : ""}`.trim(),
+      text: `${body}\n\n${url ? `${siteUrl()}${url}` : ""}`.trim(),
     }).catch((err) => ({ sent: false, reason: String(err?.message ?? err) }));
   }
 

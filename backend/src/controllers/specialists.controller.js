@@ -1,4 +1,5 @@
 import { isDbConfigured } from "../config/db.js";
+import { siteUrl } from "../lib/urls.js";
 import { branchSlugsFor, isKnownTab } from "../lib/searchTabs.js";
 import { specialists as specialistRepo, taxonomy as taxonomyRepo } from "../db/repos.js";
 import {
@@ -109,7 +110,7 @@ export async function getSpecialistBySlug(req, res) {
   recordProfileView(specialist.id);
   // Off the response: a slow write here must never be the reason a
   // patient waits longer to see the profile they clicked through to.
-  const { referrer, searchTerm } = classifyReferrer(req.get("referer"), process.env.SITE_URL);
+  const { referrer, searchTerm } = classifyReferrer(req.get("referer"), siteUrl());
   persistProfileView({ specialistId: specialist.id, referrer, searchTerm, path: req.originalUrl }).catch(() => {});
   res.json(gateProfile(specialist, specialist, viewerRole(req, specialist.id)));
 }

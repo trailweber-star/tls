@@ -22,7 +22,8 @@ import { storageProviderName } from "../lib/storage.js";
 import { hasPushProvider, pushProviderName } from "../lib/push.js";
 import { mapProvider } from "../lib/maps.js";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+import { siteUrl } from "../lib/urls.js";
+const SITE_URL = siteUrl();
 
 // Everything in this file sits behind requireRole("admin") — see routes.
 

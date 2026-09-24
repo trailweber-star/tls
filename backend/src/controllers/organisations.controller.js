@@ -34,7 +34,8 @@ import { clientIp } from "../lib/requestIp.js";
 import { createCheckout, quoteAmount } from "../lib/payments.js";
 import { getPlan } from "../lib/plans.js";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+import { siteUrl } from "../lib/urls.js";
+const SITE_URL = siteUrl();
 
 /**
  * What the form accepts.

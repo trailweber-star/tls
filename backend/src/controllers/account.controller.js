@@ -47,7 +47,8 @@ import {
 import { requestOrigin } from "../lib/requestIp.js";
 import { sendMail } from "../lib/mailer.js";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+import { siteUrl } from "../lib/urls.js";
+const SITE_URL = siteUrl();
 
 /* A day. Long enough to reach an address somebody only checks in the
    evening; short enough that a half-finished change is not still open

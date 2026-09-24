@@ -54,7 +54,8 @@ import { requestOrigin } from "../lib/requestIp.js";
 import { hasMailer, sendMail } from "../lib/mailer.js";
 import { publicUser } from "./auth.controller.js";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+import { siteUrl } from "../lib/urls.js";
+const SITE_URL = siteUrl();
 
 /* One hour. Long enough to fetch the email on another device and come
    back to it; short enough that a link still sitting in a shared inbox

@@ -33,7 +33,8 @@ import { mockSpecialistsWithRelations, updateDemoSpecialist } from "../data/mock
 import { specialistIdOf } from "../middleware/auth.js";
 import { sendMail } from "../lib/mailer.js";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+import { siteUrl } from "../lib/urls.js";
+const SITE_URL = siteUrl();
 
 /* ------------------------------------------------------------------ *
  * Public catalogue

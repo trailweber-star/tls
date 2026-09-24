@@ -6,6 +6,7 @@ import {
   appointments as appointmentRepo,
 } from "../db/repos.js";
 import { sendMail, buildAppointmentEmails } from "../lib/mailer.js";
+import { siteUrl } from "../lib/urls.js";
 
 /* ------------------------------------------------------------------ *
  * Booking, from a specialist's public profile
@@ -125,7 +126,7 @@ export async function createAppointment(req, res) {
     status: "confirmed",
   });
 
-  const profileUrl = `${(process.env.SITE_URL || "").replace(/\/+$/, "")}/dashboard/appointments`;
+  const profileUrl = `${siteUrl()}/dashboard/appointments`;
   const { toSpecialist, toPatient } = buildAppointmentEmails({ specialist, appointment, profileUrl });
   if (specialist.contactEmail) await sendMail(toSpecialist).catch(() => {});
   if (toPatient) await sendMail(toPatient).catch(() => {});

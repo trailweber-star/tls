@@ -17,7 +17,7 @@ import { issueSession } from "../lib/sessions.js";
 import { challengeFor, needsSecondFactor } from "./mfa.controller.js";
 import { requestOrigin } from "../lib/requestIp.js";
 import { entitlementsFor, getPlan, isPaidPlan } from "../lib/plans.js";
-import { NOTIFICATION_TYPES, notifyAdmins } from "../lib/notifications.js";
+import { NOTIFICATION_TYPES, notify, notifyAdmins } from "../lib/notifications.js";
 import { attachSpecialistId } from "../db/repos.js";
 
 /**
@@ -44,6 +44,29 @@ async function announceApplication({ specialist, plan, planInterval }) {
     subjectId: specialist.id,
     key: `${NOTIFICATION_TYPES.SIGNUP_PENDING}:${specialist.id}`,
   });
+}
+
+/**
+ * Tell the applicant themselves their application arrived -- the same
+ * courtesy admins already get, extended to the person waiting on a
+ * decision. Reuses the notify() pipeline, so it is bell + email + push
+ * (push only if they already have a device registered, which a brand
+ * new account never does -- it simply no-ops there).
+ */
+async function welcomeApplicant({ user, specialist, plan, email }) {
+  await notify({
+    userId: String(user.id ?? user._id),
+    type: NOTIFICATION_TYPES.APPLICATION_RECEIVED,
+    title: "We've received your application",
+    body:
+      `Thanks for applying to Top Local Specialists on the ${getPlan(plan).name} plan. ` +
+      `Your profile is being reviewed and stays hidden from patients until an admin approves it — ` +
+      `we'll email you the moment that happens.`,
+    url: "/dashboard",
+    subjectId: specialist.id,
+    key: `${NOTIFICATION_TYPES.APPLICATION_RECEIVED}:${specialist.id}`,
+    email,
+  }).catch(() => {});
 }
 
 // The account shape the client gets. passwordHash is stripped here rather
@@ -142,6 +165,7 @@ export async function register(req, res) {
       specialistId: specialist.id,
     });
     await announceApplication({ specialist, plan, planInterval });
+    await welcomeApplicant({ user, specialist, plan, email });
 
     const demoSession = await issueSession(req, user);
     return res.status(201).json({ token: demoSession.token, user: publicUser(user) });
@@ -214,6 +238,7 @@ export async function register(req, res) {
     plan,
     planInterval,
   });
+  await welcomeApplicant({ user, specialist, plan, email });
 
   const opened = await issueSession(req, user);
   res.status(201).json({ token: opened.token, user: publicUser(user) });

@@ -118,6 +118,7 @@ import {
   simulatePayment,
   startCheckout,
 } from "../controllers/billing.controller.js";
+import { handleInboundMail } from "../controllers/mail.controller.js";
 import { receivePracticeStatus } from "../controllers/clinwellStatus.controller.js";
 import { getClinwellOutbox, requeueClinwellEvent } from "../controllers/clinwellAdmin.controller.js";
 import {
@@ -295,6 +296,13 @@ router.post("/billing/simulate-payment", requireAuth, requireRole("specialist"),
 // The provider's callback. Unauthenticated by necessity; the payload is
 // verified by the provider adapter, never trusted on its face.
 router.post("/billing/webhook", paymentWebhook);
+
+/* ------------------------------------------------------------- mail
+   Resend's inbound webhook -- an email arriving, a bounce, a complaint.
+   Unauthenticated by necessity, same as the billing webhook above; the
+   payload is verified by its own signature check, never trusted on its
+   face. See controllers/mail.controller.js. */
+router.post("/mail/inbound", handleInboundMail);
 
 /* --------------------------------------------------------- partners */
 /* The inbound half of the ClinWell integration (contract v1.0.1,

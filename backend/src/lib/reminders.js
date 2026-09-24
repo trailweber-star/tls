@@ -13,6 +13,7 @@ import { NOTIFICATION_TYPES, notify, notifyAdmins } from "./notifications.js";
 import { expireStaleBadges } from "../controllers/clinwellStatus.controller.js";
 import { sweepEnquiryForwarding } from "./clinwellEnquiries.js";
 import { purgeExpiredSessions } from "./sessions.js";
+import { siteUrl } from "./urls.js";
 
 /* ------------------------------------------------------------------ *
  * Overdue-approval sweep
@@ -178,7 +179,7 @@ export async function sweepOverdueReviews() {
  * that came from a new month or from an upgrade to Premium, and sends
  * the alert that was withheld at the time.
  * ------------------------------------------------------------------ */
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+const SITE_URL = siteUrl();
 
 export async function releaseHeldEnquiries() {
   if (!isDbConfigured()) return { held: 0, released: 0 };

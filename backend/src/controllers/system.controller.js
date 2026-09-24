@@ -14,6 +14,7 @@ import { storageProviderName } from "../lib/storage.js";
 import { mapProvider } from "../lib/maps.js";
 import { clientIp } from "../lib/requestIp.js";
 import { adminAudit } from "../db/repos.js";
+import { siteUrl } from "../lib/urls.js";
 
 /* ------------------------------------------------------------------ *
  * System and platform-wide enquiries
@@ -46,7 +47,7 @@ export async function getSystemStatus(req, res) {
     storage: { mode: isDbConfigured() ? "postgres" : "demo" },
     media: { provider: storageProviderName() },
     maps: { provider: mapProvider() },
-    site: process.env.SITE_URL || "http://localhost:5173",
+    site: siteUrl(),
   });
 }
 

@@ -13,7 +13,8 @@ import { getPlan, isPaidPlan } from "../lib/plans.js";
 import { sendMail } from "../lib/mailer.js";
 import { NOTIFICATION_TYPES, notificationStore, notifyAdmins } from "../lib/notifications.js";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+import { siteUrl } from "../lib/urls.js";
+const SITE_URL = siteUrl();
 
 /* ------------------------------------------------------------------ *
  * Claiming a listing

@@ -130,3 +130,22 @@ export function optionalUrlField(options) {
     .transform((value) => (value === "" ? null : value))
     .optional();
 }
+
+/**
+ * The origin to use in outbound links and email footers/buttons.
+ *
+ * Mirrors publicOriginFrom() in lib/storage.js, but for the frontend
+ * origin rather than this API's own. Before this, every caller fell back
+ * straight to "http://localhost:5173" whenever SITE_URL was unset -- the
+ * exact way production emails and links quietly said "localhost" instead
+ * of toplocalspecialists.com. RENDER_EXTERNAL_URL is a real, working
+ * fallback in every Render environment, so the site's own address is
+ * tried before anything gives up and says localhost.
+ */
+export function siteUrl() {
+  for (const candidate of [process.env.SITE_URL, process.env.RENDER_EXTERNAL_URL]) {
+    const origin = normaliseOrigin(candidate);
+    if (origin) return origin;
+  }
+  return "http://localhost:5173";
+}

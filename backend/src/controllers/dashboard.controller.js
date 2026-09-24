@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { optionalUrlField, urlField } from "../lib/urls.js";
+import { optionalUrlField, siteUrl, urlField } from "../lib/urls.js";
 import { isDbConfigured } from "../config/db.js";
 import {
   clinicLocations as locationRepo,
@@ -771,7 +771,7 @@ export async function sendMessage(req, res) {
   let delivery = { sent: false, reason: "no-recipient" };
   if (lead.email) {
     const specialist = await loadSpecialist(id);
-    const replyUrl = `${(process.env.SITE_URL || "").replace(/\/+$/, "")}/reply/${lead.replyToken}`;
+    const replyUrl = `${siteUrl()}/reply/${lead.replyToken}`;
     delivery = await sendMail(buildMessageEmail({ specialist, lead, body: parsed.data.body, replyUrl }));
   }
   res.status(201).json({ ok: true, message, delivery });

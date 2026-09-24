@@ -35,6 +35,8 @@
  * "check the server logs".
  * ------------------------------------------------------------------ */
 
+import { siteUrl } from "./urls.js";
+
 /* Read at call time, not at import.
    Two reasons, and the second is the important one: a test can set a
    guard and see it take effect, and an operator who fixes MAIL_ALLOWLIST
@@ -129,7 +131,7 @@ export function mailerStatus() {
 
 /* ------------------------------------------------------ the wrapper */
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+const SITE_URL = siteUrl();
 
 /**
  * The plain-text message, wrapped in a plain HTML one.
@@ -139,6 +141,30 @@ const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
  * part carried alongside. Clinical correspondence that arrives looking
  * like a marketing blast gets treated like one.
  */
+/* Brand colors, in one place, so the button, the accent bar and the logo
+   lockup all draw from the same palette as the rest of the site rather
+   than three independent guesses at "teal". */
+const BRAND = {
+  tealDark: "#0a6f66",
+  teal: "#0d9488",
+  leaf: "#65b32e",
+  paperMuted: "#f7fafb",
+  ink: "#0b1220",
+  inkBody: "#243447",
+  inkFaint: "#8998a8",
+  line: "#e8eef4",
+};
+
+/**
+ * The plain-text message, wrapped in a branded HTML one.
+ *
+ * A logo lockup and a two-tone accent bar carry the brand; everything
+ * else stays a plain, table-free, single-column layout that renders the
+ * same in Outlook, Gmail and Apple Mail, with the text part carried
+ * alongside. A paragraph that is nothing but a bare URL renders as a
+ * button; every other paragraph keeps plain, trailing-punctuation-safe
+ * link text.
+ */
 function toHtml({ subject, text }) {
   const escape = (s) =>
     String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -146,6 +172,13 @@ function toHtml({ subject, text }) {
   const body = escape(text ?? "")
     .split(/\n{2,}/)
     .map((para) => {
+      const trimmed = para.trim();
+      // A paragraph that is nothing but a bare URL becomes a button.
+      if (/^https?:\/\/[^\s<>"]+$/.test(trimmed)) {
+        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0"><tr><td style="border-radius:8px;background:${BRAND.teal}">
+          <a href="${trimmed}" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">Open in Top Local Specialists &rarr;</a>
+        </td></tr></table>`;
+      }
       const linked = para
         .split("\n")
         .map((line) =>
@@ -153,7 +186,7 @@ function toHtml({ subject, text }) {
              full stop after a link becomes part of the href and the link
              404s — a small bug that would show up in every approval
              email ever sent. */
-          line.replace(/(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g, '<a href="$1" style="color:#0a6f66">$1</a>')
+          line.replace(/(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g, `<a href="$1" style="color:${BRAND.tealDark}">$1</a>`)
         )
         .join("<br>");
       return `<p style="margin:0 0 14px;line-height:1.6">${linked}</p>`;
@@ -162,16 +195,20 @@ function toHtml({ subject, text }) {
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(subject)}</title></head>
-<body style="margin:0;padding:24px 12px;background:#f4f7f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0b1220">
-  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;padding:28px 26px">
-    <p style="margin:0 0 20px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0a6f66">
-      Top Local Specialists
-    </p>
-    <div style="font-size:15px;color:#243447">${body}</div>
-    <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e8eef4;font-size:12px;line-height:1.6;color:#8998a8">
-      Sent by Top Local Specialists · <a href="${SITE_URL}" style="color:#0a6f66">${SITE_URL.replace(/^https?:\/\//, "")}</a><br>
-      TopLocalSpecialists.com Limited, 27 New Road, Bromsgrove B60 2JL
-    </p>
+<body style="margin:0;padding:24px 12px;background:${BRAND.paperMuted};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${BRAND.ink}">
+  <div style="max-width:560px;margin:0 auto">
+    <div style="height:4px;border-radius:4px 4px 0 0;background:linear-gradient(90deg, ${BRAND.teal}, ${BRAND.leaf})"></div>
+    <div style="background:#ffffff;padding:28px 26px;border-radius:0 0 14px 14px">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px"><tr>
+        <td style="padding-right:10px"><img src="${SITE_URL}/apple-touch-icon.png" width="30" height="30" alt="" style="display:block;border-radius:7px"></td>
+        <td style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${BRAND.tealDark};vertical-align:middle">Top Local Specialists</td>
+      </tr></table>
+      <div style="font-size:15px;color:${BRAND.inkBody}">${body}</div>
+      <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid ${BRAND.line};font-size:12px;line-height:1.6;color:${BRAND.inkFaint}">
+        Sent by Top Local Specialists · <a href="${SITE_URL}" style="color:${BRAND.tealDark}">${SITE_URL.replace(/^https?:\/\//, "")}</a><br>
+        TopLocalSpecialists.com Limited, 27 New Road, Bromsgrove B60 2JL
+      </p>
+    </div>
   </div>
 </body></html>`;
 }
