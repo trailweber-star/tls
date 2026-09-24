@@ -72,6 +72,7 @@ function readFilters(params: URLSearchParams): SearchFilterState & { page: numbe
     specialty: params.get("specialty") ?? "",
     subspecialties: params.getAll("subspecialty").filter(Boolean),
     region: params.get("region") ?? "",
+    practiceAreas: params.getAll("practiceArea").filter(Boolean),
     location: params.get("location") ?? "",
     minRating: num("minRating"),
     minPriceMinor: num("minPrice"),
@@ -99,6 +100,7 @@ function writeFilters(
   if (state.specialty) qs.set("specialty", state.specialty);
   state.subspecialties.forEach((s) => qs.append("subspecialty", s));
   if (state.region) qs.set("region", state.region);
+  state.practiceAreas.forEach((s) => qs.append("practiceArea", s));
   if (state.location) qs.set("location", state.location);
   if (state.minRating != null) qs.set("minRating", String(state.minRating));
   if (state.minPriceMinor != null) qs.set("minPrice", String(state.minPriceMinor));
@@ -287,6 +289,7 @@ export default function Search() {
       specialty: filters.specialty,
       subspecialties: filters.subspecialties,
       region: filters.region,
+      practiceAreas: filters.practiceAreas,
       location: filters.location,
       minRating: filters.minRating,
       minPriceMinor: filters.minPriceMinor,
@@ -342,6 +345,7 @@ export default function Search() {
         specialty: filters.specialty,
         subspecialties: [],
         region: "",
+        practiceAreas: [],
         location: filters.location,
         minRating: null,
         minPriceMinor: null,

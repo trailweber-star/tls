@@ -243,6 +243,37 @@ function specialtyOptions(all: Specialty[]) {
   return out;
 }
 
+/* ------------------------------------------------------------------ *
+ * Expert Witness -- a guided second step
+ *
+ * The dropdown above lists all three taxonomy levels flattened together,
+ * which works fine when a specialist already knows they're "Shoulder
+ * Arthroscopy". It doesn't work as well for Expert Witness: picking the
+ * category isn't enough, a solicitor searching Medico-legal Experts
+ * filters by the specific TYPE of report (see "Type of report" in
+ * SearchFilters.tsx), so the listing has to be tagged at that same leaf
+ * level to ever match. This makes that second, narrower choice its own
+ * step instead of leaving it to be found by scrolling the long list
+ * above -- same single primarySpecialtySlug field underneath, just a
+ * focused picker once they're in this branch.
+ * ------------------------------------------------------------------ */
+function isExpertWitnessBranch(all: Specialty[], slug: string): boolean {
+  const bySlug = new Map(all.map((s) => [s.slug, s]));
+  const byId = new Map(all.map((s) => [s.id, s]));
+  let node = bySlug.get(slug);
+  while (node) {
+    if (node.slug === "expert-witness") return true;
+    node = node.parentId ? byId.get(node.parentId) : undefined;
+  }
+  return false;
+}
+
+function expertWitnessPracticeAreas(all: Specialty[]) {
+  const medicolegal = all.find((s) => s.slug === "expert-witness-medicolegal");
+  if (!medicolegal) return [];
+  return all.filter((s) => s.parentId === medicolegal.id);
+}
+
 export default function ProfileEditor() {
   const { specialist: specialistAccount } = useAuth();
   const [profile, setProfile] = useState<DashboardProfile | null>(null);
@@ -493,6 +524,27 @@ export default function ProfileEditor() {
                 ))}
               </select>
             </Labelled>
+
+            {isExpertWitnessBranch(specialties, draft.primarySpecialtySlug) && (
+              <Labelled
+                label="Type of report"
+                required
+                hint="The specific kind of medico-legal report you provide. Solicitors searching Medico-legal Experts filter by this, so it's what makes you findable -- not just Expert Witness on its own."
+              >
+                <select
+                  value={draft.primarySpecialtySlug}
+                  onChange={(e) => set("primarySpecialtySlug", e.target.value)}
+                  className={input}
+                >
+                  <option value="">Select a practice area…</option>
+                  {expertWitnessPracticeAreas(specialties).map((opt) => (
+                    <option key={opt.slug} value={opt.slug}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+              </Labelled>
+            )}
           </Section>
 
           {/* ----------------------------------------- treatments */}

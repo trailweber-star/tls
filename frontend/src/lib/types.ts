@@ -230,6 +230,9 @@ export interface SearchFacets {
   // Only populated (and only meaningful) when the chosen specialty is
   // Expert Witness -- empty for every other category.
   regions: FacetCount[];
+  // Same restriction as `regions` -- the law-specific practice areas
+  // under Medicolegal (Personal Injury, Clinical Negligence, ...).
+  practiceAreas: FacetCount[];
   cities: FacetCount[];
   availability: { days: number; label: string; count: number }[];
   ratings: { min: number; count: number }[];

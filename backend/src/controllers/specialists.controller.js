@@ -274,6 +274,10 @@ function matchesText(s, words) {
 function buildPredicates(filters, taxonomy) {
   const specialtyBranch = filters.specialty ? taxonomy.branchSlugs(filters.specialty) : null;
   const subBranches = filters.subspecialties.map((slug) => taxonomy.branchSlugs(slug));
+  // Expert Witness only -- the leaf (practice area) level under
+  // Medicolegal. See buildFacets for why this is a separate dimension
+  // from `subspecialty` rather than reusing it.
+  const practiceAreaBranches = filters.practiceAreas.map((slug) => taxonomy.branchSlugs(slug));
   // The group narrows to the tab's branches. It sits alongside
   // `specialty` rather than replacing it: a patient can be on the
   // Specialist Doctors tab AND filtered to Orthopaedics, and both have
@@ -290,6 +294,9 @@ function buildPredicates(filters, taxonomy) {
     // lists are expected to behave (ticking more shows more, not fewer).
     subspecialty: (s) =>
       subBranches.length === 0 || subBranches.some((branch) => s.specialties.some((sp) => branch.has(sp.slug))),
+    practiceArea: (s) =>
+      practiceAreaBranches.length === 0 ||
+      practiceAreaBranches.some((branch) => s.specialties.some((sp) => branch.has(sp.slug))),
     location: (s) => matchesLocation(s.clinicLocations, filters.resolvedLocation, filters.radiusKm),
     region: (s) => !filters.region || (s.coveredRegions ?? []).includes(filters.region),
     rating: (s) => filters.minRating == null || s.ratingAvg >= filters.minRating,
@@ -332,6 +339,7 @@ function buildFacets(all, predicates, filters, taxonomy) {
   const forAvailability = applyAllExcept(all, predicates, "availability");
   const forVerified = applyAllExcept(all, predicates, "verified");
   const forRegion = applyAllExcept(all, predicates, "region");
+  const forPracticeArea = applyAllExcept(all, predicates, "practiceArea");
 
   // Expert Witness only -- every other category has never had a
   // coveredRegions value to filter on, so the dropdown stays empty
@@ -343,6 +351,25 @@ function buildFacets(all, predicates, filters, taxonomy) {
           name,
           count: forRegion.filter((s) => (s.coveredRegions ?? []).includes(name)).length,
         }))
+      : [];
+
+  // Expert Witness only -- the law-specific practice areas under
+  // Medicolegal (Personal Injury, Clinical Negligence, ...). This is a
+  // real search, arrived at by clicking Medico-legal Experts from the
+  // homepage, not the generic directory -- so it gets its own filter at
+  // the leaf level rather than making do with the single, always-one-
+  // option "Medicolegal" sub-specialty checkbox. Hidden (like `regions`)
+  // until there's a tagged specialist to count.
+  const practiceAreas =
+    filters.specialty === "expert-witness"
+      ? taxonomy.childrenOf("expert-witness-medicolegal").map((leaf) => {
+          const branch = taxonomy.branchSlugs(leaf.slug);
+          return {
+            slug: leaf.slug,
+            name: leaf.name,
+            count: forPracticeArea.filter((s) => s.specialties.some((sp) => branch.has(sp.slug))).length,
+          };
+        })
       : [];
 
   const subOptions = filters.specialty ? taxonomy.childrenOf(filters.specialty) : [];
@@ -374,6 +401,7 @@ function buildFacets(all, predicates, filters, taxonomy) {
   return {
     subspecialties,
     regions,
+    practiceAreas,
     cities: [...cityCounts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     availability: [
       { days: 0, label: "Available today", count: forAvailability.filter((s) => (daysUntil(s.nextAvailableAt) ?? Infinity) <= 0).length },
@@ -525,6 +553,9 @@ export async function searchSpecialists(req, res) {
     // predicate below for every other category, same as a stray
     // subspecialty slug from another branch would be.
     region: req.query.region || "",
+    // Expert Witness only -- see buildFacets. Same parsing as
+    // `subspecialty`: repeatable or comma-separated.
+    practiceAreas: parseList(req.query.practiceArea),
     resolvedLocation,
     radiusKm: parseNumber(req.query.radiusKm, 25),
     minRating: parseNumber(req.query.minRating),

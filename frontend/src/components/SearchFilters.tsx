@@ -15,6 +15,9 @@ export interface SearchFilterState {
   subspecialties: string[];
   /** Expert Witness only -- one of lib/ukRegions.js's UK_REGIONS. */
   region: string;
+  /** Expert Witness only -- leaf slugs under Medicolegal (Personal
+   *  Injury, Clinical Negligence, ...). */
+  practiceAreas: string[];
   location: string;
   minRating: number | null;
   minPriceMinor: number | null;
@@ -151,6 +154,7 @@ export function SearchFilters({
   const activeCount =
     (filters.subspecialties.length ? 1 : 0) +
     (filters.region ? 1 : 0) +
+    (filters.practiceAreas.length ? 1 : 0) +
     (filters.minRating != null ? 1 : 0) +
     (filters.verifiedOnly ? 1 : 0) +
     (filters.availableWithinDays != null ? 1 : 0) +
@@ -164,6 +168,13 @@ export function SearchFilters({
       ? filters.subspecialties.filter((s) => s !== slug)
       : [...filters.subspecialties, slug];
     onChange({ subspecialties: next });
+  }
+
+  function togglePracticeArea(slug: string) {
+    const next = filters.practiceAreas.includes(slug)
+      ? filters.practiceAreas.filter((s) => s !== slug)
+      : [...filters.practiceAreas, slug];
+    onChange({ practiceAreas: next });
   }
 
   return (
@@ -229,7 +240,7 @@ export function SearchFilters({
               // Changing specialty clears sub-specialties (and region,
               // which only ever applied under Expert Witness): last
               // search's knee filters make no sense under Dentistry.
-              onChange={(e) => onChange({ specialty: e.target.value, subspecialties: [], region: "" })}
+              onChange={(e) => onChange({ specialty: e.target.value, subspecialties: [], region: "", practiceAreas: [] })}
               className={selectClass}
             >
               <option value="">All specialties</option>
@@ -255,6 +266,32 @@ export function SearchFilters({
                   </option>
                 ))}
               </select>
+            </Section>
+          )}
+
+          {/* A solicitor or claims handler arriving here from the
+              Medico-legal Experts tab is looking for a specific kind of
+              report, not browsing a generic specialty tree -- so this is
+              its own law-specific section rather than the generic
+              "Sub-specialty" checkboxes below (which, for Expert Witness,
+              only ever offer the single, un-narrowing "Medicolegal"
+              option). */}
+          {filters.specialty === "expert-witness" && (facets?.practiceAreas.length ?? 0) > 0 && (
+            <Section title="Type of report">
+              <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1">
+                {facets?.practiceAreas.map((area) => (
+                  <label key={area.slug} className={checkboxRow}>
+                    <input
+                      type="checkbox"
+                      className={checkboxInput}
+                      checked={filters.practiceAreas.includes(area.slug)}
+                      onChange={() => togglePracticeArea(area.slug)}
+                    />
+                    <span className="flex-1 truncate">{area.name}</span>
+                    <span className="shrink-0 text-[11.5px] text-ink-faint">{area.count}</span>
+                  </label>
+                ))}
+              </div>
             </Section>
           )}
 

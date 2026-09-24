@@ -170,6 +170,8 @@ export interface SearchParams {
   subspecialties?: string[];
   /** Expert Witness only -- one of lib/ukRegions.js's UK_REGIONS. */
   region?: string;
+  /** Expert Witness only -- leaf slugs under Medicolegal. */
+  practiceAreas?: string[];
   location?: string;
   radiusKm?: number;
   minRating?: number | null;
@@ -189,6 +191,7 @@ export function buildSearchQuery(params: SearchParams): URLSearchParams {
   if (params.specialty) qs.set("specialty", params.specialty);
   (params.subspecialties ?? []).forEach((slug) => qs.append("subspecialty", slug));
   if (params.region) qs.set("region", params.region);
+  (params.practiceAreas ?? []).forEach((slug) => qs.append("practiceArea", slug));
   if (params.location) qs.set("location", params.location);
   if (params.radiusKm != null) qs.set("radiusKm", String(params.radiusKm));
   if (params.minRating != null) qs.set("minRating", String(params.minRating));
