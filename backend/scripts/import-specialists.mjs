@@ -47,6 +47,7 @@ import { registerGeocoder } from "../src/lib/geocoders.js";
 import { geocode, hasGeocoder } from "../src/lib/geo.js";
 import { UNUSABLE_PASSWORD } from "../src/lib/auth.js";
 import { registerStorageProvider } from "../src/lib/storage.js";
+import { UK_REGIONS } from "../src/lib/ukRegions.js";
 
 /* ----------------------------------------------------------- the file */
 
@@ -216,6 +217,12 @@ const COLUMNS = {
   distance: ["distance miles", "distance"],
   liveBooking: ["live booking available", "live booking", "bookable"],
   sourceVerified: ["verified profile", "verified"],
+  // Expert-witness-specific: UK regions covered, and richer practice-area
+  // tags to add alongside the primary specialty match (e.g. every leaf
+  // under Medicolegal a legal-report writer covers, not just the first).
+  coveredRegions: ["regions covered", "covered regions", "regions", "region"],
+  practiceAreas: ["practice areas", "sub sub category", "sub-sub category", "type of report", "practice area"],
+  bio: ["bio", "description", "about", "summary"],
 };
 
 /**
@@ -656,6 +663,43 @@ function matchSpecialty(...candidates) {
   return null;
 }
 
+/** Every taxonomy leaf a free-text cell like "Personal Injury, Clinical Negligence" names. */
+function matchSpecialtiesList(text) {
+  const cleaned = clean(text);
+  if (!cleaned) return [];
+  const found = [];
+  for (const token of cleaned.split(/[,;/]| and /i)) {
+    const hit = matchSpecialty(token);
+    if (hit && !found.some((s) => s.id === hit.id)) found.push(hit);
+  }
+  return found;
+}
+
+/** Free-text region names ("London, South East") -> the canonical UK_REGIONS list. */
+const REGION_ALIASES = {
+  "uk wide": "Nationwide",
+  "uk-wide": "Nationwide",
+  "whole of uk": "Nationwide",
+  national: "Nationwide",
+  "all uk": "Nationwide",
+  yorkshire: "Yorkshire and the Humber",
+  ni: "Northern Ireland",
+  "n ireland": "Northern Ireland",
+};
+function matchRegions(text) {
+  const cleaned = clean(text);
+  if (!cleaned) return [];
+  const found = [];
+  for (const raw of cleaned.split(/[,;/]| and /i)) {
+    const token = raw.trim();
+    if (!token) continue;
+    const key = normalise(token);
+    const hit = UK_REGIONS.find((r) => normalise(r) === key) ?? REGION_ALIASES[key] ?? null;
+    if (hit && !found.includes(hit)) found.push(hit);
+  }
+  return found;
+}
+
 /** A city row for this town, creating one the first time it is seen. */
 async function cityFor(town, postcode, coords, region = null) {
   const name = clean(town);
@@ -914,12 +958,13 @@ for (const [index, row] of rows.entries()) {
      licensed register feed; neither is a counter. */
   const harvestValues = HARVEST
     ? {
-        bio: facts.description,
         contactPhone: facts.telephone,
         websiteUrl: facts.website,
         yearsExperience: facts.yearsEstablished,
       }
     : {};
+
+  const coveredRegions = HARVEST ? [] : matchRegions(at("coveredRegions"));
 
   const values = {
     fullName,
@@ -927,6 +972,8 @@ for (const [index, row] of rows.entries()) {
     qualifications: clean(at("qualifications")),
     yearsExperience: asInt(at("yearsExperience")),
     primarySpecialtyId: specialty?.id ?? null,
+    coveredRegions: coveredRegions.length ? coveredRegions : null,
+    bio: HARVEST ? facts.description : clean(at("bio")),
     // Rule 2: nobody arrives verified, and nobody arrives claimed.
     verificationStatus: "unverified",
     claimed: false,
@@ -993,7 +1040,10 @@ for (const [index, row] of rows.entries()) {
          arthroplasty" names two subspecialties and filing it under whichever
          sorted first was the wrong answer twice over: it loses the person
          from one filter and misdescribes them in the other. Both go in. */
-      const tagIds = HARVEST ? facts.tagIds : specialty ? [specialty.id] : [];
+      const extraSpecialties = HARVEST ? [] : matchSpecialtiesList(at("practiceAreas"));
+  const tagIds = HARVEST
+    ? facts.tagIds
+    : [...new Set([specialty?.id, ...extraSpecialties.map((s) => s.id)].filter(Boolean))];
       if (tagIds.length) {
         await db.delete(t.specialistSpecialties).where(eq(t.specialistSpecialties.specialistId, specialistId));
         await db

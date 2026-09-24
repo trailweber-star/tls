@@ -3019,35 +3019,63 @@
     "children": [
       {
         "name": "Medicolegal",
-        "slug": "expert-witness-medical",
+        "slug": "expert-witness-medicolegal",
         "children": [
           {
             "name": "Personal Injury",
             "slug": "personal-injury"
           },
           {
-            "name": "Medical Negligence",
-            "slug": "medical-negligence"
+            "name": "Clinical Negligence",
+            "slug": "clinical-negligence"
           },
           {
-            "name": "Court of Protection",
-            "slug": "court-of-protection"
+            "name": "Criminal Injuries Compensation",
+            "slug": "criminal-injuries-compensation"
           },
           {
-            "name": "Family Law",
-            "slug": "family-law-expert-witness"
+            "name": "Court of Protection & Mental Capacity",
+            "slug": "court-of-protection-mental-capacity"
           },
           {
-            "name": "Criminal Law",
-            "slug": "criminal-law-expert-witness"
+            "name": "Family Law Reports",
+            "slug": "family-law-reports"
           },
           {
-            "name": "Immigration & Asylum",
-            "slug": "immigration-asylum-expert-witness"
+            "name": "Immigration & Asylum Reports",
+            "slug": "immigration-asylum-reports"
           },
           {
-            "name": "Fitness to Practise",
-            "slug": "fitness-to-practise"
+            "name": "Fitness to Practise & Regulatory",
+            "slug": "fitness-to-practise-regulatory"
+          },
+          {
+            "name": "Employment & Occupational Health",
+            "slug": "employment-occupational-health"
+          },
+          {
+            "name": "Industrial Disease",
+            "slug": "industrial-disease"
+          },
+          {
+            "name": "Inquest & Coronial Reports",
+            "slug": "inquest-coronial-reports"
+          },
+          {
+            "name": "Road Traffic Collision",
+            "slug": "road-traffic-collision"
+          },
+          {
+            "name": "Product Liability",
+            "slug": "product-liability"
+          },
+          {
+            "name": "Care Proceedings",
+            "slug": "care-proceedings"
+          },
+          {
+            "name": "Housing Disrepair (Damp & Mould)",
+            "slug": "housing-disrepair"
           }
         ]
       }

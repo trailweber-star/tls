@@ -9,7 +9,7 @@ import { ReviewsCarousel } from "../components/ReviewsCarousel";
 import { ArrowRight, MessagesSquare, Search, Send, ShieldCheck, Star } from "lucide-react";
 import { HEADER_HEIGHT } from "../components/Header";
 import type { City, SpecialistWithRelations, Specialty } from "../lib/types";
-import { HOMEPAGE_SPECIALTY_SLUGS } from "../lib/categoryPhotos";
+import { HOMEPAGE_SPECIALTY_SLUGS, PHARMACY_TILE } from "../lib/categoryPhotos";
 import heroPhoto from "../assets/images/hero-surgeon.webp";
 import notSurePhoto from "../assets/images/banner-not-sure.webp";
 import professionalsPhoto from "../assets/images/banner-professionals.webp";
@@ -126,6 +126,7 @@ export default function Home() {
             specialties={HOMEPAGE_SPECIALTY_SLUGS.map((slug) => topLevelSpecialties.find((s) => s.slug === slug)).filter(
               (s): s is Specialty => Boolean(s)
             )}
+            extra={[PHARMACY_TILE]}
           />
         </section>
 

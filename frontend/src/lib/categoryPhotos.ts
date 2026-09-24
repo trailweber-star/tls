@@ -9,6 +9,7 @@ import physiotherapyPhoto from "../assets/images/tile-physiotherapy.webp";
 import dentistryPhoto from "../assets/images/tile-dentistry.webp";
 import aestheticsPhoto from "../assets/images/tile-aesthetics.webp";
 import expertWitnessPhoto from "../assets/images/tile-expert-witness.jpg";
+import pharmacyPhoto from "../assets/images/tile-pharmacy.webp";
 
 export const CATEGORY_PHOTOS: Record<string, string> = {
   orthopaedics: orthopaedicsPhoto,
@@ -50,4 +51,16 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "aesthetics-specialists": "Enhance your natural beauty",
   dentistry: "Healthy smiles, lasting confidence",
   "expert-witness": "Medico-legal reports & testimony",
+};
+
+// Pharmacy is a FACILITY category, not a specialty — it has no row in
+// topLevelSpecialties, so it can't go through CATEGORY_PHOTOS/HOMEPAGE_
+// SPECIALTY_SLUGS above. It's rendered as an extra tile (see Home.tsx)
+// alongside the specialty tiles, using the same card design.
+export const PHARMACY_TILE = {
+  id: "pharmacy",
+  name: "Pharmacies",
+  description: "Prescriptions, advice & healthcare essentials",
+  photo: pharmacyPhoto,
+  href: "/search?type=pharmacy",
 };
