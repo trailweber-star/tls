@@ -351,6 +351,17 @@ export async function updateProfile(req, res) {
   }
   const { primarySpecialtySlug, treatmentNames, locations, nextAvailableAt, ...fields } = parsed.data;
 
+  /* socials is `jsonb notNull default({})` -- "no social links" is meant
+     to be stored as {}, same as gallery/[] and languages/[]. But the
+     form's schema allows the whole object to come back null (every
+     field cleared), and Drizzle passes an explicit null straight
+     through into the UPDATE rather than falling back to the column
+     default, which only applies on INSERT. The result was a bare
+     Postgres NOT NULL violation on save -- "Internal server error" with
+     no indication which field, for anyone who saved a profile with
+     every social link empty. */
+  if (fields.socials === null) fields.socials = {};
+
   // Plan limits are enforced here, not in the form. A hand-crafted
   // request must not be able to load 60 gallery images onto a Basic
   // listing and have them appear the day they upgrade.
