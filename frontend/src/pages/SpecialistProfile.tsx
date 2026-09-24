@@ -41,15 +41,22 @@ import { Seo } from "../components/Seo";
  * exists when the plan includes one AND images have been added, so a
  * Basic listing never shows a tab that leads to an empty section.
  */
-function tabsFor(specialist: SpecialistWithRelations) {
+function tabsFor(specialist: SpecialistWithRelations, isMedicoLegal = false) {
   const gallery = specialist.plan?.features.photoGallery && (specialist.gallery ?? []).length > 0;
+  // A medico-legal listing has no clinic address and names case types,
+  // not procedures -- so it gets no Treatments tab and no Locations
+  // tab, and "Expertise" is relabelled to what it actually lists. See
+  // the isMedicoLegal branch throughout this file for why: this is a
+  // person who writes expert reports for solicitors, not a clinician a
+  // patient books, and the clinical layout's own words (Treatments,
+  // Book an appointment, Patient Reviews) are wrong for that job.
   return [
     { id: "overview", label: "Overview" },
-    { id: "expertise", label: "Expertise" },
-    { id: "treatments", label: "Treatments" },
+    { id: "expertise", label: isMedicoLegal ? "Practice Areas" : "Expertise" },
+    ...(isMedicoLegal ? [] : [{ id: "treatments", label: "Treatments" }]),
     ...(gallery ? [{ id: "gallery", label: "Gallery" }] : []),
     { id: "reviews", label: "Reviews" },
-    { id: "locations", label: "Locations" },
+    ...(isMedicoLegal ? [] : [{ id: "locations", label: "Locations" }]),
   ];
 }
 
@@ -207,6 +214,12 @@ export default function SpecialistProfile() {
 
   const hrefForSpecialty = useMemo(() => specialtyHrefIn(specialties), [specialties]);
 
+  // The one signal this whole page branches on. A medico-legal listing
+  // is filed under the Expert Witness root (however deep the leaf that
+  // tagged it sits under that root) -- topLevelSlug already walks the
+  // taxonomy up to find it, so no second lookup is needed.
+  const isMedicoLegal = topLevelSlug === "expert-witness";
+
   // Highlight the tab whose section is currently in view.
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   useEffect(() => {
@@ -224,7 +237,10 @@ export default function SpecialistProfile() {
     return () => observer.disconnect();
   }, [specialist]);
 
-  const tabs = useMemo(() => (specialist ? tabsFor(specialist) : []), [specialist]);
+  const tabs = useMemo(
+    () => (specialist ? tabsFor(specialist, isMedicoLegal) : []),
+    [specialist, isMedicoLegal]
+  );
 
   function goToSection(id: string) {
     const el = sectionRefs.current[id];
@@ -267,7 +283,11 @@ export default function SpecialistProfile() {
   const primaryLocation = specialist.clinicLocations[0] ?? null;
   const seoDescription = [
     specialist.title ?? "Specialist",
-    primaryLocation?.city?.name ? `in ${primaryLocation.city.name}` : "in the UK",
+    primaryLocation?.city?.name
+      ? `in ${primaryLocation.city.name}`
+      : isMedicoLegal && specialist.coveredRegions?.length
+        ? `covering ${specialist.coveredRegions.join(", ")}`
+        : "in the UK",
     specialist.yearsExperience ? `· ${specialist.yearsExperience} years' experience` : "",
     specialist.ratingCount > 0 ? `· rated ${specialist.ratingAvg.toFixed(1)} from ${specialist.ratingCount} reviews` : "",
     // Only claimed where it is true. An unclaimed listing has had no
@@ -421,6 +441,8 @@ export default function SpecialistProfile() {
         <PrimaryAction
           specialist={specialist}
           onBook={() => setBookingOpen(true)}
+          onEnquire={() => setEnquiryOpen(true)}
+          isMedicoLegal={isMedicoLegal}
           className="relative mx-auto mt-9 flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-teal-400 px-6 py-3 text-[13px] font-bold text-navy-950 shadow-xl transition hover:bg-teal-300 sm:hidden"
         />
 
@@ -475,6 +497,8 @@ export default function SpecialistProfile() {
             <PrimaryAction
               specialist={specialist}
               onBook={() => setBookingOpen(true)}
+              onEnquire={() => setEnquiryOpen(true)}
+              isMedicoLegal={isMedicoLegal}
               className="relative flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3 text-[13px] font-bold text-navy-950 shadow-lg transition hover:bg-teal-300"
             />
           </div>
@@ -531,7 +555,7 @@ export default function SpecialistProfile() {
             )}
           </div>
 
-          <StatsBar specialist={specialist} />
+          <StatsBar specialist={specialist} isMedicoLegal={isMedicoLegal} />
         </section>
 
         {/* ----------------------------------------------------- Expertise */}
@@ -542,7 +566,14 @@ export default function SpecialistProfile() {
           }}
           className="scroll-mt-32 border-t border-line py-10"
         >
-          <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">Areas of Expertise</h2>
+          <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">
+            {isMedicoLegal ? "Practice Areas" : "Areas of Expertise"}
+          </h2>
+          {isMedicoLegal && (
+            <p className="mt-1.5 text-[13.5px] text-ink-muted">
+              The case types {specialist.fullName} provides expert reports and opinion for.
+            </p>
+          )}
           {/* THE SPECIALTIES, AND NOTHING ELSE. This used to append every
               condition and every treatment as well, which made it a
               second copy of the Treatments section below — see the note
@@ -584,7 +615,14 @@ export default function SpecialistProfile() {
           )}
         </section>
 
-        {/* ---------------------------------------------------- Treatments */}
+        {/* ---------------------------------------------------- Treatments
+            Medico-legal listings skip this section outright rather than
+            rendering it empty. "Treatments" and "Conditions treated" are
+            what a clinician DOES to a patient -- an expert witness writes
+            reports for solicitors, and forcing that into a Treatments
+            heading is exactly the wrong-fields complaint this branch
+            exists to fix. */}
+        {!isMedicoLegal && (
         <section
           id="treatments"
           ref={(el) => {
@@ -649,6 +687,7 @@ export default function SpecialistProfile() {
             )}
           </div>
         </section>
+        )}
 
         {/* ------------------------------------------------------- Gallery */}
         {specialist.plan?.features.photoGallery && (specialist.gallery ?? []).length > 0 && (
@@ -675,10 +714,14 @@ export default function SpecialistProfile() {
           }}
           className="scroll-mt-32 border-t border-line py-10"
         >
-          <Reviews specialist={specialist} />
+          <Reviews specialist={specialist} isMedicoLegal={isMedicoLegal} />
         </section>
 
-        {/* ----------------------------------------------------- Locations */}
+        {/* ----------------------------------------------------- Locations
+            Medico-legal listings don't have one -- they cover regions,
+            not a clinic address, and that's already shown under Practice
+            Areas above. */}
+        {!isMedicoLegal && (
         <section
           id="locations"
           ref={(el) => {
@@ -790,6 +833,7 @@ export default function SpecialistProfile() {
             </p>
           )}
         </section>
+        )}
 
         {/* ------------------------------------------------------- Enquire */}
         <section
@@ -808,17 +852,20 @@ export default function SpecialistProfile() {
             <div className="flex flex-col gap-5 px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-10 sm:py-9">
               <div>
                 <h2 className="font-display text-[20px] font-bold text-white sm:text-[25px]">
-                  Enquire about this specialist
+                  {isMedicoLegal ? `Instruct ${specialist.fullName}` : "Enquire about this specialist"}
                 </h2>
                 <p className="mt-1.5 text-[13.5px] text-white/65">
-                  Get a response from {specialist.fullName}&apos;s team — no account needed.
+                  {isMedicoLegal
+                    ? "Send the case details or ask a question — it goes straight to their team, no account needed."
+                    : `Get a response from ${specialist.fullName}'s team — no account needed.`}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2.5">
-                {/* A booking link is a paid feature, so it only appears
-                    when the plan carries one. Where it does, it is the
-                    stronger action and takes the primary button. */}
-                {specialist.bookingUrl ? (
+                {/* No appointment to book here -- an expert witness is
+                    instructed on a case, not booked for a slot, so this
+                    branch skips the booking button outright rather than
+                    offering one that leads nowhere sensible. */}
+                {!isMedicoLegal && (specialist.bookingUrl ? (
                   <a
                     href={specialist.bookingUrl}
                     target="_blank"
@@ -837,15 +884,17 @@ export default function SpecialistProfile() {
                     Book online
                     <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
                   </button>
-                )}
-                {/* Always the secondary action now: booking -- built-in or
-                    external -- takes the primary slot above either way. */}
+                ))}
                 <button
                   type="button"
                   onClick={() => setEnquiryOpen(true)}
-                  className="flex items-center justify-center gap-2 rounded-full bg-white/10 px-7 py-3.5 text-[13.5px] font-bold text-white shadow-lg ring-1 ring-white/25 transition hover:bg-white/20"
+                  className={`flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[13.5px] font-bold shadow-lg transition ${
+                    isMedicoLegal
+                      ? "bg-teal-400 text-navy-950 hover:bg-teal-300"
+                      : "bg-white/10 text-white ring-1 ring-white/25 hover:bg-white/20"
+                  }`}
                 >
-                  Send enquiry
+                  {isMedicoLegal ? "Send instructions" : "Send enquiry"}
                   <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
                 </button>
               </div>
@@ -863,7 +912,7 @@ export default function SpecialistProfile() {
       <Dialog
         open={enquiryOpen}
         onClose={() => setEnquiryOpen(false)}
-        title={`Enquire about ${specialist.fullName}`}
+        title={isMedicoLegal ? `Instruct ${specialist.fullName}` : `Enquire about ${specialist.fullName}`}
         description={`Your message goes straight to ${specialist.fullName}'s team. No account needed.`}
       >
         {/* §7: where the practice runs on ClinWell and the integration
@@ -927,6 +976,7 @@ function factsOnFile(s: {
   specialties?: { name?: string }[] | null;
   yearsExperience?: number | null;
   clinicLocations?: { city?: { name?: string; region?: string | null } | null }[] | null;
+  coveredRegions?: string[] | null;
 }): string | null {
   const specialty = s.primarySpecialty?.name ?? null;
 
@@ -947,6 +997,8 @@ function factsOnFile(s: {
   ];
   const region = (s.clinicLocations ?? []).find((l) => l?.city?.region)?.city?.region ?? null;
 
+  const regions = s.coveredRegions ?? [];
+
   const parts: string[] = [];
   if (specialty && places.length) {
     parts.push(
@@ -956,10 +1008,16 @@ function factsOnFile(s: {
           : `at ${places.length} locations, including ${places.slice(0, 3).join(", ")}`) +
         "."
     );
+  } else if (specialty && regions.length) {
+    // No clinic address on this listing type -- covered regions is the
+    // equivalent fact, so it fills the slot "practises in <city>" would.
+    parts.push(`${s.fullName} is listed under ${specialty} and covers ${regions.join(", ")}.`);
   } else if (specialty) {
     parts.push(`${s.fullName} is listed under ${specialty}.`);
   } else if (places.length) {
     parts.push(`${s.fullName} practises in ${places[0]}${region ? `, ${region}` : ""}.`);
+  } else if (regions.length) {
+    parts.push(`${s.fullName} covers ${regions.join(", ")}.`);
   }
 
   if (also.length) {
@@ -1072,13 +1130,13 @@ function IntroVideo({
   );
 }
 
-function StatsBar({ specialist }: { specialist: SpecialistWithRelations }) {
+function StatsBar({ specialist, isMedicoLegal = false }: { specialist: SpecialistWithRelations; isMedicoLegal?: boolean }) {
   const stats = [
     specialist.yearsExperience != null
       ? { icon: Activity, value: String(specialist.yearsExperience), label: "years experience" }
       : null,
     specialist.ratingCount > 0
-      ? { icon: Star, value: formatRating(specialist.ratingAvg), label: "patient rating" }
+      ? { icon: Star, value: formatRating(specialist.ratingAvg), label: isMedicoLegal ? "rating" : "patient rating" }
       : null,
     specialist.ratingCount > 0
       ? { icon: MessageSquareQuote, value: String(specialist.ratingCount), label: "reviews" }
@@ -1207,7 +1265,7 @@ const SCORE_LABELS: { key: keyof NonNullable<SpecialistWithRelations["reviewScor
   { key: "waitTime", label: "Wait time" },
 ];
 
-function Reviews({ specialist }: { specialist: SpecialistWithRelations }) {
+function Reviews({ specialist, isMedicoLegal = false }: { specialist: SpecialistWithRelations; isMedicoLegal?: boolean }) {
   const [writeOpen, setWriteOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
@@ -1241,7 +1299,9 @@ function Reviews({ specialist }: { specialist: SpecialistWithRelations }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">Patient Reviews</h2>
+        <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">
+          {isMedicoLegal ? "Reviews" : "Patient Reviews"}
+        </h2>
         {/* The endpoint has always existed; nothing ever called it, so
             patients had no way to leave a review and the dashboard's
             promise that they could was untrue. */}
@@ -1712,12 +1772,28 @@ function ClaimInvite({ specialist }: { specialist: SpecialistWithRelations }) {
 function PrimaryAction({
   specialist,
   onBook,
+  onEnquire,
+  isMedicoLegal = false,
   className,
 }: {
   specialist: SpecialistWithRelations;
   onBook: () => void;
+  onEnquire: () => void;
+  isMedicoLegal?: boolean;
   className: string;
 }) {
+  // There is no appointment to book with an expert witness -- the ask is
+  // "take my case", not "hold me a slot" -- so this button opens the
+  // enquiry form directly rather than falling into the booking flow the
+  // clinical branch below uses.
+  if (isMedicoLegal) {
+    return (
+      <button type="button" onClick={onEnquire} className={className}>
+        Contact this expert
+        <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+    );
+  }
   if (specialist.bookingUrl) {
     return (
       <a href={specialist.bookingUrl} target="_blank" rel="noreferrer" className={className}>
