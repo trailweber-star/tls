@@ -253,7 +253,7 @@ function specialtyOptions(all: Specialty[]) {
  * The dropdown above lists all three taxonomy levels flattened together,
  * which works fine when a specialist already knows they're "Shoulder
  * Arthroscopy". It doesn't work as well for Expert Witness: picking the
- * category isn't enough, a solicitor searching Medico-legal Experts
+ * category isn't enough, a solicitor searching Expert Witnesses
  * filters by the specific TYPE of report (see "Type of report" in
  * SearchFilters.tsx), so the listing has to be tagged at that same leaf
  * level to ever match. This makes that second, narrower choice its own
@@ -534,7 +534,7 @@ export default function ProfileEditor() {
                 <Labelled
                   label="Type of report"
                   required
-                  hint="The specific kind of medico-legal report you provide. Solicitors searching Medico-legal Experts filter by this, so it's what makes you findable -- not just Expert Witness on its own."
+                  hint="The specific kind of expert witness report you provide. Solicitors searching Expert Witnesses filter by this, so it's what makes you findable -- not just the category on its own."
                 >
                   <select
                     value={draft.primarySpecialtySlug}
@@ -552,7 +552,7 @@ export default function ProfileEditor() {
 
                 <Labelled
                   label="Regions covered"
-                  hint="Every region you'll travel to or write reports for. Solicitors filter Medico-legal Experts by this, so an empty list means you won't turn up in a region search."
+                  hint="Every region you'll travel to or write reports for. Solicitors filter Expert Witnesses by this, so an empty list means you won't turn up in a region search."
                 >
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {UK_REGIONS.map((region) => {

@@ -270,7 +270,7 @@ export function SearchFilters({
           )}
 
           {/* A solicitor or claims handler arriving here from the
-              Medico-legal Experts tab is looking for a specific kind of
+              Expert Witnesses tab is looking for a specific kind of
               report, not browsing a generic specialty tree -- so this is
               its own law-specific section rather than the generic
               "Sub-specialty" checkboxes below (which, for Expert Witness,
@@ -314,7 +314,7 @@ export function SearchFilters({
             </Section>
           )}
 
-          {/* A medico-legal expert isn't placed by a clinic city the way
+          {/* An expert witness isn't placed by a clinic city the way
               every other specialist is -- they're placed by the UK
               regions they cover (see lib/ukRegions.js and the "Regions
               covered" section above), so the city dropdown is not just

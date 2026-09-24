@@ -268,7 +268,9 @@ const clean = (v) => {
 };
 
 const asInt = (v) => {
-  const n = Number(String(v ?? "").replace(/[^0-9.-]/g, ""));
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = Number(s.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? Math.round(n) : null;
 };
 

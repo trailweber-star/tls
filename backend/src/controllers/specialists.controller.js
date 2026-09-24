@@ -355,7 +355,7 @@ function buildFacets(all, predicates, filters, taxonomy) {
 
   // Expert Witness only -- the law-specific practice areas under
   // Medicolegal (Personal Injury, Clinical Negligence, ...). This is a
-  // real search, arrived at by clicking Medico-legal Experts from the
+  // real search, arrived at by clicking Expert Witnesses from the
   // homepage, not the generic directory -- so it gets its own filter at
   // the leaf level rather than making do with the single, always-one-
   // option "Medicolegal" sub-specialty checkbox. Hidden (like `regions`)

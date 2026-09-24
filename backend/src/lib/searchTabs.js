@@ -60,11 +60,11 @@ export const SEARCH_TABS = [
   },
   {
     key: "medico-legal",
-    label: "Medico-legal Experts",
-    plural: "Medico-legal experts",
+    label: "Expert Witnesses",
+    plural: "Expert witnesses",
     kind: "specialist",
     roots: ["expert-witness"],
-    placeholder: "Search a medico-legal expert or region covered",
+    placeholder: "Search an expert witness or region covered",
   },
   {
     key: "clinics",

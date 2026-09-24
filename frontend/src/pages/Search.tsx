@@ -34,7 +34,7 @@ const GROUP_HEADING: Record<string, { heading: string; one: string; many: string
     one: "practitioner",
     many: "practitioners",
   },
-  "medico-legal": { heading: "Medico-legal Experts", one: "expert", many: "experts" },
+  "medico-legal": { heading: "Expert Witnesses", one: "expert witness", many: "expert witnesses" },
 };
 
 /* One results page serves both halves of the directory, so the nouns it

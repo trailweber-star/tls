@@ -391,7 +391,7 @@ export default function SpecialistProfile() {
               </p>
             )}
             {specialist.title && <p className="mt-1 text-[15px] text-white/75 sm:text-base">{specialist.title}</p>}
-            {specialist.yearsExperience != null && (
+            {!!specialist.yearsExperience && (
               <p className="mt-1 text-[13.5px] font-semibold text-white/55">
                 {specialist.yearsExperience} years experience
               </p>
@@ -1132,7 +1132,7 @@ function IntroVideo({
 
 function StatsBar({ specialist, isMedicoLegal = false }: { specialist: SpecialistWithRelations; isMedicoLegal?: boolean }) {
   const stats = [
-    specialist.yearsExperience != null
+    specialist.yearsExperience
       ? { icon: Activity, value: String(specialist.yearsExperience), label: "years experience" }
       : null,
     specialist.ratingCount > 0

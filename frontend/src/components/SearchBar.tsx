@@ -74,7 +74,7 @@ const TABS: { key: TabKey; label: string; Icon: typeof Stethoscope }[] = [
   { key: "physiotherapists", label: "Physiotherapists", Icon: Activity },
   { key: "dentists", label: "Dentists", Icon: Smile },
   { key: "aesthetics", label: "Aesthetics", Icon: Sparkles },
-  { key: "medico-legal", label: "Medico-legal Experts", Icon: Scale },
+  { key: "medico-legal", label: "Expert Witnesses", Icon: Scale },
   { key: "clinics", label: "Clinics", Icon: Building2 },
   { key: "hospitals", label: "Hospitals", Icon: Hospital },
   { key: "care-homes", label: "Care Homes", Icon: HeartHandshake },
@@ -155,7 +155,7 @@ export function SearchBar({
   const [locationOpen, setLocationOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [placeholder, setPlaceholder] = useState("Search a name, specialty, treatment or condition");
-  // Medico-legal Experts gets its own flow: pick the type of report (and
+  // Expert Witnesses gets its own flow: pick the type of report (and
   // a narrower one under it, if that leaf ever grows children) instead of
   // typing free text, then which region it's needed in. Same dependent-
   // dropdown idea as the rest of the bar, just closed-list rather than
@@ -364,7 +364,7 @@ export function SearchBar({
     navigate(`/search?${params.toString()}`);
   }
 
-  /** The Medico-legal Experts tab searches by taxonomy + region, not free
+  /** The Expert Witnesses tab searches by taxonomy + region, not free
    *  text + location, so it gets its own submit path entirely. */
   function submitMedicoLegal() {
     if (!mlPracticeArea) {
@@ -541,7 +541,7 @@ export function SearchBar({
       >
         {tab === "medico-legal" ? (
           <>
-            {/* Medico-legal Experts is a closed taxonomy, not free text --
+            {/* Expert Witnesses is a closed taxonomy, not free text --
                 type of report, then a narrower report if that leaf ever
                 grows children, then which region needs covering. Same
                 three-column pill, different fields. */}

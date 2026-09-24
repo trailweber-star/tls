@@ -40,9 +40,9 @@ export const HOMEPAGE_SPECIALTY_SLUGS = [
 export const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   "aesthetics-specialists": "Cosmetic & Aesthetic Surgery",
   // The taxonomy category stays "Expert Witness" everywhere else
-  // (breadcrumbs, the admin taxonomy tree, URLs) -- Kirti confirmed only
-  // the homepage-facing label should read "Medico-legal Experts".
-  "expert-witness": "Medico-legal Experts",
+  // (breadcrumbs, the admin taxonomy tree, URLs) -- the homepage-facing
+  // label reads "Expert Witnesses" to match the search tab.
+  "expert-witness": "Expert Witnesses",
 };
 
 export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
