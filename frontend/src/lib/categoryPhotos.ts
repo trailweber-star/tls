@@ -8,12 +8,14 @@ import orthopaedicsPhoto from "../assets/images/tile-orthopaedics.webp";
 import physiotherapyPhoto from "../assets/images/tile-physiotherapy.webp";
 import dentistryPhoto from "../assets/images/tile-dentistry.webp";
 import aestheticsPhoto from "../assets/images/tile-aesthetics.webp";
+import expertWitnessPhoto from "../assets/images/tile-expert-witness.jpg";
 
 export const CATEGORY_PHOTOS: Record<string, string> = {
   orthopaedics: orthopaedicsPhoto,
   physiotherapy: physiotherapyPhoto,
   dentistry: dentistryPhoto,
   "aesthetics-specialists": aestheticsPhoto,
+  "expert-witness": expertWitnessPhoto,
 };
 
 // The order + set of specialties shown as photo tiles on the homepage
@@ -25,9 +27,6 @@ export const HOMEPAGE_SPECIALTY_SLUGS = [
   "physiotherapy",
   "aesthetics-specialists",
   "dentistry",
-  // No photo yet (see CATEGORY_PHOTOS above) -- CategoryGrid falls back
-  // to the gradient + icon treatment (categoryVisual("expert-witness"))
-  // until a real one is sourced, same as any specialty not covered here.
   "expert-witness",
 ];
 

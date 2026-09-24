@@ -13,6 +13,7 @@ import {
   Loader2,
   MapPin,
   Pill,
+  Scale,
   Search,
   Smile,
   Sparkles,
@@ -51,6 +52,7 @@ type TabKey =
   | "physiotherapists"
   | "dentists"
   | "aesthetics"
+  | "medico-legal"
   | "clinics"
   | "hospitals"
   | "care-homes"
@@ -69,6 +71,7 @@ const TABS: { key: TabKey; label: string; Icon: typeof Stethoscope }[] = [
   { key: "physiotherapists", label: "Physiotherapists", Icon: Activity },
   { key: "dentists", label: "Dentists", Icon: Smile },
   { key: "aesthetics", label: "Aesthetics", Icon: Sparkles },
+  { key: "medico-legal", label: "Medico-legal Experts", Icon: Scale },
   { key: "clinics", label: "Clinics", Icon: Building2 },
   { key: "hospitals", label: "Hospitals", Icon: Hospital },
   { key: "care-homes", label: "Care Homes", Icon: HeartHandshake },

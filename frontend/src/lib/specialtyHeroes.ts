@@ -12,6 +12,7 @@ import dentistry from "../assets/images/hero-dentistry.jpg";
 import aesthetics from "../assets/images/hero-aesthetics.jpg";
 import ent from "../assets/images/hero-ent.jpg";
 import gynaecology from "../assets/images/hero-gynaecology.jpg";
+import expertWitness from "../assets/images/hero-expert-witness.jpg";
 import fallback from "../assets/images/hero-surgeon.webp";
 import hospital from "../assets/images/hero-hospital.jpg";
 import clinic from "../assets/images/hero-clinic.jpg";
@@ -25,6 +26,7 @@ export const SPECIALTY_HERO_PHOTOS: Record<string, string> = {
   "aesthetics-specialists": aesthetics,
   ent,
   gynaecology,
+  "expert-witness": expertWitness,
 };
 
 export const FALLBACK_HERO_PHOTO = fallback;

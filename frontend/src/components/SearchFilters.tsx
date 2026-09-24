@@ -277,20 +277,27 @@ export function SearchFilters({
             </Section>
           )}
 
-          <Section title="Location">
-            <select
-              value={filters.location}
-              onChange={(e) => onChange({ location: e.target.value })}
-              className={selectClass}
-            >
-              <option value="">Anywhere in the UK</option>
-              {cities.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </Section>
+          {/* A medico-legal expert isn't placed by a clinic city the way
+              every other specialist is -- they're placed by the UK
+              regions they cover (see lib/ukRegions.js and the "Regions
+              covered" section above), so the city dropdown is not just
+              unhelpful here, it's the wrong question. */}
+          {filters.specialty !== "expert-witness" && (
+            <Section title="Location">
+              <select
+                value={filters.location}
+                onChange={(e) => onChange({ location: e.target.value })}
+                className={selectClass}
+              >
+                <option value="">Anywhere in the UK</option>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Section>
+          )}
 
           <Section title="Availability">
             {(facets?.availability ?? []).map((slot) => (

@@ -22,7 +22,7 @@
  * ------------------------------------------------------------------ */
 
 /** Root specialty slugs that have a tab of their own. */
-const CLAIMED_ROOTS = ["physiotherapy", "dentistry", "aesthetics-specialists"];
+const CLAIMED_ROOTS = ["physiotherapy", "dentistry", "aesthetics-specialists", "expert-witness"];
 
 export const SEARCH_TABS = [
   {
@@ -57,6 +57,14 @@ export const SEARCH_TABS = [
     kind: "specialist",
     roots: ["aesthetics-specialists"],
     placeholder: "Search a practitioner or aesthetic treatment",
+  },
+  {
+    key: "medico-legal",
+    label: "Medico-legal Experts",
+    plural: "Medico-legal experts",
+    kind: "specialist",
+    roots: ["expert-witness"],
+    placeholder: "Search a medico-legal expert or region covered",
   },
   {
     key: "clinics",
@@ -113,6 +121,8 @@ const ALIASES = {
   carehome: "care-homes",
   carehomes: "care-homes",
   pharmacy: "pharmacies",
+  "expert-witness": "medico-legal",
+  medicolegal: "medico-legal",
 };
 
 const BY_KEY = new Map(SEARCH_TABS.map((t) => [t.key, t]));
