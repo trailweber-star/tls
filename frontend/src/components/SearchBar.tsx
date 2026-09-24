@@ -13,13 +13,16 @@ import {
   Loader2,
   MapPin,
   Pill,
+  ChevronDown,
   Scale,
   Search,
   Smile,
   Sparkles,
   Stethoscope,
 } from "lucide-react";
-import type { City } from "../lib/types";
+import type { City, Specialty } from "../lib/types";
+import { getAllSpecialties } from "../lib/api";
+import { UK_REGIONS } from "../lib/ukRegions";
 
 /* ------------------------------------------------------------------ *
  * Search
@@ -152,6 +155,15 @@ export function SearchBar({
   const [locationOpen, setLocationOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [placeholder, setPlaceholder] = useState("Search a name, specialty, treatment or condition");
+  // Medico-legal Experts gets its own flow: pick the type of report (and
+  // a narrower one under it, if that leaf ever grows children) instead of
+  // typing free text, then which region it's needed in. Same dependent-
+  // dropdown idea as the rest of the bar, just closed-list rather than
+  // free text because "type of report" is a fixed taxonomy, not a guess.
+  const [mlAll, setMlAll] = useState<Specialty[] | null>(null);
+  const [mlPracticeArea, setMlPracticeArea] = useState("");
+  const [mlSubSub, setMlSubSub] = useState("");
+  const [mlRegion, setMlRegion] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const locationRef = useRef<HTMLInputElement>(null);
@@ -212,6 +224,34 @@ export function SearchBar({
       controller.abort();
     };
   }, [term, tab, open]);
+
+  useEffect(() => {
+    if (tab !== "medico-legal" || mlAll) return;
+    let cancelled = false;
+    getAllSpecialties()
+      .then((all) => {
+        if (!cancelled) setMlAll(all);
+      })
+      .catch(() => setMlAll([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, mlAll]);
+
+  const mlAreas = useMemo(() => {
+    if (!mlAll) return [];
+    const medicolegal = mlAll.find((s) => s.slug === "expert-witness-medicolegal");
+    return medicolegal ? mlAll.filter((s) => s.parentId === medicolegal.id) : [];
+  }, [mlAll]);
+
+  // Only shown if the chosen practice area turns out to have children of
+  // its own -- none of the current 14 leaves do, so this stays hidden
+  // today, but nothing here assumes that stays true.
+  const mlSubSubOptions = useMemo(() => {
+    if (!mlAll || !mlPracticeArea) return [];
+    const parent = mlAreas.find((s) => s.slug === mlPracticeArea);
+    return parent ? mlAll.filter((s) => s.parentId === parent.id) : [];
+  }, [mlAll, mlAreas, mlPracticeArea]);
 
   // The placeholder changes with the tab, so it is fetched with the tab
   // rather than waiting for the panel to be opened.
@@ -324,8 +364,30 @@ export function SearchBar({
     navigate(`/search?${params.toString()}`);
   }
 
+  /** The Medico-legal Experts tab searches by taxonomy + region, not free
+   *  text + location, so it gets its own submit path entirely. */
+  function submitMedicoLegal() {
+    if (!mlPracticeArea) {
+      setError("Choose the type of report you need.");
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("group", "medico-legal");
+    params.set("specialty", "expert-witness");
+    params.set("practiceArea", mlSubSub || mlPracticeArea);
+    if (mlPracticeArea && mlSubSub) params.append("practiceArea", mlPracticeArea);
+    if (mlRegion) params.set("region", mlRegion);
+    setBusy(true);
+    setOpen(false);
+    navigate(`/search?${params.toString()}`);
+  }
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (tab === "medico-legal") {
+      submitMedicoLegal();
+      return;
+    }
     if (!requireLocation()) return;
 
     // A tag that is still in the box wins over re-interpreting its words.
@@ -414,6 +476,13 @@ export function SearchBar({
   }, [cities, location]);
 
   const fieldTone = error ? "ring-rose-300" : "ring-black/5";
+  // The medico-legal tab can show a third field (a sub-sub report type,
+  // on the day some leaf grows children) alongside type-of-report and
+  // region, so the pill needs a fourth grid column that day and not
+  // before.
+  const barCols = tab === "medico-legal" && mlSubSubOptions.length > 0
+    ? "sm:grid-cols-[1.1fr_1fr_1fr_auto]"
+    : "sm:grid-cols-[1.4fr_1fr_auto]";
 
   return (
     <div ref={rootRef} className="relative w-full">
@@ -429,6 +498,13 @@ export function SearchBar({
                 setTab(key);
                 setPanel(null);
                 setPicked(null);
+                if (key === "medico-legal") {
+                  // This tab searches by taxonomy + region, not free
+                  // text + location -- it just shows its own fields,
+                  // never the autocomplete panel meant for the others.
+                  setOpen(false);
+                  return;
+                }
                 // On a results page the tabs are a filter, not a mode
                 // switch: the page behind them has to change too, or the
                 // heading and the highlighted tab disagree about what is
@@ -461,60 +537,139 @@ export function SearchBar({
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        className={`grid grid-cols-1 gap-1 rounded-[2rem] bg-white p-2.5 shadow-[0_30px_60px_-20px_rgba(6,22,38,0.35)] ring-1 sm:grid-cols-[1.4fr_1fr_auto] sm:items-stretch sm:gap-0 sm:rounded-full sm:p-3 sm:pl-6 ${fieldTone}`}
+        className={`grid grid-cols-1 gap-1 rounded-[2rem] bg-white p-2.5 shadow-[0_30px_60px_-20px_rgba(6,22,38,0.35)] ring-1 ${barCols} sm:items-stretch sm:gap-0 sm:rounded-full sm:p-3 sm:pl-6 ${fieldTone}`}
       >
-        <label className="flex min-w-0 items-center gap-3 rounded-2xl px-4 py-3 sm:rounded-none sm:border-r sm:border-line sm:px-0 sm:pr-6 sm:py-1.5">
-          <Search className="h-[18px] w-[18px] shrink-0 text-teal-600" strokeWidth={2} />
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal-700">
-              What are you searching for
-            </span>
-            <input
-              type="text"
-              value={term}
-              onChange={(e) => {
-                setTerm(e.target.value);
-                setPicked(null);
-              }}
-              onFocus={() => {
-                setOpen(true);
-                setLocationOpen(false);
-              }}
-              placeholder={placeholder}
-              autoComplete="off"
-              className="mt-1 w-full bg-transparent text-[15px] font-semibold text-ink outline-none placeholder:font-medium placeholder:text-ink-faint"
-            />
-          </span>
-        </label>
+        {tab === "medico-legal" ? (
+          <>
+            {/* Medico-legal Experts is a closed taxonomy, not free text --
+                type of report, then a narrower report if that leaf ever
+                grows children, then which region needs covering. Same
+                three-column pill, different fields. */}
+            <label className="flex min-w-0 items-center gap-3 rounded-2xl px-4 py-3 sm:rounded-none sm:border-r sm:border-line sm:px-0 sm:pr-6 sm:py-1.5">
+              <Scale className="h-[18px] w-[18px] shrink-0 text-teal-600" strokeWidth={2} />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal-700">
+                  Type of report
+                </span>
+                <select
+                  value={mlPracticeArea}
+                  onChange={(e) => {
+                    setMlPracticeArea(e.target.value);
+                    setMlSubSub("");
+                    setError(null);
+                  }}
+                  className="mt-1 w-full appearance-none bg-transparent text-[15px] font-semibold text-ink outline-none"
+                >
+                  <option value="">{mlAll ? "Choose one…" : "Loading…"}</option>
+                  {mlAreas.map((a) => (
+                    <option key={a.id} value={a.slug}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
 
-        <label className="flex min-w-0 items-center gap-3 rounded-2xl px-4 py-3 sm:rounded-none sm:px-6 sm:py-1.5">
-          <MapPin className={`h-[18px] w-[18px] shrink-0 ${error ? "text-rose-500" : "text-teal-600"}`} strokeWidth={2} />
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span
-              className={`text-[11px] font-bold uppercase tracking-[0.08em] ${error ? "text-rose-600" : "text-teal-700"}`}
-            >
-              Where
-            </span>
-            <input
-              ref={locationRef}
-              type="text"
-              value={location}
-              onChange={(e) => {
-                setLocation(e.target.value);
-                setLocationOpen(true);
-              }}
-              onFocus={() => {
-                setOpen(false);
-                setLocationOpen(true);
-              }}
-              placeholder={locating ? "Finding you…" : "Town or postcode"}
-              autoComplete="off"
-              aria-invalid={Boolean(error)}
-              aria-expanded={locationOpen}
-              className="mt-1 w-full bg-transparent text-[15px] font-semibold text-ink outline-none placeholder:font-medium placeholder:text-ink-faint"
-            />
-          </span>
-        </label>
+            {mlSubSubOptions.length > 0 && (
+              <label className="flex min-w-0 items-center gap-3 rounded-2xl px-4 py-3 sm:rounded-none sm:border-r sm:border-line sm:px-6 sm:py-1.5">
+                <ChevronDown className="h-[18px] w-[18px] shrink-0 text-teal-600" strokeWidth={2} />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal-700">
+                    Narrow it down
+                  </span>
+                  <select
+                    value={mlSubSub}
+                    onChange={(e) => setMlSubSub(e.target.value)}
+                    className="mt-1 w-full appearance-none bg-transparent text-[15px] font-semibold text-ink outline-none"
+                  >
+                    <option value="">Any</option>
+                    {mlSubSubOptions.map((s) => (
+                      <option key={s.id} value={s.slug}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </label>
+            )}
+
+            <label className="flex min-w-0 items-center gap-3 rounded-2xl px-4 py-3 sm:rounded-none sm:px-6 sm:py-1.5">
+              <MapPin className="h-[18px] w-[18px] shrink-0 text-teal-600" strokeWidth={2} />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal-700">
+                  Region covered
+                </span>
+                <select
+                  value={mlRegion}
+                  onChange={(e) => setMlRegion(e.target.value)}
+                  className="mt-1 w-full appearance-none bg-transparent text-[15px] font-semibold text-ink outline-none"
+                >
+                  <option value="">Anywhere in the UK</option>
+                  {UK_REGIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="flex min-w-0 items-center gap-3 rounded-2xl px-4 py-3 sm:rounded-none sm:border-r sm:border-line sm:px-0 sm:pr-6 sm:py-1.5">
+              <Search className="h-[18px] w-[18px] shrink-0 text-teal-600" strokeWidth={2} />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal-700">
+                  What are you searching for
+                </span>
+                <input
+                  type="text"
+                  value={term}
+                  onChange={(e) => {
+                    setTerm(e.target.value);
+                    setPicked(null);
+                  }}
+                  onFocus={() => {
+                    setOpen(true);
+                    setLocationOpen(false);
+                  }}
+                  placeholder={placeholder}
+                  autoComplete="off"
+                  className="mt-1 w-full bg-transparent text-[15px] font-semibold text-ink outline-none placeholder:font-medium placeholder:text-ink-faint"
+                />
+              </span>
+            </label>
+
+            <label className="flex min-w-0 items-center gap-3 rounded-2xl px-4 py-3 sm:rounded-none sm:px-6 sm:py-1.5">
+              <MapPin className={`h-[18px] w-[18px] shrink-0 ${error ? "text-rose-500" : "text-teal-600"}`} strokeWidth={2} />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span
+                  className={`text-[11px] font-bold uppercase tracking-[0.08em] ${error ? "text-rose-600" : "text-teal-700"}`}
+                >
+                  Where
+                </span>
+                <input
+                  ref={locationRef}
+                  type="text"
+                  value={location}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setLocationOpen(true);
+                  }}
+                  onFocus={() => {
+                    setOpen(false);
+                    setLocationOpen(true);
+                  }}
+                  placeholder={locating ? "Finding you…" : "Town or postcode"}
+                  autoComplete="off"
+                  aria-invalid={Boolean(error)}
+                  aria-expanded={locationOpen}
+                  className="mt-1 w-full bg-transparent text-[15px] font-semibold text-ink outline-none placeholder:font-medium placeholder:text-ink-faint"
+                />
+              </span>
+            </label>
+          </>
+        )}
 
         <button
           type="submit"

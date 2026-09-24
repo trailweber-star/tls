@@ -252,6 +252,7 @@ export interface DashboardProfile {
   consultationPriceMinor: number | null;
   currency: string;
   languages: string[];
+  coveredRegions?: string[];
   contactEmail: string | null;
   contactPhone: string | null;
   videoUrl: string | null;
@@ -299,6 +300,7 @@ export interface ProfilePatch {
   consultationPriceMinor?: number | null;
   currency?: string;
   languages?: string[];
+  coveredRegions?: string[];
   contactEmail?: string | null;
   contactPhone?: string | null;
   videoUrl?: string | null;

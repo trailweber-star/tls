@@ -27,6 +27,7 @@ import { viewStats, dbViewStats, viewSources } from "../lib/analytics.js";
 import { sendMail, buildMessageEmail, buildPatientReplyEmail } from "../lib/mailer.js";
 import { aggregateReviewScores } from "../lib/reviews.js";
 import { entitlementsFor } from "../lib/plans.js";
+import { UK_REGION_SET } from "../lib/ukRegions.js";
 
 /* ------------------------------------------------------------------ *
  * Profile completion
@@ -229,6 +230,18 @@ const profileSchema = z.object({
   consultationPriceMinor: z.number().int().min(0).max(10_000_00).nullable().optional(),
   currency: z.string().length(3).optional(),
   languages: z.array(z.string().max(40)).max(12).optional(),
+  // Expert Witness only — a closed list (lib/ukRegions.js), not free
+  // text, so a value here always matches what the search filter offers.
+  // Accepted from any specialist (harmless if unused, like `languages`
+  // on a specialist with no need for it) rather than gated on category,
+  // since the primary specialty can change independently of this field.
+  coveredRegions: z
+    .array(z.string())
+    .max(UK_REGION_SET.size)
+    .refine((regions) => regions.every((r) => UK_REGION_SET.has(r)), {
+      message: "coveredRegions must only contain values from the UK regions list",
+    })
+    .optional(),
   contactEmail: z.string().email().nullable().optional(),
   contactPhone: z.string().max(50).nullable().optional(),
   photoUrl: optionalUrlField(),
@@ -303,6 +316,7 @@ export async function getProfile(req, res) {
       consultationPriceMinor: plain.consultationPriceMinor ?? null,
       currency: plain.currency ?? "GBP",
       languages: plain.languages ?? [],
+      coveredRegions: plain.coveredRegions ?? [],
       contactEmail: plain.contactEmail ?? null,
       contactPhone: plain.contactPhone ?? null,
       videoUrl: plain.videoUrl ?? null,

@@ -27,6 +27,7 @@ import { AddressField } from "../../components/AddressField";
 import { VideoUploadField } from "../../components/VideoUploadField";
 import { MapPreview } from "../../components/MapPreview";
 import { SOCIAL_BRANDS, SocialGlyph, normaliseSocial } from "../../lib/socialBrands";
+import { UK_REGIONS } from "../../lib/ukRegions";
 import { ErrorBlock, LoadingBlock, ProgressBar } from "../../components/dashboard/ui";
 import { dashboardApi } from "../../lib/dashboardApi";
 import type { DashboardProfile, Overview, ProfilePatch } from "../../lib/dashboardApi";
@@ -78,6 +79,7 @@ type Draft = {
   yearsExperience: string;
   registrationNumber: string;
   languages: string[];
+  coveredRegions: string[];
   primarySpecialtySlug: string;
   treatmentNames: string[];
   locations: LocationDraft[];
@@ -111,6 +113,7 @@ function toDraft(p: DashboardProfile): Draft {
     yearsExperience: p.yearsExperience == null ? "" : String(p.yearsExperience),
     registrationNumber: p.registrationNumber ?? "",
     languages: p.languages ?? [],
+    coveredRegions: p.coveredRegions ?? [],
     primarySpecialtySlug: p.primarySpecialty?.slug ?? "",
     treatmentNames: (p.treatments ?? []).map((t) => t.name),
     locations: (p.clinicLocations ?? []).map((l) => ({
@@ -172,6 +175,7 @@ function toPatch(d: Draft): ProfilePatch {
     yearsExperience: numberOrNull(d.yearsExperience),
     registrationNumber: nullable(d.registrationNumber),
     languages: d.languages,
+    coveredRegions: d.coveredRegions,
     primarySpecialtySlug: d.primarySpecialtySlug || null,
     treatmentNames: d.treatmentNames,
     locations: d.locations
@@ -526,24 +530,60 @@ export default function ProfileEditor() {
             </Labelled>
 
             {isExpertWitnessBranch(specialties, draft.primarySpecialtySlug) && (
-              <Labelled
-                label="Type of report"
-                required
-                hint="The specific kind of medico-legal report you provide. Solicitors searching Medico-legal Experts filter by this, so it's what makes you findable -- not just Expert Witness on its own."
-              >
-                <select
-                  value={draft.primarySpecialtySlug}
-                  onChange={(e) => set("primarySpecialtySlug", e.target.value)}
-                  className={input}
+              <>
+                <Labelled
+                  label="Type of report"
+                  required
+                  hint="The specific kind of medico-legal report you provide. Solicitors searching Medico-legal Experts filter by this, so it's what makes you findable -- not just Expert Witness on its own."
                 >
-                  <option value="">Select a practice area…</option>
-                  {expertWitnessPracticeAreas(specialties).map((opt) => (
-                    <option key={opt.slug} value={opt.slug}>
-                      {opt.name}
-                    </option>
-                  ))}
-                </select>
-              </Labelled>
+                  <select
+                    value={draft.primarySpecialtySlug}
+                    onChange={(e) => set("primarySpecialtySlug", e.target.value)}
+                    className={input}
+                  >
+                    <option value="">Select a practice area…</option>
+                    {expertWitnessPracticeAreas(specialties).map((opt) => (
+                      <option key={opt.slug} value={opt.slug}>
+                        {opt.name}
+                      </option>
+                    ))}
+                  </select>
+                </Labelled>
+
+                <Labelled
+                  label="Regions covered"
+                  hint="Every region you'll travel to or write reports for. Solicitors filter Medico-legal Experts by this, so an empty list means you won't turn up in a region search."
+                >
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {UK_REGIONS.map((region) => {
+                      const checked = draft.coveredRegions.includes(region);
+                      return (
+                        <label
+                          key={region}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[13.5px] font-medium ${
+                            checked ? "border-teal-300 bg-teal-50 text-teal-800" : "border-line text-ink-muted"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              set(
+                                "coveredRegions",
+                                checked
+                                  ? draft.coveredRegions.filter((r) => r !== region)
+                                  : [...draft.coveredRegions, region]
+                              )
+                            }
+                            className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                          />
+                          {region}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </Labelled>
+              </>
             )}
           </Section>
 
