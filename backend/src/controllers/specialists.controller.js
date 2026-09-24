@@ -13,6 +13,7 @@ import { matchesLocation, nearestDistanceKm, resolveLocation } from "../lib/geo.
 import { recordProfileView, persistProfileView, classifyReferrer } from "../lib/analytics.js";
 import { gateCard, gateProfile } from "../lib/profileGate.js";
 import { searchPriorityWeight } from "../lib/plans.js";
+import { UK_REGIONS, regionSlug } from "../lib/ukRegions.js";
 
 /* ------------------------------------------------------------------ *
  * There is no serializer here any more. The repositories return rows in
@@ -290,6 +291,7 @@ function buildPredicates(filters, taxonomy) {
     subspecialty: (s) =>
       subBranches.length === 0 || subBranches.some((branch) => s.specialties.some((sp) => branch.has(sp.slug))),
     location: (s) => matchesLocation(s.clinicLocations, filters.resolvedLocation, filters.radiusKm),
+    region: (s) => !filters.region || (s.coveredRegions ?? []).includes(filters.region),
     rating: (s) => filters.minRating == null || s.ratingAvg >= filters.minRating,
     price: (s) => {
       const noFloor = filters.minPriceMinor == null;
@@ -329,6 +331,19 @@ function buildFacets(all, predicates, filters, taxonomy) {
   const forPrice = applyAllExcept(all, predicates, "price");
   const forAvailability = applyAllExcept(all, predicates, "availability");
   const forVerified = applyAllExcept(all, predicates, "verified");
+  const forRegion = applyAllExcept(all, predicates, "region");
+
+  // Expert Witness only -- every other category has never had a
+  // coveredRegions value to filter on, so the dropdown stays empty
+  // (and hidden) rather than offering 13 regions that always read 0.
+  const regions =
+    filters.specialty === "expert-witness"
+      ? UK_REGIONS.map((name) => ({
+          slug: regionSlug(name),
+          name,
+          count: forRegion.filter((s) => (s.coveredRegions ?? []).includes(name)).length,
+        }))
+      : [];
 
   const subOptions = filters.specialty ? taxonomy.childrenOf(filters.specialty) : [];
   const subspecialties = subOptions.map((child) => {
@@ -358,6 +373,7 @@ function buildFacets(all, predicates, filters, taxonomy) {
 
   return {
     subspecialties,
+    regions,
     cities: [...cityCounts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     availability: [
       { days: 0, label: "Available today", count: forAvailability.filter((s) => (daysUntil(s.nextAvailableAt) ?? Infinity) <= 0).length },
@@ -505,6 +521,10 @@ export async function searchSpecialists(req, res) {
     group: isKnownTab(req.query.group) ? String(req.query.group) : "",
     specialty: req.query.specialty || "",
     subspecialties: parseList(req.query.subspecialty),
+    // Expert Witness only -- see lib/ukRegions.js. Ignored by the
+    // predicate below for every other category, same as a stray
+    // subspecialty slug from another branch would be.
+    region: req.query.region || "",
     resolvedLocation,
     radiusKm: parseNumber(req.query.radiusKm, 25),
     minRating: parseNumber(req.query.minRating),

@@ -765,6 +765,14 @@ export const specialists = pgTable(
     currency: text("currency").notNull().default("GBP"),
     languages: text("languages").array().notNull().default(["English"]),
 
+    // UK regions this specialist will travel to / accept instructions
+    // from -- Expert Witness only (see lib/ukRegions.js for the closed
+    // list). Null/empty for every other category: a clinic-based
+    // specialist is placed by clinicLocations, not by region, and this
+    // column exists because an expert witness typically is not tied to
+    // one clinic at all.
+    coveredRegions: text("covered_regions").array(),
+
     ratingAvg: doublePrecision("rating_avg").notNull().default(0),
     ratingCount: integer("rating_count").notNull().default(0),
 

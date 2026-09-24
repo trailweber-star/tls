@@ -20,7 +20,16 @@ export const CATEGORY_PHOTOS: Record<string, string> = {
 // (matches the reference design's 4-tile "Explore Our Specialties"
 // section). Everything else in the taxonomy is reachable via "View all
 // specialties" rather than shown here.
-export const HOMEPAGE_SPECIALTY_SLUGS = ["orthopaedics", "physiotherapy", "aesthetics-specialists", "dentistry"];
+export const HOMEPAGE_SPECIALTY_SLUGS = [
+  "orthopaedics",
+  "physiotherapy",
+  "aesthetics-specialists",
+  "dentistry",
+  // No photo yet (see CATEGORY_PHOTOS above) -- CategoryGrid falls back
+  // to the gradient + icon treatment (categoryVisual("expert-witness"))
+  // until a real one is sourced, same as any specialty not covered here.
+  "expert-witness",
+];
 
 // Homepage-only display copy for the 4 tiles above — a display-name
 // override (the reference mockup labels the aesthetics tile "Cosmetic &
@@ -30,6 +39,10 @@ export const HOMEPAGE_SPECIALTY_SLUGS = ["orthopaedics", "physiotherapy", "aesth
 // everywhere else in the app (search, breadcrumbs, etc).
 export const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   "aesthetics-specialists": "Cosmetic & Aesthetic Surgery",
+  // The taxonomy category stays "Expert Witness" everywhere else
+  // (breadcrumbs, the admin taxonomy tree, URLs) -- Kirti confirmed only
+  // the homepage-facing label should read "Medico-legal Experts".
+  "expert-witness": "Medico-legal Experts",
 };
 
 export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
@@ -37,4 +50,5 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   physiotherapy: "Recovery & performance",
   "aesthetics-specialists": "Enhance your natural beauty",
   dentistry: "Healthy smiles, lasting confidence",
+  "expert-witness": "Medico-legal reports & testimony",
 };

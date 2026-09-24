@@ -135,6 +135,9 @@ export interface SpecialistWithRelations {
   consultationPriceMinor: number | null;
   currency: string;
   languages: string[];
+  // UK regions this specialist covers -- Expert Witness only; null/empty
+  // for every other category (see lib/ukRegions.js).
+  coveredRegions?: string[] | null;
   ratingAvg: number;
   ratingCount: number;
   registrationNumber: string | null;
@@ -224,6 +227,9 @@ export interface FacetCount {
 
 export interface SearchFacets {
   subspecialties: FacetCount[];
+  // Only populated (and only meaningful) when the chosen specialty is
+  // Expert Witness -- empty for every other category.
+  regions: FacetCount[];
   cities: FacetCount[];
   availability: { days: number; label: string; count: number }[];
   ratings: { min: number; count: number }[];

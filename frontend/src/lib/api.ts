@@ -168,6 +168,8 @@ export interface SearchParams {
   specialty?: string;
   /** Any depth of the taxonomy; repeatable (the sidebar checkboxes). */
   subspecialties?: string[];
+  /** Expert Witness only -- one of lib/ukRegions.js's UK_REGIONS. */
+  region?: string;
   location?: string;
   radiusKm?: number;
   minRating?: number | null;
@@ -186,6 +188,7 @@ export function buildSearchQuery(params: SearchParams): URLSearchParams {
   if (params.group) qs.set("group", params.group);
   if (params.specialty) qs.set("specialty", params.specialty);
   (params.subspecialties ?? []).forEach((slug) => qs.append("subspecialty", slug));
+  if (params.region) qs.set("region", params.region);
   if (params.location) qs.set("location", params.location);
   if (params.radiusKm != null) qs.set("radiusKm", String(params.radiusKm));
   if (params.minRating != null) qs.set("minRating", String(params.minRating));

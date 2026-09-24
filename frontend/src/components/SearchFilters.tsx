@@ -13,6 +13,8 @@ export interface SearchFilterState {
   group: string;
   specialty: string;
   subspecialties: string[];
+  /** Expert Witness only -- one of lib/ukRegions.js's UK_REGIONS. */
+  region: string;
   location: string;
   minRating: number | null;
   minPriceMinor: number | null;
@@ -148,6 +150,7 @@ export function SearchFilters({
   const topLevel = specialties.filter((s) => s.parentId === null);
   const activeCount =
     (filters.subspecialties.length ? 1 : 0) +
+    (filters.region ? 1 : 0) +
     (filters.minRating != null ? 1 : 0) +
     (filters.verifiedOnly ? 1 : 0) +
     (filters.availableWithinDays != null ? 1 : 0) +
@@ -223,9 +226,10 @@ export function SearchFilters({
           <Section title="Specialty">
             <select
               value={filters.specialty}
-              // Changing specialty clears sub-specialties: last search's
-              // knee filters make no sense under Dentistry.
-              onChange={(e) => onChange({ specialty: e.target.value, subspecialties: [] })}
+              // Changing specialty clears sub-specialties (and region,
+              // which only ever applied under Expert Witness): last
+              // search's knee filters make no sense under Dentistry.
+              onChange={(e) => onChange({ specialty: e.target.value, subspecialties: [], region: "" })}
               className={selectClass}
             >
               <option value="">All specialties</option>
@@ -236,6 +240,23 @@ export function SearchFilters({
               ))}
             </select>
           </Section>
+
+          {filters.specialty === "expert-witness" && (facets?.regions.length ?? 0) > 0 && (
+            <Section title="Regions covered">
+              <select
+                value={filters.region}
+                onChange={(e) => onChange({ region: e.target.value })}
+                className={selectClass}
+              >
+                <option value="">Any region</option>
+                {facets?.regions.map((r) => (
+                  <option key={r.slug} value={r.name}>
+                    {r.name} ({r.count})
+                  </option>
+                ))}
+              </select>
+            </Section>
+          )}
 
           {filters.specialty && (facets?.subspecialties.length ?? 0) > 0 && (
             <Section title="Sub-specialty">

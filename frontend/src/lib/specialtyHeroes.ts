@@ -57,7 +57,26 @@ const HERO_HEADINGS: Record<string, string> = {
   "aesthetics-specialists": "Cosmetic & Aesthetic Specialists",
   ent: "ENT Specialists",
   gynaecology: "Gynaecologists",
+  // The taxonomy category is still "Expert Witness" (breadcrumbs, the
+  // admin tree, URLs) -- this is the patient-facing label only, same
+  // override as the homepage tile in lib/categoryPhotos.ts.
+  "expert-witness": "Medico-legal Experts",
 };
+
+/**
+ * The same override, for callers that want the bare display name rather
+ * than heroHeadingFor()'s "... Specialists" suffix form -- the page
+ * title and meta description, which read as a sentence rather than a
+ * heading ("Medico-legal Experts in Leeds", not "Medico-legal Experts
+ * Specialists in Leeds").
+ */
+const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
+  "expert-witness": "Medico-legal Experts",
+};
+
+export function specialtyDisplayName(name: string, slug: string): string {
+  return DISPLAY_NAME_OVERRIDES[slug] ?? name;
+}
 
 export function heroPhotoFor(specialtySlug: string | null | undefined): string {
   if (!specialtySlug) return FALLBACK_HERO_PHOTO;

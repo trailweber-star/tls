@@ -7,6 +7,7 @@ import {
   Hospital,
   type LucideIcon,
   Pill,
+  Scale,
   Smile,
   Sparkles,
   Stethoscope,
@@ -28,6 +29,7 @@ const VISUALS: Record<string, CategoryVisual> = {
   "aesthetics-specialists": { icon: Sparkles, gradient: "from-teal-400 to-navy-700" },
   ent: { icon: Ear, gradient: "from-leaf-400 to-teal-700" },
   gynaecology: { icon: HeartPulse, gradient: "from-teal-600 to-navy-900" },
+  "expert-witness": { icon: Scale, gradient: "from-navy-800 to-teal-700" },
 
   "hospital-care": { icon: Hospital, gradient: "from-navy-800 to-teal-700" },
   "care-homes": { icon: Building2, gradient: "from-leaf-500 to-navy-800" },

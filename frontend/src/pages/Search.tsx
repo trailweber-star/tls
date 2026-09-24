@@ -11,7 +11,7 @@ import type { FacilityType } from "../lib/types";
 import type { FacilitySearchResponse } from "../lib/api";
 import { SORT_LABELS } from "../components/SearchFilters";
 import { SpecialistResultCard } from "../components/SpecialistResultCard";
-import { heroHeadingFor, heroPhotoFor, placeHeroFor } from "../lib/specialtyHeroes";
+import { heroHeadingFor, heroPhotoFor, placeHeroFor, specialtyDisplayName } from "../lib/specialtyHeroes";
 import { HEADER_HEIGHT } from "../components/Header";
 import type { City, SearchResponse, SortOption, Specialty } from "../lib/types";
 import { Seo } from "../components/Seo";
@@ -70,6 +70,7 @@ function readFilters(params: URLSearchParams): SearchFilterState & { page: numbe
     group: params.get("group") ?? "",
     specialty: params.get("specialty") ?? "",
     subspecialties: params.getAll("subspecialty").filter(Boolean),
+    region: params.get("region") ?? "",
     location: params.get("location") ?? "",
     minRating: num("minRating"),
     minPriceMinor: num("minPrice"),
@@ -96,6 +97,7 @@ function writeFilters(
   if (state.group) qs.set("group", state.group);
   if (state.specialty) qs.set("specialty", state.specialty);
   state.subspecialties.forEach((s) => qs.append("subspecialty", s));
+  if (state.region) qs.set("region", state.region);
   if (state.location) qs.set("location", state.location);
   if (state.minRating != null) qs.set("minRating", String(state.minRating));
   if (state.minPriceMinor != null) qs.set("minPrice", String(state.minPriceMinor));
@@ -283,6 +285,7 @@ export default function Search() {
       group: filters.group,
       specialty: filters.specialty,
       subspecialties: filters.subspecialties,
+      region: filters.region,
       location: filters.location,
       minRating: filters.minRating,
       minPriceMinor: filters.minPriceMinor,
@@ -337,6 +340,7 @@ export default function Search() {
         group: filters.group,
         specialty: filters.specialty,
         subspecialties: [],
+        region: "",
         location: filters.location,
         minRating: null,
         minPriceMinor: null,
@@ -372,11 +376,12 @@ export default function Search() {
     filters.subspecialties.length > 0 ||
     filters.page > 1 ||
     filters.sort !== "best-match";
-  const seoTitle = specialty
-    ? `${specialty.name}${locationLabel ? ` in ${locationLabel}` : " specialists"}`
+  const specialtyLabel = specialty ? specialtyDisplayName(specialty.name, specialty.slug) : null;
+  const seoTitle = specialtyLabel
+    ? `${specialtyLabel}${locationLabel ? ` in ${locationLabel}` : " specialists"}`
     : "Find a Specialist";
-  const seoDescription = specialty
-    ? `Compare ${total} verified ${specialty.name.toLowerCase()} specialists${locationLabel ? ` near ${locationLabel}` : " across the UK"} — credentials, prices, availability and patient reviews.`
+  const seoDescription = specialtyLabel
+    ? `Compare ${total} verified ${specialtyLabel.toLowerCase()} specialists${locationLabel ? ` near ${locationLabel}` : " across the UK"} — credentials, prices, availability and patient reviews.`
     : "Search verified UK specialists by condition, treatment and location. Compare credentials, consultation prices, availability and patient reviews.";
 
   return (
