@@ -1,3 +1,5 @@
+import { UK_REGIONS } from "../lib/ukRegions.js";
+
 // Generated demo directory.
 //
 // The seven hand-written specialists in mock.js are the curated examples
@@ -157,6 +159,87 @@ const REGULATOR_FOR = {
   paediatrics: "reg-gmc",
 };
 
+/* ------------------------------------------------------------------ *
+ * Expert Witness -- the medico-legal CV
+ *
+ * Everything above generates a clinic-shaped listing (bio, clinic
+ * address, consultation price), which is the right template for the
+ * ten specialties above but not for this one -- see isMedicoLegal in
+ * SpecialistProfile.tsx for why a medico-legal listing gets its own
+ * rendering path rather than reusing the clinical one. Rather than
+ * carve a second generator out of the loop below, this is a small
+ * conditional addition to the same specialist object: it still gets
+ * a clinic and a clinical-sounding bio (harmless, just unused by the
+ * profile page's isMedicoLegal branch), and additionally gets the CV
+ * fields that branch actually reads -- see migration
+ * 0014_expert_witness_profile_fields.sql for the shape.
+ *
+ * Small pools, same convention as REVIEW_COMMENTS above: enough
+ * variety that a demo profile doesn't look copy-pasted from its
+ * neighbour, not an attempt at exhaustive realism. Roughly half get
+ * management/research/publications/teaching/awards -- a populated
+ * "Prizes & awards" heading on every single listing would look
+ * exactly as invented as the sentence MedicoLegalCV's own comment
+ * warns against, so several fields are null on purpose, the same way
+ * a real McCollum/ExpertWitness.co.uk profile is (see
+ * extraction-notes/ in the import delivery for how often each
+ * section actually goes unfilled on the real source pages). */
+const EW_MEDICOLEGAL_EXPERIENCE = [
+  "Over 15 years providing medico-legal reports for personal injury and clinical negligence claims, instructed by solicitors acting for claimants and defendants in roughly equal measure.",
+  "Regularly appointed as a single joint expert on quantum and causation, with experience of Part 35 questions and court attendance.",
+  "Prepares reports to CPR Part 35 standards for both claimant and defendant solicitors, with a caseload weighted toward road traffic and workplace injury claims.",
+];
+const EW_CLINICAL_PRACTICE_EXPERIENCE = [
+  "Maintains an active clinical practice alongside medico-legal work, seeing patients privately and within the NHS.",
+  "Combines medico-legal reporting with an ongoing NHS consultant post, keeping report writing grounded in current clinical practice.",
+  "Runs a private clinic three days a week; medico-legal instructions are scheduled around that clinical list rather than replacing it.",
+];
+const EW_CLINICAL_INTERESTS = [
+  "Particular clinical interest in degenerative joint disease and post-traumatic osteoarthritis.",
+  "Clinical interests centre on soft-tissue injury recovery and return-to-work assessment.",
+  "Focuses clinically on chronic pain following orthopaedic trauma.",
+];
+const EW_MANAGEMENT_EXPERIENCE = [
+  "Former clinical lead for the trauma unit, with three years' experience managing a multi-disciplinary team.",
+  "Clinical director for a private practice group across two sites.",
+];
+const EW_RESEARCH_INTERESTS = [
+  "Research interests include outcome measurement after joint replacement surgery.",
+  "Has contributed to multi-centre research on recovery timelines following soft-tissue injury.",
+];
+const EW_PUBLICATIONS = [
+  "Co-author of several peer-reviewed papers on post-traumatic joint injury, published in orthopaedic and rehabilitation journals.",
+  "Contributed a chapter on medico-legal reporting standards to a postgraduate orthopaedics textbook.",
+];
+const EW_TEACHING_TRAINING = [
+  "Teaches on the postgraduate medico-legal reporting course run by the regional deanery.",
+  "Regularly supervises trainees preparing their first expert reports.",
+];
+const EW_PRIZES_AND_AWARDS = [
+  "Awarded a regional clinical excellence award for trauma care.",
+  "Recognised by a national body for contributions to postgraduate training.",
+];
+const EW_MEMBERSHIPS = [
+  "Member of the Royal College of Surgeons; registered expert witness with the Expert Witness Institute.",
+  "Fellow of the Royal College of Surgeons; member of the British Orthopaedic Association.",
+  "Member of the Academy of Experts and the relevant Royal College.",
+];
+// Self-described terms, not taxonomy values -- see areasOfExpertise's
+// own comment in schema.js. Three per profile, sampled rather than
+// listed whole, so no two neighbouring demo profiles read identically.
+const EW_TAGS = [
+  "Personal Injury",
+  "Clinical Negligence",
+  "Road Traffic Collision",
+  "Workplace Injury",
+  "Soft Tissue Injury",
+  "Joint Replacement",
+  "Fracture Management",
+  "Chronic Pain",
+  "Causation",
+  "Quantum",
+];
+
 /**
  * Build the generated half of the demo directory.
  *
@@ -261,6 +344,34 @@ export function buildDemoDirectory({ specialties, cities, takenSlugs = [], perCi
         // A realistic spread of tiers so paid placement, the verified
         // badge and the gated profile sections are all visible in the
         // demo directory rather than needing to be imagined.
+        // The CV fields, computed once per specialist so both the push
+        // below and nothing else needs to re-derive them. Empty ({}) for
+        // every specialty except Expert Witness -- spreading an empty
+        // object onto the record below adds nothing, which is exactly
+        // what every other generated specialty should get from this.
+        const isExpertWitness = top.slug === "expert-witness";
+        const ewFields = isExpertWitness
+          ? {
+              // Two distinct regions, picked off n so they vary specialist
+              // to specialist rather than every profile covering the same
+              // pair. UK_REGIONS.length (12) and the +5 offset are
+              // coprime-enough over a 24-name cycle that repeats don't
+              // land in a visible pattern.
+              coveredRegions: [...new Set([UK_REGIONS[n % UK_REGIONS.length], UK_REGIONS[(n + 5) % UK_REGIONS.length]])],
+              medicoLegalExperience: EW_MEDICOLEGAL_EXPERIENCE[n % EW_MEDICOLEGAL_EXPERIENCE.length],
+              clinicalPracticeExperience: EW_CLINICAL_PRACTICE_EXPERIENCE[n % EW_CLINICAL_PRACTICE_EXPERIENCE.length],
+              clinicalInterests: EW_CLINICAL_INTERESTS[n % EW_CLINICAL_INTERESTS.length],
+              // Roughly half populated -- see the note above this pool.
+              managementExperience: n % 2 === 0 ? EW_MANAGEMENT_EXPERIENCE[n % EW_MANAGEMENT_EXPERIENCE.length] : null,
+              researchInterests: n % 2 === 1 ? EW_RESEARCH_INTERESTS[n % EW_RESEARCH_INTERESTS.length] : null,
+              summaryOfPublications: n % 3 === 0 ? EW_PUBLICATIONS[n % EW_PUBLICATIONS.length] : null,
+              teachingTraining: n % 3 === 1 ? EW_TEACHING_TRAINING[n % EW_TEACHING_TRAINING.length] : null,
+              prizesAndAwards: n % 4 === 0 ? EW_PRIZES_AND_AWARDS[n % EW_PRIZES_AND_AWARDS.length] : null,
+              memberships: EW_MEMBERSHIPS[n % EW_MEMBERSHIPS.length],
+              areasOfExpertise: [...new Set([EW_TAGS[n % EW_TAGS.length], EW_TAGS[(n + 1) % EW_TAGS.length], EW_TAGS[(n + 2) % EW_TAGS.length]])],
+            }
+          : {};
+
         const claimed = n % 3 !== 0;
         const tierPick = n % 5;
         // Only a claimed profile can be on a paid tier: an unclaimed
@@ -351,6 +462,7 @@ export function buildDemoDirectory({ specialties, cities, takenSlugs = [], perCi
           videoUrl: paid && n % 2 === 0 ? PLACEHOLDER_VIDEO.url : null,
           videoThumbnailUrl: paid && n % 2 === 0 ? PLACEHOLDER_VIDEO.thumbnailUrl : null,
           videoDurationSeconds: paid && n % 2 === 0 ? PLACEHOLDER_VIDEO.durationSeconds : null,
+          ...ewFields,
         });
 
         // A few reviews each, with per-category scores, so every profile
