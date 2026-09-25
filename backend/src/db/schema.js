@@ -741,6 +741,33 @@ export const specialists = pgTable(
        would be wrong for almost everybody. */
     qualifications: text("qualifications"),
 
+    /* ------------------------------------------------ Expert Witness profile
+       Structured sections particular to a medico-legal CV, imported from
+       McCollum Consultants et al. (see imports/expert-witness-enriched.jsonl
+       and scripts/enrich-expert-witnesses.mjs) and rendered as their own
+       labelled sections on the profile page -- the same shape the source
+       pages use, rather than folded into the one generic `bio` field above.
+       Null for every specialist outside Expert Witness; nothing here is
+       required or invented on import, only what the source page actually
+       stated. */
+    medicoLegalExperience: text("medico_legal_experience"),
+    clinicalPracticeExperience: text("clinical_practice_experience"),
+    clinicalInterests: text("clinical_interests"),
+    managementExperience: text("management_experience"),
+    researchInterests: text("research_interests"),
+    summaryOfPublications: text("summary_of_publications"),
+    teachingTraining: text("teaching_training"),
+    prizesAndAwards: text("prizes_and_awards"),
+    memberships: text("memberships"),
+    /* Fine-grained self-described tags -- "Cataracts", "Glaucoma",
+       "Diabetic Complications" -- one level more specific than the
+       specialty taxonomy and too numerous per person (10-30 each) to make
+       filterable nodes of without drowning the Medicolegal "Type of
+       report" filter. Shown as tag pills on the profile instead; the
+       taxonomy link (specialistSpecialties) is what search actually
+       filters on. */
+    areasOfExpertise: text("areas_of_expertise").array(),
+
     /* ------------------------------------------------------ provenance
        Where an unclaimed listing came from.
 
