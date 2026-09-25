@@ -3196,6 +3196,14 @@
             ]
           }
         ]
+      },
+      {
+        "name": "Criminal Injuries Compensation",
+        "slug": "criminal-injuries-compensation"
+      },
+      {
+        "name": "Fitness to Practise & Regulatory",
+        "slug": "fitness-to-practise-regulatory"
       }
     ]
   }
