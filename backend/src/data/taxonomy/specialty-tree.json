@@ -3196,6 +3196,364 @@
             ]
           }
         ]
+      },
+      {
+        "name": "Medical Specialty",
+        "slug": "expert-witness-medical-specialty",
+        "children": [
+          {
+            "name": "Anaesthesia",
+            "slug": "ew-anaesthesia"
+          },
+          {
+            "name": "Breast Surgery",
+            "slug": "ew-breast-surgery"
+          },
+          {
+            "name": "Cardiothoracic Surgery",
+            "slug": "ew-cardiothoracic-surgery"
+          },
+          {
+            "name": "Colorectal (Lower GI) Surgery",
+            "slug": "ew-colorectal-surgery"
+          },
+          {
+            "name": "Endocrine Surgery",
+            "slug": "ew-endocrine-surgery"
+          },
+          {
+            "name": "Dental Surgery",
+            "slug": "ew-dental-surgery"
+          },
+          {
+            "name": "Ear, Nose & Throat (ENT) Surgery",
+            "slug": "ew-ear-nose-and-throat-surgery"
+          },
+          {
+            "name": "Foot & Ankle Surgery",
+            "slug": "ew-foot-and-ankle-surgery"
+          },
+          {
+            "name": "Endovascular Surgery",
+            "slug": "ew-endovascular-surgery"
+          },
+          {
+            "name": "General Surgery",
+            "slug": "ew-general-surgery"
+          },
+          {
+            "name": "Hepato-Pancreato-Biliary (HPB) Surgery",
+            "slug": "ew-hepato-pancreato-biliary-surgery"
+          },
+          {
+            "name": "Neurosurgery",
+            "slug": "ew-neurosurgery"
+          },
+          {
+            "name": "Oral & Maxillofacial Surgery",
+            "slug": "ew-oral-and-maxillofacial-surgery"
+          },
+          {
+            "name": "Ophthalmology",
+            "slug": "ew-ophthalmology"
+          },
+          {
+            "name": "Plastic Surgery",
+            "slug": "ew-plastic-surgery"
+          },
+          {
+            "name": "Transplant Surgery",
+            "slug": "ew-transplant-surgery"
+          },
+          {
+            "name": "Trauma & Orthopaedic Surgery",
+            "slug": "ew-trauma-and-orthopaedic-surgery"
+          },
+          {
+            "name": "Upper GI Surgery",
+            "slug": "ew-upper-gi-surgery"
+          },
+          {
+            "name": "Urology",
+            "slug": "ew-urology"
+          },
+          {
+            "name": "Vascular Surgery",
+            "slug": "ew-vascular-surgery"
+          },
+          {
+            "name": "Acute Medicine",
+            "slug": "ew-acute-medicine"
+          },
+          {
+            "name": "Allergy",
+            "slug": "ew-allergy"
+          },
+          {
+            "name": "Cardiology",
+            "slug": "ew-cardiology"
+          },
+          {
+            "name": "Dermatology",
+            "slug": "ew-dermatology"
+          },
+          {
+            "name": "Emergency Medicine",
+            "slug": "ew-emergency-medicine"
+          },
+          {
+            "name": "Endocrinology & Diabetes Medicine",
+            "slug": "ew-endocrinology-and-diabetes-medicine"
+          },
+          {
+            "name": "Gastroenterology",
+            "slug": "ew-gastroenterology"
+          },
+          {
+            "name": "Geriatric Medicine",
+            "slug": "ew-geriatric-medicine"
+          },
+          {
+            "name": "General Practice (GP)",
+            "slug": "ew-general-practice"
+          },
+          {
+            "name": "Haematology",
+            "slug": "ew-haematology"
+          },
+          {
+            "name": "Hepatology",
+            "slug": "ew-hepatology"
+          },
+          {
+            "name": "Intensive Care Medicine",
+            "slug": "ew-intensive-care-medicine"
+          },
+          {
+            "name": "Medical Statistics",
+            "slug": "ew-medical-statistics"
+          },
+          {
+            "name": "Nephrology",
+            "slug": "ew-nephrology"
+          },
+          {
+            "name": "Neurology",
+            "slug": "ew-neurology"
+          },
+          {
+            "name": "Neurorehabilitation",
+            "slug": "ew-neurorehabilitation"
+          },
+          {
+            "name": "Oncology",
+            "slug": "ew-oncology"
+          },
+          {
+            "name": "Palliative Care / End of Life Medicine",
+            "slug": "ew-palliative-care-end-of-life-medicine"
+          },
+          {
+            "name": "Rehabilitation",
+            "slug": "ew-rehabilitation"
+          },
+          {
+            "name": "Respiratory Medicine",
+            "slug": "ew-respiratory-medicine"
+          },
+          {
+            "name": "Rheumatology",
+            "slug": "ew-rheumatology"
+          },
+          {
+            "name": "Stroke Medicine",
+            "slug": "ew-stroke-medicine"
+          },
+          {
+            "name": "Neonatology",
+            "slug": "ew-neonatology"
+          },
+          {
+            "name": "Paediatric Allergy",
+            "slug": "ew-paediatric-allergy"
+          },
+          {
+            "name": "Paediatric Anaesthesia",
+            "slug": "ew-paediatric-anaesthesia"
+          },
+          {
+            "name": "Paediatric Burns",
+            "slug": "ew-paediatric-burns"
+          },
+          {
+            "name": "Paediatric Cardiology",
+            "slug": "ew-paediatric-cardiology"
+          },
+          {
+            "name": "Paediatric Critical Care",
+            "slug": "ew-paediatric-critical-care"
+          },
+          {
+            "name": "Paediatric Emergency Medicine",
+            "slug": "ew-paediatric-emergency-medicine"
+          },
+          {
+            "name": "Paediatric ENT",
+            "slug": "ew-paediatric-ent"
+          },
+          {
+            "name": "Paediatric General Surgery",
+            "slug": "ew-paediatric-general-surgery"
+          },
+          {
+            "name": "Paediatric Ophthalmology",
+            "slug": "ew-paediatric-ophthalmology"
+          },
+          {
+            "name": "Paediatric Orthopaedics",
+            "slug": "ew-paediatric-orthopaedics"
+          },
+          {
+            "name": "Paediatric Radiology",
+            "slug": "ew-paediatric-radiology"
+          },
+          {
+            "name": "Paediatric Respiratory Medicine",
+            "slug": "ew-paediatric-respiratory-medicine"
+          },
+          {
+            "name": "Paediatric Spinal Surgery",
+            "slug": "ew-paediatric-spinal-surgery"
+          },
+          {
+            "name": "Paediatric Thoracic Surgery",
+            "slug": "ew-paediatric-thoracic-surgery"
+          },
+          {
+            "name": "Paediatric",
+            "slug": "ew-paediatric"
+          },
+          {
+            "name": "Breast Radiology",
+            "slug": "ew-breast-radiology"
+          },
+          {
+            "name": "Gastrointestinal (GI) & Abdominal Radiology",
+            "slug": "ew-gastrointestinal-and-abdominal-radiology"
+          },
+          {
+            "name": "Cardiothoracic Radiology",
+            "slug": "ew-cardiothoracic-radiology"
+          },
+          {
+            "name": "General & Interventional Radiology",
+            "slug": "ew-general-and-interventional-radiology"
+          },
+          {
+            "name": "Head & Neck Radiology",
+            "slug": "ew-head-and-neck-radiology"
+          },
+          {
+            "name": "Interventional Radiology",
+            "slug": "ew-interventional-radiology"
+          },
+          {
+            "name": "Musculoskeletal Radiology (MSK)",
+            "slug": "ew-musculoskeletal-radiology"
+          },
+          {
+            "name": "Neuroradiology",
+            "slug": "ew-neuroradiology"
+          },
+          {
+            "name": "Thoracic Radiology",
+            "slug": "ew-thoracic-radiology"
+          },
+          {
+            "name": "Ultrasound",
+            "slug": "ew-ultrasound"
+          },
+          {
+            "name": "Vascular Interventional Radiology",
+            "slug": "ew-vascular-interventional-radiology"
+          },
+          {
+            "name": "Aesthetic Nursing",
+            "slug": "ew-aesthetic-nursing"
+          },
+          {
+            "name": "Advanced Nurse Practitioners",
+            "slug": "ew-advanced-nurse-practitioners"
+          },
+          {
+            "name": "Clinical Governance & Patient Safety",
+            "slug": "ew-clinical-governance-and-patient-safety"
+          },
+          {
+            "name": "Community & Primary Care Nursing",
+            "slug": "ew-community-and-primary-care-nursing"
+          },
+          {
+            "name": "Critical Care / Intensive Care Nursing",
+            "slug": "ew-critical-care-intensive-care-nursing"
+          },
+          {
+            "name": "Emergency & Urgent Care Nursing",
+            "slug": "ew-emergency-and-urgent-care-nursing"
+          },
+          {
+            "name": "Gastroenterology & IBD Nursing",
+            "slug": "ew-gastroenterology-and-ibd-nursing"
+          },
+          {
+            "name": "General / Adult Nursing",
+            "slug": "ew-general-adult-nursing"
+          },
+          {
+            "name": "Infection Prevention & Control",
+            "slug": "ew-infection-prevention-and-control"
+          },
+          {
+            "name": "Learning Disability Nursing",
+            "slug": "ew-learning-disability-nursing"
+          },
+          {
+            "name": "Mental Health Nursing",
+            "slug": "ew-mental-health-nursing"
+          },
+          {
+            "name": "Paediatric Critical Care Nursing",
+            "slug": "ew-paediatric-critical-care-nursing"
+          },
+          {
+            "name": "Paediatric Emergency Nursing",
+            "slug": "ew-paediatric-emergency-nursing"
+          },
+          {
+            "name": "Paediatric Nursing",
+            "slug": "ew-paediatric-nursing"
+          },
+          {
+            "name": "Palliative Care / End of Life Nursing",
+            "slug": "ew-palliative-care-end-of-life-nursing"
+          },
+          {
+            "name": "Respiratory Nursing",
+            "slug": "ew-respiratory-nursing"
+          },
+          {
+            "name": "Pre-Hospital & Trauma Care",
+            "slug": "ew-pre-hospital-and-trauma-care"
+          },
+          {
+            "name": "Stoma Care Nursing",
+            "slug": "ew-stoma-care-nursing"
+          },
+          {
+            "name": "Wound Care & Tissue Viability",
+            "slug": "ew-wound-care-and-tissue-viability"
+          }
+        ]
       }
     ]
   }
