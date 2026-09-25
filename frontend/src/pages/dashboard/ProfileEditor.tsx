@@ -95,6 +95,17 @@ type Draft = {
   memberships: string;
   areasOfExpertise: string[];
   primarySpecialtySlug: string;
+  /**
+   * Expert Witness only -- the two multi-selects below "Primary
+   * specialty". caseTypeSlugs is every "type of report" leaf (direct
+   * children of expert-witness-medicolegal) this listing is tagged
+   * with; clinicalSpecialtySlugs is every clinical-discipline leaf
+   * (children of expert-witness-medical-specialty). Both are full sets
+   * -- saving replaces whichever of these the specialist actually has,
+   * same as every other joined field on this form.
+   */
+  caseTypeSlugs: string[];
+  clinicalSpecialtySlugs: string[];
   treatmentNames: string[];
   locations: LocationDraft[];
   consultationPrice: string;
@@ -116,7 +127,16 @@ type Draft = {
   publicPhone: string;
 };
 
-function toDraft(p: DashboardProfile): Draft {
+/**
+ * `allSpecialties` is the full taxonomy, needed only to work out which of
+ * `p.specialties` (a flat list of slugs) belong to the two Expert
+ * Witness branches -- everything else on the profile is read directly,
+ * with no classification required.
+ */
+function toDraft(p: DashboardProfile, allSpecialties: Specialty[]): Draft {
+  const tagged = new Set(p.specialties ?? []);
+  const caseTypeSlugSet = new Set(expertWitnessPracticeAreas(allSpecialties).map((s) => s.slug));
+  const clinicalSpecialtySlugSet = new Set(expertWitnessMedicalSpecialties(allSpecialties).map((s) => s.slug));
   return {
     fullName: p.fullName ?? "",
     title: p.title ?? "",
@@ -139,6 +159,8 @@ function toDraft(p: DashboardProfile): Draft {
     memberships: p.memberships ?? "",
     areasOfExpertise: p.areasOfExpertise ?? [],
     primarySpecialtySlug: p.primarySpecialty?.slug ?? "",
+    caseTypeSlugs: [...tagged].filter((slug) => caseTypeSlugSet.has(slug)),
+    clinicalSpecialtySlugs: [...tagged].filter((slug) => clinicalSpecialtySlugSet.has(slug)),
     treatmentNames: (p.treatments ?? []).map((t) => t.name),
     locations: (p.clinicLocations ?? []).map((l) => ({
       address: l.address ?? "",
@@ -188,6 +210,20 @@ function cityFallback(cities: City[], cityId: string) {
 const nullable = (v: string) => (v.trim() ? v.trim() : null);
 const numberOrNull = (v: string) => (v.trim() === "" ? null : Number(v));
 
+/** Add/remove a value from a small multi-select array, used by every
+ *  checkbox-grid field below (regions, type of report, medical specialty). */
+const toggleValue = (values: string[], value: string) =>
+  values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
+
+/** The shared look for one tile in a checkbox grid -- teal when picked,
+ *  muted otherwise. One definition so the three grids below can never
+ *  drift out of sync with each other. */
+function checkboxTileClass(checked: boolean) {
+  return `flex items-center gap-2 rounded-lg border px-3 py-2 text-[13.5px] font-medium ${
+    checked ? "border-teal-300 bg-teal-50 text-teal-800" : "border-line text-ink-muted"
+  }`;
+}
+
 function toPatch(d: Draft): ProfilePatch {
   return {
     fullName: d.fullName.trim(),
@@ -211,6 +247,8 @@ function toPatch(d: Draft): ProfilePatch {
     memberships: nullable(d.memberships),
     areasOfExpertise: d.areasOfExpertise,
     primarySpecialtySlug: d.primarySpecialtySlug || null,
+    caseTypeSlugs: d.caseTypeSlugs,
+    clinicalSpecialtySlugs: d.clinicalSpecialtySlugs,
     treatmentNames: d.treatmentNames,
     locations: d.locations
       // Clinic addresses are deliberately left out: the server treats
@@ -273,7 +311,7 @@ function specialtyOptions(all: Specialty[]) {
     all
       .filter((s) => (s.parentId ?? null) === parentId)
       .forEach((node) => {
-        out.push({ slug: node.slug, label: `${"\u00a0\u00a0".repeat(depth)}${depth ? "└ " : ""}${node.name}` });
+        out.push({ slug: node.slug, label: `${"  ".repeat(depth)}${depth ? "└ " : ""}${node.name}` });
         walk(node.id, depth + 1);
       });
   };
@@ -282,18 +320,25 @@ function specialtyOptions(all: Specialty[]) {
 }
 
 /* ------------------------------------------------------------------ *
- * Expert Witness -- a guided second step
+ * Expert Witness -- two guided second steps
  *
  * The dropdown above lists all three taxonomy levels flattened together,
  * which works fine when a specialist already knows they're "Shoulder
- * Arthroscopy". It doesn't work as well for Expert Witness: picking the
- * category isn't enough, a solicitor searching Expert Witnesses
- * filters by the specific TYPE of report (see "Type of report" in
- * SearchFilters.tsx), so the listing has to be tagged at that same leaf
- * level to ever match. This makes that second, narrower choice its own
- * step instead of leaving it to be found by scrolling the long list
- * above -- same single primarySpecialtySlug field underneath, just a
- * focused picker once they're in this branch.
+ * Arthroscopy". It doesn't work at all for Expert Witness: a solicitor
+ * searching Expert Witnesses filters on two separate things -- the
+ * specific TYPE of report (see "Type of report" in SearchFilters.tsx)
+ * and the clinical discipline behind it -- and a real expert witness is
+ * routinely tagged with several of each, not one. Both are their own
+ * multi-select here, feeding caseTypeSlugs / clinicalSpecialtySlugs
+ * (see toPatch and dashboard.controller.js's updateProfile), entirely
+ * separate from the single primarySpecialtySlug value above them.
+ *
+ * A dashboard save used to collapse both down to whatever the single
+ * primarySpecialtySlug dropdown held, silently dropping every other tag
+ * a specialist had -- real risk once specialists actually carrying
+ * several tags exist to lose them. These two multi-selects, and the
+ * union in updateProfile, are what keep a save from ever doing that
+ * again.
  * ------------------------------------------------------------------ */
 function isExpertWitnessBranch(all: Specialty[], slug: string): boolean {
   const bySlug = new Map(all.map((s) => [s.slug, s]));
@@ -306,10 +351,23 @@ function isExpertWitnessBranch(all: Specialty[], slug: string): boolean {
   return false;
 }
 
+/** The "type of report" options -- direct children of the Medicolegal
+ *  branch (Personal Injury, Clinical Negligence, and so on). */
 function expertWitnessPracticeAreas(all: Specialty[]) {
   const medicolegal = all.find((s) => s.slug === "expert-witness-medicolegal");
   if (!medicolegal) return [];
   return all.filter((s) => s.parentId === medicolegal.id);
+}
+
+/** The "medical specialty" options -- the clinical-discipline leaves
+ *  under expert-witness-medical-specialty (Cardiology, Orthopaedics,
+ *  and so on -- 0022_expert_witness_medical_specialty.sql). Sorted by
+ *  name: there are close to ninety of these, in no useful taxonomy
+ *  order for a flat checkbox grid. */
+function expertWitnessMedicalSpecialties(all: Specialty[]) {
+  const branch = all.find((s) => s.slug === "expert-witness-medical-specialty");
+  if (!branch) return [];
+  return all.filter((s) => s.parentId === branch.id).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -367,7 +425,7 @@ export default function ProfileEditor() {
         getCities().catch(() => [] as City[]),
         getAllSpecialties().catch(() => [] as Specialty[]),
       ]);
-      const d = toDraft(res.profile);
+      const d = toDraft(res.profile, specialtyList);
       setProfile(res.profile);
       setDraft(d);
       setBaseline(JSON.stringify(d));
@@ -430,8 +488,8 @@ export default function ProfileEditor() {
       // name, a location's resolved city) replace what was typed.
       const fresh = await dashboardApi.profile();
       setProfile(fresh.profile);
-      setDraft(toDraft(fresh.profile));
-      setBaseline(JSON.stringify(toDraft(fresh.profile)));
+      setDraft(toDraft(fresh.profile, specialties));
+      setBaseline(JSON.stringify(toDraft(fresh.profile, specialties)));
       window.setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save your changes");
@@ -599,21 +657,48 @@ export default function ProfileEditor() {
               <>
                 <Labelled
                   label="Type of report"
-                  required
-                  hint="The specific kind of expert witness report you provide. Solicitors searching Expert Witnesses filter by this, so it's what makes you findable -- not just the category on its own."
+                  hint="Every kind of expert witness report you write. Solicitors searching Expert Witnesses filter by this, so an empty list means you won't turn up in a report-type search -- pick as many as apply."
                 >
-                  <select
-                    value={draft.primarySpecialtySlug}
-                    onChange={(e) => set("primarySpecialtySlug", e.target.value)}
-                    className={input}
-                  >
-                    <option value="">Select a practice area…</option>
-                    {expertWitnessPracticeAreas(specialties).map((opt) => (
-                      <option key={opt.slug} value={opt.slug}>
-                        {opt.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {expertWitnessPracticeAreas(specialties).map((opt) => {
+                      const checked = draft.caseTypeSlugs.includes(opt.slug);
+                      return (
+                        <label key={opt.slug} className={checkboxTileClass(checked)}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => set("caseTypeSlugs", toggleValue(draft.caseTypeSlugs, opt.slug))}
+                            className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                          />
+                          {opt.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </Labelled>
+
+                <Labelled
+                  label="Medical specialty"
+                  hint="Every clinical discipline you're instructed on as an expert witness. This is filtered separately from the type of report above, so solicitors can search by either -- pick as many as apply."
+                >
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {expertWitnessMedicalSpecialties(specialties).map((opt) => {
+                      const checked = draft.clinicalSpecialtySlugs.includes(opt.slug);
+                      return (
+                        <label key={opt.slug} className={checkboxTileClass(checked)}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              set("clinicalSpecialtySlugs", toggleValue(draft.clinicalSpecialtySlugs, opt.slug))
+                            }
+                            className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                          />
+                          {opt.name}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </Labelled>
 
                 <Labelled
@@ -624,23 +709,11 @@ export default function ProfileEditor() {
                     {UK_REGIONS.map((region) => {
                       const checked = draft.coveredRegions.includes(region);
                       return (
-                        <label
-                          key={region}
-                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[13.5px] font-medium ${
-                            checked ? "border-teal-300 bg-teal-50 text-teal-800" : "border-line text-ink-muted"
-                          }`}
-                        >
+                        <label key={region} className={checkboxTileClass(checked)}>
                           <input
                             type="checkbox"
                             checked={checked}
-                            onChange={() =>
-                              set(
-                                "coveredRegions",
-                                checked
-                                  ? draft.coveredRegions.filter((r) => r !== region)
-                                  : [...draft.coveredRegions, region]
-                              )
-                            }
+                            onChange={() => set("coveredRegions", toggleValue(draft.coveredRegions, region))}
                             className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
                           />
                           {region}

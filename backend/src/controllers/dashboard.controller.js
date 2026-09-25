@@ -268,6 +268,21 @@ const profileSchema = z.object({
   videoThumbnailUrl: optionalUrlField(),
   videoDurationSeconds: z.number().int().min(0).max(7200).nullable().optional(),
   primarySpecialtySlug: z.string().max(120).nullable().optional(),
+  /* Expert Witness only -- the two taxonomy branches underneath "Expert
+     Witness" a listing can carry tags in, on top of the single
+     primarySpecialtySlug above: caseTypeSlugs is the "type of report"
+     (direct children of expert-witness-medicolegal -- Personal Injury,
+     Clinical Negligence, and so on) and clinicalSpecialtySlugs is the
+     clinical discipline (children of expert-witness-medical-specialty).
+     Same reasoning as coveredRegions and the CV fields above -- accepted
+     from any specialist, harmless if unused -- but unlike those two,
+     these feed specialist_specialties directly (see updateProfile
+     below), because a solicitor's search filters on exactly these
+     leaves. Each is sent as the specialist's whole set of that kind,
+     same "form holds the whole set" contract as treatmentNames and
+     locations further down. */
+  caseTypeSlugs: z.array(z.string().max(120)).max(20).optional(),
+  clinicalSpecialtySlugs: z.array(z.string().max(120)).max(120).optional(),
   nextAvailableAt: z.string().datetime().nullable().optional(),
   // Premium-tier content. Accepted from any plan and stored, but only
   // served publicly where the plan allows (lib/profileGate.js) — so a
@@ -366,6 +381,13 @@ export async function getProfile(req, res) {
             name: plain.primarySpecialty.name ?? null,
           }
         : null,
+      // Every specialty this listing is actually tagged with, primary
+      // included -- the same set assembleSpecialists() already builds
+      // (repos.js's specialtySet). The editor uses this to pre-populate
+      // the Expert Witness "Type of report" and "Medical specialty"
+      // multi-selects from real data, instead of only ever knowing
+      // about the single primarySpecialtySlug above.
+      specialties: (plain.specialties ?? []).map((s) => s.slug),
       treatments: (plain.treatments ?? []).map((t) => ({ id: String(t.id ?? t._id), name: t.name })),
       clinicLocations: (plain.clinicLocations ?? []).map((l) => ({
         id: String(l.id ?? l._id),
@@ -408,7 +430,8 @@ export async function updateProfile(req, res) {
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid profile", issues: parsed.error.issues });
   }
-  const { primarySpecialtySlug, treatmentNames, locations, nextAvailableAt, ...fields } = parsed.data;
+  const { primarySpecialtySlug, caseTypeSlugs, clinicalSpecialtySlugs, treatmentNames, locations, nextAvailableAt, ...fields } =
+    parsed.data;
 
   /* socials is `jsonb notNull default({})` -- "no social links" is meant
      to be stored as {}, same as gallery/[] and languages/[]. But the
@@ -457,11 +480,35 @@ export async function updateProfile(req, res) {
     patch.nextAvailableAt = nextAvailableAt ? new Date(nextAvailableAt) : null;
   }
 
+  /* specialtyIds is what setLinks below replaces specialist_specialties
+     with, wholesale. It used to be driven by primarySpecialtySlug alone
+     -- correct for every ordinary specialist, who only ever carries the
+     one tag -- but wrong for Expert Witness, who can carry several
+     "type of report" and "medical specialty" leaves at once (see the
+     two multi-selects in ProfileEditor.tsx). caseTypeSlugs and
+     clinicalSpecialtySlugs are unioned in alongside the primary
+     specialty so that a save touching any of the three replaces the
+     specialist's whole specialty set with exactly what the form now
+     holds -- nothing left out of these arrays survives, same "form
+     holds the whole set" contract setLinks already documents for every
+     other joined collection. For an ordinary specialist who never sends
+     the two new arrays, this is byte-for-byte the old behaviour: the
+     one primary specialty, and nothing else. */
   let specialtyIds;
-  if (primarySpecialtySlug !== undefined) {
-    const node = primarySpecialtySlug ? await taxonomyRepo.specialtyBySlug(primarySpecialtySlug) : null;
-    patch.primarySpecialtyId = node?.id ?? null;
-    specialtyIds = node ? [node.id] : [];
+  if (primarySpecialtySlug !== undefined || caseTypeSlugs !== undefined || clinicalSpecialtySlugs !== undefined) {
+    const primaryNode = primarySpecialtySlug ? await taxonomyRepo.specialtyBySlug(primarySpecialtySlug) : null;
+    if (primarySpecialtySlug !== undefined) {
+      patch.primarySpecialtyId = primaryNode?.id ?? null;
+    }
+
+    const extraSlugs = [...new Set([...(caseTypeSlugs ?? []), ...(clinicalSpecialtySlugs ?? [])])];
+    const extraNodes = extraSlugs.length
+      ? await Promise.all(extraSlugs.map((slug) => taxonomyRepo.specialtyBySlug(slug)))
+      : [];
+
+    const ids = new Set(extraNodes.filter(Boolean).map((n) => n.id));
+    if (primaryNode) ids.add(primaryNode.id);
+    specialtyIds = [...ids];
   }
 
   let treatmentIds;

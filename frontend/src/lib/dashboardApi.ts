@@ -281,6 +281,14 @@ export interface DashboardProfile {
   publicPhone: string | null;
   verificationStatus: VerificationStatus;
   primarySpecialty: { slug: string | null; name: string | null } | null;
+  /**
+   * Every specialty slug this listing is actually tagged with, primary
+   * included. Expert Witness is the only category that ever carries more
+   * than one -- the editor filters this down to the case-type and
+   * clinical-specialty leaves it needs to pre-populate its two
+   * multi-selects (see ProfileEditor.tsx's toDraft).
+   */
+  specialties?: string[];
   treatments: { id: string; name: string }[];
   clinicLocations: {
     id: string;
@@ -338,6 +346,15 @@ export interface ProfilePatch {
   publicEmail?: string | null;
   publicPhone?: string | null;
   primarySpecialtySlug?: string | null;
+  /**
+   * Expert Witness only -- the "type of report" leaves (children of
+   * expert-witness-medicolegal) and the clinical-discipline leaves
+   * (children of expert-witness-medical-specialty). Each is the
+   * specialist's whole set of that kind, same contract as
+   * treatmentNames/locations below: what isn't sent isn't kept.
+   */
+  caseTypeSlugs?: string[];
+  clinicalSpecialtySlugs?: string[];
   treatmentNames?: string[];
   locations?: {
     address: string;
