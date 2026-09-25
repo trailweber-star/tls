@@ -18,6 +18,9 @@ export interface SearchFilterState {
   /** Expert Witness only -- leaf slugs under Medicolegal (Personal
    *  Injury, Clinical Negligence, ...). */
   practiceAreas: string[];
+  /** Expert Witness only -- leaf slugs under Medical Specialty
+   *  (Cardiology, Neurosurgery, ...). */
+  clinicalSpecialties: string[];
   location: string;
   minRating: number | null;
   minPriceMinor: number | null;
@@ -155,6 +158,7 @@ export function SearchFilters({
     (filters.subspecialties.length ? 1 : 0) +
     (filters.region ? 1 : 0) +
     (filters.practiceAreas.length ? 1 : 0) +
+    (filters.clinicalSpecialties.length ? 1 : 0) +
     (filters.minRating != null ? 1 : 0) +
     (filters.verifiedOnly ? 1 : 0) +
     (filters.availableWithinDays != null ? 1 : 0) +
@@ -175,6 +179,13 @@ export function SearchFilters({
       ? filters.practiceAreas.filter((s) => s !== slug)
       : [...filters.practiceAreas, slug];
     onChange({ practiceAreas: next });
+  }
+
+  function toggleClinicalSpecialty(slug: string) {
+    const next = filters.clinicalSpecialties.includes(slug)
+      ? filters.clinicalSpecialties.filter((s) => s !== slug)
+      : [...filters.clinicalSpecialties, slug];
+    onChange({ clinicalSpecialties: next });
   }
 
   return (
@@ -240,7 +251,15 @@ export function SearchFilters({
               // Changing specialty clears sub-specialties (and region,
               // which only ever applied under Expert Witness): last
               // search's knee filters make no sense under Dentistry.
-              onChange={(e) => onChange({ specialty: e.target.value, subspecialties: [], region: "", practiceAreas: [] })}
+              onChange={(e) =>
+                onChange({
+                  specialty: e.target.value,
+                  subspecialties: [],
+                  region: "",
+                  practiceAreas: [],
+                  clinicalSpecialties: [],
+                })
+              }
               className={selectClass}
             >
               <option value="">All specialties</option>
@@ -273,9 +292,8 @@ export function SearchFilters({
               Expert Witnesses tab is looking for a specific kind of
               report, not browsing a generic specialty tree -- so this is
               its own law-specific section rather than the generic
-              "Sub-specialty" checkboxes below (which, for Expert Witness,
-              only ever offer the single, un-narrowing "Medicolegal"
-              option). */}
+              "Sub-specialty" checkboxes below (which no longer offer
+              "Medicolegal" at all now that it has its own section here). */}
           {filters.specialty === "expert-witness" && (facets?.practiceAreas.length ?? 0) > 0 && (
             <Section title="Type of report">
               <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1">
@@ -289,6 +307,30 @@ export function SearchFilters({
                     />
                     <span className="flex-1 truncate">{area.name}</span>
                     <span className="shrink-0 text-[11.5px] text-ink-faint">{area.count}</span>
+                  </label>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Same reasoning as "Type of report" above: a visitor
+              narrowing to "expert witnesses who are neurosurgeons" needs
+              the individual disciplines, not the single, all-or-nothing
+              "Medical Specialty" checkbox that used to be all the
+              generic "Sub-specialty" section offered for this branch. */}
+          {filters.specialty === "expert-witness" && (facets?.clinicalSpecialties.length ?? 0) > 0 && (
+            <Section title="Medical specialty">
+              <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1">
+                {facets?.clinicalSpecialties.map((discipline) => (
+                  <label key={discipline.slug} className={checkboxRow}>
+                    <input
+                      type="checkbox"
+                      className={checkboxInput}
+                      checked={filters.clinicalSpecialties.includes(discipline.slug)}
+                      onChange={() => toggleClinicalSpecialty(discipline.slug)}
+                    />
+                    <span className="flex-1 truncate">{discipline.name}</span>
+                    <span className="shrink-0 text-[11.5px] text-ink-faint">{discipline.count}</span>
                   </label>
                 ))}
               </div>

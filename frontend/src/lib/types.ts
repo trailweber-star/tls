@@ -252,6 +252,9 @@ export interface SearchFacets {
   // Same restriction as `regions` -- the law-specific practice areas
   // under Medicolegal (Personal Injury, Clinical Negligence, ...).
   practiceAreas: FacetCount[];
+  // Same restriction as `regions` -- the clinical-discipline leaves
+  // under Medical Specialty (Cardiology, Neurosurgery, ...).
+  clinicalSpecialties: FacetCount[];
   cities: FacetCount[];
   availability: { days: number; label: string; count: number }[];
   ratings: { min: number; count: number }[];

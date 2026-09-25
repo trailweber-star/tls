@@ -73,6 +73,7 @@ function readFilters(params: URLSearchParams): SearchFilterState & { page: numbe
     subspecialties: params.getAll("subspecialty").filter(Boolean),
     region: params.get("region") ?? "",
     practiceAreas: params.getAll("practiceArea").filter(Boolean),
+    clinicalSpecialties: params.getAll("clinicalSpecialty").filter(Boolean),
     location: params.get("location") ?? "",
     minRating: num("minRating"),
     minPriceMinor: num("minPrice"),
@@ -101,6 +102,7 @@ function writeFilters(
   state.subspecialties.forEach((s) => qs.append("subspecialty", s));
   if (state.region) qs.set("region", state.region);
   state.practiceAreas.forEach((s) => qs.append("practiceArea", s));
+  state.clinicalSpecialties.forEach((s) => qs.append("clinicalSpecialty", s));
   if (state.location) qs.set("location", state.location);
   if (state.minRating != null) qs.set("minRating", String(state.minRating));
   if (state.minPriceMinor != null) qs.set("minPrice", String(state.minPriceMinor));
@@ -290,6 +292,7 @@ export default function Search() {
       subspecialties: filters.subspecialties,
       region: filters.region,
       practiceAreas: filters.practiceAreas,
+      clinicalSpecialties: filters.clinicalSpecialties,
       location: filters.location,
       minRating: filters.minRating,
       minPriceMinor: filters.minPriceMinor,
@@ -346,6 +349,7 @@ export default function Search() {
         subspecialties: [],
         region: "",
         practiceAreas: [],
+        clinicalSpecialties: [],
         location: filters.location,
         minRating: null,
         minPriceMinor: null,

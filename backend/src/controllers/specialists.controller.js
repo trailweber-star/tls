@@ -296,6 +296,10 @@ function buildPredicates(filters, taxonomy) {
   // Medicolegal. See buildFacets for why this is a separate dimension
   // from `subspecialty` rather than reusing it.
   const practiceAreaBranches = filters.practiceAreas.map((slug) => taxonomy.branchSlugs(slug));
+  // Expert Witness only -- the leaf (clinical discipline) level under
+  // Medical Specialty. Same reasoning as `practiceArea` just above: its
+  // own dimension rather than reusing `subspecialty`.
+  const clinicalSpecialtyBranches = filters.clinicalSpecialties.map((slug) => taxonomy.branchSlugs(slug));
   // The group narrows to the tab's branches. It sits alongside
   // `specialty` rather than replacing it: a patient can be on the
   // Specialist Doctors tab AND filtered to Orthopaedics, and both have
@@ -315,6 +319,9 @@ function buildPredicates(filters, taxonomy) {
     practiceArea: (s) =>
       practiceAreaBranches.length === 0 ||
       practiceAreaBranches.some((branch) => s.specialties.some((sp) => branch.has(sp.slug))),
+    clinicalSpecialty: (s) =>
+      clinicalSpecialtyBranches.length === 0 ||
+      clinicalSpecialtyBranches.some((branch) => s.specialties.some((sp) => branch.has(sp.slug))),
     location: (s) => matchesLocation(s.clinicLocations, filters.resolvedLocation, filters.radiusKm),
     region: (s) => !filters.region || (s.coveredRegions ?? []).includes(filters.region),
     rating: (s) => filters.minRating == null || s.ratingAvg >= filters.minRating,
@@ -358,6 +365,7 @@ function buildFacets(all, predicates, filters, taxonomy) {
   const forVerified = applyAllExcept(all, predicates, "verified");
   const forRegion = applyAllExcept(all, predicates, "region");
   const forPracticeArea = applyAllExcept(all, predicates, "practiceArea");
+  const forClinicalSpecialty = applyAllExcept(all, predicates, "clinicalSpecialty");
 
   // Expert Witness only -- every other category has never had a
   // coveredRegions value to filter on, so the dropdown stays empty
@@ -375,7 +383,7 @@ function buildFacets(all, predicates, filters, taxonomy) {
   // Medicolegal (Personal Injury, Clinical Negligence, ...). This is a
   // real search, arrived at by clicking Expert Witnesses from the
   // homepage, not the generic directory -- so it gets its own filter at
-  // the leaf level rather than making do with the single, always-one-
+  // the leaf level rather than making do with the coarse, always-one-
   // option "Medicolegal" sub-specialty checkbox. Hidden (like `regions`)
   // until there's a tagged specialist to count.
   const practiceAreas =
@@ -390,7 +398,36 @@ function buildFacets(all, predicates, filters, taxonomy) {
         })
       : [];
 
-  const subOptions = filters.specialty ? taxonomy.childrenOf(filters.specialty) : [];
+  // Expert Witness only -- the clinical-discipline leaves under Medical
+  // Specialty (Cardiology, Neurosurgery, ...). Same reasoning as
+  // `practiceAreas` just above: its own filter at the leaf level rather
+  // than the coarse, always-one-option "Medical Specialty" sub-specialty
+  // checkbox that used to be all a visitor could narrow by. Hidden (like
+  // `regions`) until there's a tagged specialist to count.
+  const clinicalSpecialties =
+    filters.specialty === "expert-witness"
+      ? taxonomy.childrenOf("expert-witness-medical-specialty").map((leaf) => {
+          const branch = taxonomy.branchSlugs(leaf.slug);
+          return {
+            slug: leaf.slug,
+            name: leaf.name,
+            count: forClinicalSpecialty.filter((s) => s.specialties.some((sp) => branch.has(sp.slug))).length,
+          };
+        })
+      : [];
+
+  // Both Expert Witness branches (Medicolegal, Medical Specialty) now
+  // have their own dedicated leaf-level section above -- `practiceAreas`
+  // and `clinicalSpecialties` -- so they're excluded from this generic
+  // list rather than ALSO appearing here as two coarse, all-or-nothing
+  // checkboxes standing right next to their own granular breakdown.
+  const subOptions = filters.specialty
+    ? taxonomy.childrenOf(filters.specialty).filter((child) =>
+        filters.specialty === "expert-witness"
+          ? child.slug !== "expert-witness-medicolegal" && child.slug !== "expert-witness-medical-specialty"
+          : true
+      )
+    : [];
   const subspecialties = subOptions.map((child) => {
     const branch = taxonomy.branchSlugs(child.slug);
     return {
@@ -420,6 +457,7 @@ function buildFacets(all, predicates, filters, taxonomy) {
     subspecialties,
     regions,
     practiceAreas,
+    clinicalSpecialties,
     cities: [...cityCounts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     availability: [
       { days: 0, label: "Available today", count: forAvailability.filter((s) => (daysUntil(s.nextAvailableAt) ?? Infinity) <= 0).length },
@@ -574,6 +612,9 @@ export async function searchSpecialists(req, res) {
     // Expert Witness only -- see buildFacets. Same parsing as
     // `subspecialty`: repeatable or comma-separated.
     practiceAreas: parseList(req.query.practiceArea),
+    // Expert Witness only -- see buildFacets. Same parsing as
+    // `practiceArea`.
+    clinicalSpecialties: parseList(req.query.clinicalSpecialty),
     resolvedLocation,
     radiusKm: parseNumber(req.query.radiusKm, 25),
     minRating: parseNumber(req.query.minRating),

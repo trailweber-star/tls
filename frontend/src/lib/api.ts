@@ -172,6 +172,8 @@ export interface SearchParams {
   region?: string;
   /** Expert Witness only -- leaf slugs under Medicolegal. */
   practiceAreas?: string[];
+  /** Expert Witness only -- leaf slugs under Medical Specialty. */
+  clinicalSpecialties?: string[];
   location?: string;
   radiusKm?: number;
   minRating?: number | null;
@@ -192,6 +194,7 @@ export function buildSearchQuery(params: SearchParams): URLSearchParams {
   (params.subspecialties ?? []).forEach((slug) => qs.append("subspecialty", slug));
   if (params.region) qs.set("region", params.region);
   (params.practiceAreas ?? []).forEach((slug) => qs.append("practiceArea", slug));
+  (params.clinicalSpecialties ?? []).forEach((slug) => qs.append("clinicalSpecialty", slug));
   if (params.location) qs.set("location", params.location);
   if (params.radiusKm != null) qs.set("radiusKm", String(params.radiusKm));
   if (params.minRating != null) qs.set("minRating", String(params.minRating));
