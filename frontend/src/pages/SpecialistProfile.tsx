@@ -552,7 +552,7 @@ export default function SpecialistProfile() {
               <h2 className="font-display text-[24px] font-bold text-ink sm:text-[28px]">
                 About {specialist.fullName}
               </h2>
-              <Bio text={specialist.bio || (isMedicoLegal && specialist.clinicalPracticeExperience) || null} facts={factsOnFile(specialist)} />
+              <Bio text={(isMedicoLegal && specialist.clinicalPracticeExperience) || specialist.bio || null} facts={factsOnFile(specialist)} />
             </div>
             {specialist.videoUrl && (
               <IntroVideo
@@ -1645,7 +1645,9 @@ function MedicoLegalCV({ specialist }: { specialist: SpecialistWithRelations }) 
   // there's no real `bio` (see the Bio call in the Overview section, a few
   // hundred lines up) -- when that happened, drop it from the CV list below
   // so the same paragraph doesn't appear twice on one page.
-  const usedAsHero = !specialist.bio && Boolean(specialist.clinicalPracticeExperience);
+  // Always the hero now, not just when bio is empty -- see the Bio call
+  // in the Overview section above.
+  const usedAsHero = Boolean(specialist.clinicalPracticeExperience);
   const sections = CV_SECTIONS.filter(({ key }) => {
     if (usedAsHero && key === "clinicalPracticeExperience") return false;
     const value = specialist[key];
