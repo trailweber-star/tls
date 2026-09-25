@@ -157,9 +157,27 @@ async function loadTaxonomy() {
     flat,
     bySlug,
     branchSlugs,
+    // Collapse sibling rows that share a display name into one, keeping
+    // the lowest id (the one that has existed longest) as the
+    // representative. specialties.slug is UNIQUE but specialties.name is
+    // not, so a taxonomy sync that changes a node's slug without
+    // renaming the old row leaves two rows for what's really one facet
+    // -- the search page would otherwise render two identical checkboxes
+    // with identical counts (see scripts/fix-duplicate-specialties.mjs,
+    // which is the real fix: it merges the underlying specialist links
+    // onto one row and deletes the other). This is belt-and-braces so
+    // the same-looking bug can't resurface as a visible checkbox even
+    // before that script has been re-run against a fresh duplicate.
     childrenOf: (slug) => {
       const parent = bySlug.get(slug);
-      return parent ? childrenByParent.get(parent.id) ?? [] : [];
+      const kids = parent ? childrenByParent.get(parent.id) ?? [] : [];
+      const byName = new Map();
+      for (const kid of kids) {
+        const key = kid.name.trim().toLowerCase();
+        const existing = byName.get(key);
+        if (!existing || kid.id < existing.id) byName.set(key, kid);
+      }
+      return [...byName.values()];
     },
   };
 }
