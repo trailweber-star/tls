@@ -4,10 +4,15 @@ import {
   Activity,
   ArrowRight,
   BadgeCheck,
+  BookOpen,
+  Briefcase,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  Compass,
+  FlaskConical,
   Globe,
+  GraduationCap,
   Lock,
   Mail,
   MapPin,
@@ -15,11 +20,15 @@ import {
   PenLine,
   Phone,
   Play,
+  Scale,
   ShieldCheck,
   Sparkles,
   Star,
   Stethoscope,
+  Trophy,
   UserCheck,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import { getAllSpecialties, getSpecialistBySlug, getSpecialistReviews } from "../lib/api";
 import { formatAvailability, formatPrice, formatRating } from "../lib/format";
@@ -1619,16 +1628,16 @@ function Gallery({ images }: { images: { url: string; caption: string | null }[]
  * specialty chips above it these aren't taxonomy values, so they're not
  * links (see the column's own comment in lib/types.ts for why).
  * ------------------------------------------------------------------ */
-const CV_SECTIONS: { key: keyof SpecialistWithRelations; label: string }[] = [
-  { key: "medicoLegalExperience", label: "Medico-legal experience" },
-  { key: "clinicalPracticeExperience", label: "Clinical practice experience" },
-  { key: "clinicalInterests", label: "Clinical interests" },
-  { key: "managementExperience", label: "Management experience" },
-  { key: "researchInterests", label: "Research interests" },
-  { key: "summaryOfPublications", label: "Summary of publications" },
-  { key: "teachingTraining", label: "Teaching & training" },
-  { key: "memberships", label: "Memberships" },
-  { key: "prizesAndAwards", label: "Prizes & awards" },
+const CV_SECTIONS: { key: keyof SpecialistWithRelations; label: string; icon: LucideIcon }[] = [
+  { key: "medicoLegalExperience", label: "Medico-legal experience", icon: Scale },
+  { key: "clinicalPracticeExperience", label: "Clinical practice experience", icon: Stethoscope },
+  { key: "clinicalInterests", label: "Clinical interests", icon: Compass },
+  { key: "managementExperience", label: "Management experience", icon: Briefcase },
+  { key: "researchInterests", label: "Research interests", icon: FlaskConical },
+  { key: "summaryOfPublications", label: "Summary of publications", icon: BookOpen },
+  { key: "teachingTraining", label: "Teaching & training", icon: GraduationCap },
+  { key: "memberships", label: "Memberships", icon: Users },
+  { key: "prizesAndAwards", label: "Prizes & awards", icon: Trophy },
 ];
 
 function MedicoLegalCV({ specialist }: { specialist: SpecialistWithRelations }) {
@@ -1668,16 +1677,21 @@ function MedicoLegalCV({ specialist }: { specialist: SpecialistWithRelations }) 
       )}
 
       {sections.length > 0 && (
-        <div className="grid gap-7 sm:grid-cols-2">
-          {sections.map(({ key, label }) => (
-            <div key={key}>
-              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-muted">{label}</h3>
+        <div className="grid items-start gap-5 sm:grid-cols-2">
+          {sections.map(({ key, label, icon: Icon }) => (
+            <div key={key} className="rounded-2xl border border-line bg-white p-5">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+                  <Icon className="h-4 w-4" strokeWidth={2} />
+                </span>
+                <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-muted">{label}</h3>
+              </div>
               {/* whitespace-pre-line, not dangerouslySetInnerHTML: the source
                   pages give this as plain text with real line breaks (a
                   membership list, a run of publication titles), and a
                   paragraph tag alone collapses every one of them onto a
                   single line. */}
-              <p className="mt-2 whitespace-pre-line text-[13.5px] leading-relaxed text-ink">
+              <p className="mt-3 whitespace-pre-line text-[13.5px] leading-relaxed text-ink">
                 {specialist[key] as string}
               </p>
             </div>
