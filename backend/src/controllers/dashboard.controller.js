@@ -242,6 +242,25 @@ const profileSchema = z.object({
       message: "coveredRegions must only contain values from the UK regions list",
     })
     .optional(),
+  /* Expert Witness only -- the medico-legal CV (migration
+     0014_expert_witness_profile_fields.sql). Same reasoning as
+     coveredRegions just above: accepted from any specialist rather than
+     gated on category, harmless if unused, and never rendered publicly
+     unless it holds something (SpecialistProfile.tsx's MedicoLegalCV). */
+  medicoLegalExperience: z.string().max(4000).nullable().optional(),
+  clinicalPracticeExperience: z.string().max(4000).nullable().optional(),
+  clinicalInterests: z.string().max(4000).nullable().optional(),
+  managementExperience: z.string().max(4000).nullable().optional(),
+  researchInterests: z.string().max(4000).nullable().optional(),
+  summaryOfPublications: z.string().max(4000).nullable().optional(),
+  teachingTraining: z.string().max(4000).nullable().optional(),
+  prizesAndAwards: z.string().max(4000).nullable().optional(),
+  memberships: z.string().max(4000).nullable().optional(),
+  // Self-described tags, not taxonomy values -- see the column's own
+  // comment in schema.js. 40 gives headroom over the 20-30 a real
+  // profile tends to carry (see extraction-notes/ in the import
+  // delivery) without leaving the field open-endedly large.
+  areasOfExpertise: z.array(z.string().max(60)).max(40).optional(),
   contactEmail: z.string().email().nullable().optional(),
   contactPhone: z.string().max(50).nullable().optional(),
   photoUrl: optionalUrlField(),
@@ -317,6 +336,16 @@ export async function getProfile(req, res) {
       currency: plain.currency ?? "GBP",
       languages: plain.languages ?? [],
       coveredRegions: plain.coveredRegions ?? [],
+      medicoLegalExperience: plain.medicoLegalExperience ?? null,
+      clinicalPracticeExperience: plain.clinicalPracticeExperience ?? null,
+      clinicalInterests: plain.clinicalInterests ?? null,
+      managementExperience: plain.managementExperience ?? null,
+      researchInterests: plain.researchInterests ?? null,
+      summaryOfPublications: plain.summaryOfPublications ?? null,
+      teachingTraining: plain.teachingTraining ?? null,
+      prizesAndAwards: plain.prizesAndAwards ?? null,
+      memberships: plain.memberships ?? null,
+      areasOfExpertise: plain.areasOfExpertise ?? [],
       contactEmail: plain.contactEmail ?? null,
       contactPhone: plain.contactPhone ?? null,
       videoUrl: plain.videoUrl ?? null,

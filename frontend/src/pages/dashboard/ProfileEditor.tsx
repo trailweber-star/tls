@@ -13,6 +13,7 @@ import {
   Phone,
   Plus,
   Save,
+  Scale,
   Stethoscope,
   Trash2,
   TriangleAlert,
@@ -80,6 +81,19 @@ type Draft = {
   registrationNumber: string;
   languages: string[];
   coveredRegions: string[];
+  // The medico-legal CV -- see the Section below, shown only when
+  // isExpertWitnessBranch. Kept as plain strings/array here like every
+  // other draft field; toPatch is where "" becomes null.
+  medicoLegalExperience: string;
+  clinicalPracticeExperience: string;
+  clinicalInterests: string;
+  managementExperience: string;
+  researchInterests: string;
+  summaryOfPublications: string;
+  teachingTraining: string;
+  prizesAndAwards: string;
+  memberships: string;
+  areasOfExpertise: string[];
   primarySpecialtySlug: string;
   treatmentNames: string[];
   locations: LocationDraft[];
@@ -114,6 +128,16 @@ function toDraft(p: DashboardProfile): Draft {
     registrationNumber: p.registrationNumber ?? "",
     languages: p.languages ?? [],
     coveredRegions: p.coveredRegions ?? [],
+    medicoLegalExperience: p.medicoLegalExperience ?? "",
+    clinicalPracticeExperience: p.clinicalPracticeExperience ?? "",
+    clinicalInterests: p.clinicalInterests ?? "",
+    managementExperience: p.managementExperience ?? "",
+    researchInterests: p.researchInterests ?? "",
+    summaryOfPublications: p.summaryOfPublications ?? "",
+    teachingTraining: p.teachingTraining ?? "",
+    prizesAndAwards: p.prizesAndAwards ?? "",
+    memberships: p.memberships ?? "",
+    areasOfExpertise: p.areasOfExpertise ?? [],
     primarySpecialtySlug: p.primarySpecialty?.slug ?? "",
     treatmentNames: (p.treatments ?? []).map((t) => t.name),
     locations: (p.clinicLocations ?? []).map((l) => ({
@@ -176,6 +200,16 @@ function toPatch(d: Draft): ProfilePatch {
     registrationNumber: nullable(d.registrationNumber),
     languages: d.languages,
     coveredRegions: d.coveredRegions,
+    medicoLegalExperience: nullable(d.medicoLegalExperience),
+    clinicalPracticeExperience: nullable(d.clinicalPracticeExperience),
+    clinicalInterests: nullable(d.clinicalInterests),
+    managementExperience: nullable(d.managementExperience),
+    researchInterests: nullable(d.researchInterests),
+    summaryOfPublications: nullable(d.summaryOfPublications),
+    teachingTraining: nullable(d.teachingTraining),
+    prizesAndAwards: nullable(d.prizesAndAwards),
+    memberships: nullable(d.memberships),
+    areasOfExpertise: d.areasOfExpertise,
     primarySpecialtySlug: d.primarySpecialtySlug || null,
     treatmentNames: d.treatmentNames,
     locations: d.locations
@@ -277,6 +311,38 @@ function expertWitnessPracticeAreas(all: Specialty[]) {
   if (!medicolegal) return [];
   return all.filter((s) => s.parentId === medicolegal.id);
 }
+
+/**
+ * The nine medico-legal CV fields (migration
+ * 0014_expert_witness_profile_fields.sql), in the same order
+ * MedicoLegalCV renders them on the public profile. `key` is a Draft
+ * field, not a DashboardProfile one — toDraft already turned each
+ * null into "" so every textarea below can stay a plain controlled
+ * input like the rest of the form.
+ */
+const CV_FIELDS: {
+  key:
+    | "medicoLegalExperience"
+    | "clinicalPracticeExperience"
+    | "clinicalInterests"
+    | "managementExperience"
+    | "researchInterests"
+    | "summaryOfPublications"
+    | "teachingTraining"
+    | "memberships"
+    | "prizesAndAwards";
+  label: string;
+}[] = [
+  { key: "medicoLegalExperience", label: "Medico-legal experience" },
+  { key: "clinicalPracticeExperience", label: "Clinical practice experience" },
+  { key: "clinicalInterests", label: "Clinical interests" },
+  { key: "managementExperience", label: "Management experience" },
+  { key: "researchInterests", label: "Research interests" },
+  { key: "summaryOfPublications", label: "Summary of publications" },
+  { key: "teachingTraining", label: "Teaching & training" },
+  { key: "memberships", label: "Memberships" },
+  { key: "prizesAndAwards", label: "Prizes & awards" },
+];
 
 export default function ProfileEditor() {
   const { specialist: specialistAccount } = useAuth();
@@ -586,6 +652,47 @@ export default function ProfileEditor() {
               </>
             )}
           </Section>
+
+          {/* -------------------------------------- medico-legal CV
+              Same gate as "Type of report" / "Regions covered" above,
+              and the same reasoning: the API accepts these fields from
+              any specialist (see profileSchema's own comment), but
+              there's nothing for most specialists to put in a
+              "Summary of publications" box on an expert-witness CV, so
+              the form only surfaces it once they're in that branch. */}
+          {isExpertWitnessBranch(specialties, draft.primarySpecialtySlug) && (
+            <Section
+              id="medico-legal-cv"
+              icon={Scale}
+              title="Medico-legal experience"
+              hint="Rendered as its own labelled section on your public profile, the same shape a solicitor expects from an expert witness CV. Leave anything blank — only what you fill in appears."
+            >
+              <Labelled
+                label="Areas of expertise"
+                hint="Your own terms for what you're instructed on — e.g. Breast Implants, Mastopexy. Shown as tags on your profile, not linked to a search filter."
+              >
+                <ChipInput
+                  values={draft.areasOfExpertise}
+                  onChange={(v) => set("areasOfExpertise", v)}
+                  placeholder="Add a term and press Enter"
+                />
+              </Labelled>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {CV_FIELDS.map(({ key, label }) => (
+                  <Labelled key={key} label={label}>
+                    <textarea
+                      value={draft[key]}
+                      onChange={(e) => set(key, e.target.value)}
+                      rows={4}
+                      maxLength={4000}
+                      className={`${input} resize-y leading-relaxed`}
+                    />
+                  </Labelled>
+                ))}
+              </div>
+            </Section>
+          )}
 
           {/* ----------------------------------------- treatments */}
           <Section

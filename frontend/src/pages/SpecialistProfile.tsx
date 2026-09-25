@@ -613,6 +613,7 @@ export default function SpecialistProfile() {
               Covers <span className="font-semibold text-ink">{specialist.coveredRegions!.join(", ")}</span>
             </p>
           )}
+          {isMedicoLegal && <MedicoLegalCV specialist={specialist} />}
         </section>
 
         {/* ---------------------------------------------------- Treatments
@@ -1596,6 +1597,88 @@ function Gallery({ images }: { images: { url: string; caption: string | null }[]
         </Dialog>
       )}
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The medico-legal CV
+ *
+ * Nine free-text sections plus a tag list, all specific to an Expert
+ * Witness listing (see migration 0014_expert_witness_profile_fields.sql
+ * and scripts/import-expert-witnesses.mjs / enrich-expert-witnesses.mjs,
+ * which are what actually fill them) and null for every other
+ * specialist. Rendered the same way Bio's fallback is reasoned about
+ * above: a fact with no source doesn't get a heading. A person with
+ * three of the nine sections populated gets three headings, not nine
+ * with six of them blank -- an empty "Research interests" card under a
+ * real name is not a gap in OUR data, it reads as a gap in THEIRS.
+ *
+ * areasOfExpertise renders separately, as tag pills, because it isn't
+ * one of the nine -- it's a flat list of 20-30 self-described terms
+ * (the source sites' own sidebar tags), not a paragraph, and unlike the
+ * specialty chips above it these aren't taxonomy values, so they're not
+ * links (see the column's own comment in lib/types.ts for why).
+ * ------------------------------------------------------------------ */
+const CV_SECTIONS: { key: keyof SpecialistWithRelations; label: string }[] = [
+  { key: "medicoLegalExperience", label: "Medico-legal experience" },
+  { key: "clinicalPracticeExperience", label: "Clinical practice experience" },
+  { key: "clinicalInterests", label: "Clinical interests" },
+  { key: "managementExperience", label: "Management experience" },
+  { key: "researchInterests", label: "Research interests" },
+  { key: "summaryOfPublications", label: "Summary of publications" },
+  { key: "teachingTraining", label: "Teaching & training" },
+  { key: "memberships", label: "Memberships" },
+  { key: "prizesAndAwards", label: "Prizes & awards" },
+];
+
+function MedicoLegalCV({ specialist }: { specialist: SpecialistWithRelations }) {
+  const sections = CV_SECTIONS.filter(({ key }) => {
+    const value = specialist[key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+  // Self-described, not ours to dedupe by meaning -- but the same literal
+  // tag has shown up twice from a source page before, and a repeated
+  // pill is a rendering bug, not a second fact.
+  const tags = [...new Set((specialist.areasOfExpertise ?? []).map((t) => t.trim()).filter(Boolean))];
+
+  if (sections.length === 0 && tags.length === 0) return null;
+
+  return (
+    <div className="mt-8 border-t border-line pt-8">
+      {tags.length > 0 && (
+        <div className={sections.length > 0 ? "mb-8" : undefined}>
+          <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-muted">Areas of expertise</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-paper-tint px-3 py-1.5 text-[12.5px] font-medium text-ink-muted ring-1 ring-line"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sections.length > 0 && (
+        <div className="grid gap-7 sm:grid-cols-2">
+          {sections.map(({ key, label }) => (
+            <div key={key}>
+              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-muted">{label}</h3>
+              {/* whitespace-pre-line, not dangerouslySetInnerHTML: the source
+                  pages give this as plain text with real line breaks (a
+                  membership list, a run of publication titles), and a
+                  paragraph tag alone collapses every one of them onto a
+                  single line. */}
+              <p className="mt-2 whitespace-pre-line text-[13.5px] leading-relaxed text-ink">
+                {specialist[key] as string}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

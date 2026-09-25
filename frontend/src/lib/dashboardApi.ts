@@ -253,6 +253,19 @@ export interface DashboardProfile {
   currency: string;
   languages: string[];
   coveredRegions?: string[];
+  // The medico-legal CV -- Expert Witness only, null/empty everywhere
+  // else. See MedicoLegalCV in SpecialistProfile.tsx for how these
+  // render publicly.
+  medicoLegalExperience?: string | null;
+  clinicalPracticeExperience?: string | null;
+  clinicalInterests?: string | null;
+  managementExperience?: string | null;
+  researchInterests?: string | null;
+  summaryOfPublications?: string | null;
+  teachingTraining?: string | null;
+  prizesAndAwards?: string | null;
+  memberships?: string | null;
+  areasOfExpertise?: string[];
   contactEmail: string | null;
   contactPhone: string | null;
   videoUrl: string | null;
@@ -301,6 +314,16 @@ export interface ProfilePatch {
   currency?: string;
   languages?: string[];
   coveredRegions?: string[];
+  medicoLegalExperience?: string | null;
+  clinicalPracticeExperience?: string | null;
+  clinicalInterests?: string | null;
+  managementExperience?: string | null;
+  researchInterests?: string | null;
+  summaryOfPublications?: string | null;
+  teachingTraining?: string | null;
+  prizesAndAwards?: string | null;
+  memberships?: string | null;
+  areasOfExpertise?: string[];
   contactEmail?: string | null;
   contactPhone?: string | null;
   videoUrl?: string | null;

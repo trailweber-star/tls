@@ -138,6 +138,25 @@ export interface SpecialistWithRelations {
   // UK regions this specialist covers -- Expert Witness only; null/empty
   // for every other category (see lib/ukRegions.js).
   coveredRegions?: string[] | null;
+  /* ------------------------------------------------- Expert Witness profile
+     The medico-legal CV sections (see migration
+     0014_expert_witness_profile_fields.sql) -- null for every specialist
+     outside Expert Witness, and null per-field even within it when the
+     source page never stated that section. Nothing here is filled in to
+     complete the set. */
+  medicoLegalExperience?: string | null;
+  clinicalPracticeExperience?: string | null;
+  clinicalInterests?: string | null;
+  managementExperience?: string | null;
+  researchInterests?: string | null;
+  summaryOfPublications?: string | null;
+  teachingTraining?: string | null;
+  prizesAndAwards?: string | null;
+  memberships?: string | null;
+  // Fine-grained self-described tags ("Breast Implants", "Mastopexy") --
+  // shown as tag pills, not filterable and not a taxonomy value. See the
+  // column's own comment in schema.js for why.
+  areasOfExpertise?: string[] | null;
   ratingAvg: number;
   ratingCount: number;
   registrationNumber: string | null;
