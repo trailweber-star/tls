@@ -709,7 +709,6 @@ export interface AvailabilityBlock {
 export interface Appointment {
   id: string;
   specialistId: string;
-  clinicLocationId: string | null;
   patientName: string;
   patientEmail: string | null;
   patientPhone: string | null;

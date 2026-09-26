@@ -139,21 +139,51 @@ export async function createAppointment(req, res) {
     return res.status(409).json({ error: "That time was just booked by someone else" });
   }
 
-  const appointment = await appointmentRepo.create({
-    specialistId: specialist.id,
-    patientName: parsed.data.patientName,
-    patientEmail: parsed.data.patientEmail || null,
-    patientPhone: parsed.data.patientPhone || null,
-    notes: parsed.data.notes || null,
-    startsAt,
-    endsAt,
-    status: "confirmed",
-  });
+  /* The overlap check above and this write are not one atomic
+     operation -- two requests for the same slot close enough together
+     could both pass it and both reach here. The database's own
+     appointments_specialist_slot_idx (drizzle/0018) is what actually
+     rules that out; catching its violation here just means the rare
+     loser of that race gets the same clear 409 as the common case
+     above; instead of a raw 500. */
+  let appointment;
+  try {
+    appointment = await appointmentRepo.create({
+      specialistId: specialist.id,
+      patientName: parsed.data.patientName,
+      patientEmail: parsed.data.patientEmail || null,
+      patientPhone: parsed.data.patientPhone || null,
+      notes: parsed.data.notes || null,
+      startsAt,
+      endsAt,
+      status: "confirmed",
+    });
+  } catch (err) {
+    if (err?.code === "23505") {
+      return res.status(409).json({ error: "That time was just booked by someone else" });
+    }
+    throw err;
+  }
 
   const profileUrl = `${siteUrl()}/dashboard/appointments`;
   const { toSpecialist, toPatient } = buildAppointmentEmails({ specialist, appointment, profileUrl });
-  if (specialist.contactEmail) await sendMail(toSpecialist).catch(() => {});
-  if (toPatient) await sendMail(toPatient).catch(() => {});
+  /* sendMail() is documented and implemented to never reject (see the
+     header comment on lib/mailer.js) -- every failure path resolves
+     with { sent: false, reason }, which the appointment response above
+     never even looks at. These .catch()s cannot actually fire today,
+     but logging costs nothing and means a future change to that
+     contract fails loud here instead of a silently swallowed rejection
+     right after the appointment was already confirmed. */
+  if (specialist.contactEmail) {
+    await sendMail(toSpecialist).catch((err) =>
+      console.error("[booking] specialist confirmation email failed:", err?.message ?? err)
+    );
+  }
+  if (toPatient) {
+    await sendMail(toPatient).catch((err) =>
+      console.error("[booking] patient confirmation email failed:", err?.message ?? err)
+    );
+  }
 
   res.status(201).json({ ok: true, appointment });
 }

@@ -127,6 +127,20 @@
       "when": 1790300100000,
       "tag": "0017_expert_witness_profile_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790300150000,
+      "tag": "0018_appointment_uniqueness",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790300200000,
+      "tag": "0019_drop_appointment_clinic_location",
+      "breakpoints": true
     }
   ]
 }

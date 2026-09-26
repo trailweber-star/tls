@@ -17,7 +17,7 @@
  * ------------------------------------------------------------------ */
 
 import { randomBytes } from "node:crypto";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -1333,7 +1333,6 @@ export const appointments = pgTable(
     specialistId: text("specialist_id")
       .notNull()
       .references(() => specialists.id, { onDelete: "cascade" }),
-    clinicLocationId: text("clinic_location_id").references(() => clinicLocations.id),
     patientName: text("patient_name").notNull(),
     patientEmail: text("patient_email"),
     patientPhone: text("patient_phone"),
@@ -1346,6 +1345,18 @@ export const appointments = pgTable(
   (t) => [
     index("appointments_specialist_idx").on(t.specialistId, t.startsAt),
     index("appointments_status_idx").on(t.status),
+    /* booking.controller.js already checks for an overlapping active
+       appointment before writing one, but that check and this write
+       are not atomic: two requests for the same slot within the same
+       moment could both pass the check and both insert. A cancelled
+       appointment does not hold the slot -- rebooking the same instant
+       after a cancellation is normal, not a double booking -- so the
+       constraint is partial, over the same (specialist, start time)
+       pair the application-level check already uses. See drizzle/0018
+       for the migration this corresponds to. */
+    uniqueIndex("appointments_specialist_slot_idx")
+      .on(t.specialistId, t.startsAt)
+      .where(sql`${t.status} <> 'cancelled'`),
   ]
 );
 
@@ -1908,7 +1919,6 @@ export const specialistAvailabilityRelations = relations(specialistAvailability,
 
 export const appointmentsRelations = relations(appointments, ({ one }) => ({
   specialist: one(specialists, { fields: [appointments.specialistId], references: [specialists.id] }),
-  clinicLocation: one(clinicLocations, { fields: [appointments.clinicLocationId], references: [clinicLocations.id] }),
 }));
 
 export const ordersRelations = relations(orders, ({ one }) => ({
