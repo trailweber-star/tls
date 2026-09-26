@@ -18,10 +18,15 @@
  *   import { setClinWellClient } from "./lib/clinwell.js";
  *   setClinWellClient({
  *     name: "clinwell-production",
- *     async provisionWorkspace({ specialist }) { ... },
  *     async summary({ workspaceId }) { ... },
  *     async ssoUrl({ workspaceId, userId }) { ... },
  *   });
+ *
+ * No provisionWorkspace on that shape: under contract v1.0.1 the
+ * workspace is created by ClinWell's own subscription.activated event,
+ * with its id arriving in ClinWell's response, not by this application
+ * making a synchronous "provision" call (see the comment on the import
+ * in controllers/billing.controller.js).
  *
  * Until then every function below returns a clearly-marked placeholder
  * and `connected: false`, which is what the dashboard renders as "not
@@ -70,27 +75,6 @@ export const CLINWELL_MODULES = [
     description: "Video consulting room with waiting area and recording consent.",
   },
 ];
-
-/**
- * Create (or fetch) the practice's ClinWell workspace. Called when a
- * Full Practice Suite subscription becomes active.
- *
- * Returns a workspace id, which is the only ClinWell value this
- * application is allowed to store.
- */
-export async function provisionWorkspace(specialist) {
-  if (!client) {
-    return {
-      connected: false,
-      // Deterministic so the demo is stable across restarts, and
-      // obviously not a real credential.
-      workspaceId: `cw_demo_${specialist.id}`,
-      reason: "clinwell-not-connected",
-    };
-  }
-  const res = await client.provisionWorkspace({ specialist });
-  return { connected: true, workspaceId: res.workspaceId };
-}
 
 /**
  * The module status strip shown in the dashboard.

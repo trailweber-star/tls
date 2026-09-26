@@ -317,7 +317,12 @@ export function SearchBar({
    * everyone who treats a knee is not an answer to anything.
    */
   function go(item: { label: string; href: string }) {
-    const isSearch = item.href.startsWith("/search") || item.href.startsWith("/facilities?");
+    // Every href this panel hands to go() is one of exactly two shapes
+    // (see search.controller.js): a /search?... continuation, or a
+    // direct destination like /specialists/:slug or /facilities/:slug
+    // -- never /facilities?..., so that used to be a check for a shape
+    // that can't occur.
+    const isSearch = item.href.startsWith("/search");
     if (!isSearch) {
       setBusy(true);
       setOpen(false);

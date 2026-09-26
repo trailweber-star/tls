@@ -85,13 +85,19 @@ export function BookingWidget({ slug, recipientName }: { slug: string; recipient
       });
       setStatus("sent");
     } catch (err) {
-      // A slot taken between loading the list and submitting is the one
-      // failure worth explaining specifically -- everything else is a
-      // generic try-again.
+      // A slot taken between loading the list and submitting gets a
+      // fixed, friendly message of its own. Every other ApiError
+      // already carries the backend's real explanation as err.message
+      // (post() in lib/api.ts sets it from the response body's own
+      // error field) -- things like a missing contact detail, or the
+      // slot slipping into the past while the form sat open, are more
+      // useful said plainly than flattened into one generic try-again.
       setErrorMessage(
         err instanceof ApiError && err.status === 409
           ? "That time was just taken. Please pick another."
-          : "Something went wrong — please try again."
+          : err instanceof ApiError
+            ? err.message
+            : "Something went wrong — please try again."
       );
       if (err instanceof ApiError && err.status === 409) {
         setSlots((s) => (s ?? []).filter((slot) => slot !== selectedSlot));

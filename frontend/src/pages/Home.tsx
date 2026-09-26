@@ -247,7 +247,7 @@ export default function Home() {
                 </p>
               </div>
               <Link
-                to="/search"
+                to="/register"
                 className="flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3 text-[13.5px] font-bold text-navy-950 shadow-lg transition hover:bg-teal-300"
               >
                 Join TLS

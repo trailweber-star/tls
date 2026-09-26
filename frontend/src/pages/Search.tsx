@@ -59,6 +59,18 @@ const PLACE_HEADING: Record<FacilityType, string> = {
   pharmacy: "Pharmacies",
 };
 
+/* A bad ?type= (a typo, a stale link, someone poking at the URL bar)
+   used to sail straight past every PLACE_* lookup above as an
+   assumed-valid FacilityType -- undefined for that key renders as a
+   blank heading and the literal word "undefined" in the count line,
+   and still gets sent to the backend as a search filter. Checking
+   against the same keys PLACE_NOUN already promises to have turns an
+   unknown value into "not a place search" instead. */
+const PLACE_TYPES = new Set<string>(Object.keys(PLACE_NOUN));
+function isFacilityType(value: string | null): value is FacilityType {
+  return value !== null && PLACE_TYPES.has(value);
+}
+
 function readFilters(params: URLSearchParams): SearchFilterState & { page: number } {
   const num = (key: string) => {
     const raw = params.get(key);
@@ -161,7 +173,8 @@ export default function Search() {
      places. The hero, the heading and the count are shared — only the
      body of the page differs, so a patient never has to learn two
      different result screens. */
-  const placeType = (searchParams.get("type") as FacilityType | null) ?? null;
+  const rawType = searchParams.get("type");
+  const placeType = isFacilityType(rawType) ? rawType : null;
   const placeMode = Boolean(placeType);
   const placeCategory = searchParams.get("category");
   const keepPlace = useMemo(

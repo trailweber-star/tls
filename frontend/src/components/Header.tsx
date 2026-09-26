@@ -17,6 +17,7 @@ const NAV = [
   { to: "/search?type=hospital", label: "Hospitals", match: "hospital" },
   { to: "/search?type=clinic", label: "Clinics", match: "clinic" },
   { to: "/search?type=care_home", label: "Care Homes", match: "care_home" },
+  { to: "/search?type=pharmacy", label: "Pharmacies", match: "pharmacy" },
   { to: "/pricing", label: "Pricing", match: "/pricing" },
   { to: "/about", label: "About", match: "/about" },
   /* Guides rather than Contact. Contact appears twice in the footer —
