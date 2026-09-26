@@ -219,6 +219,26 @@ export async function releaseHeldEnquiries() {
         })
       );
     }
+
+    // Same bell + push a fresh enquiry gets in leads.controller.js --
+    // this is the alert that was withheld at creation, not a different
+    // one, so it uses the same NEW_ENQUIRY type and a key on the lead.
+    if (specialist.userId) {
+      await notify({
+        userId: String(specialist.userId),
+        type: NOTIFICATION_TYPES.NEW_ENQUIRY,
+        title: `New enquiry from ${lead.patientName}`,
+        body: lead.message
+          ? lead.message.length > 140
+            ? `${lead.message.slice(0, 140)}…`
+            : lead.message
+          : `${lead.patientName} sent you an enquiry.`,
+        url: "/dashboard/messages",
+        subjectId: lead.id,
+        key: `${NOTIFICATION_TYPES.NEW_ENQUIRY}:${lead.id}`,
+        channels: { inApp: true, email: false, push: true },
+      }).catch(() => {});
+    }
   }
 
   if (released > 0) console.log(`[reminders] released ${released} held enquir(ies)`);

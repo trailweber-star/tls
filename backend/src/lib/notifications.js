@@ -32,7 +32,21 @@ export const NOTIFICATION_TYPES = {
   CLAIM_PENDING: "claim_pending",
   APPROVAL_OVERDUE: "approval_overdue",
   PAYMENT_RECEIVED: "payment_received",
+  // Sent to an admin, or to the support inbox's bell, when a patient's
+  // enquiry has nowhere else to go (the site's contact form; a
+  // facility with no contactEmail on file -- see leads.controller.js).
   ENQUIRY_RECEIVED: "enquiry_received",
+  // Sent to the specialist themselves the moment a patient enquires on
+  // their profile, same "not the admin's copy" reasoning as
+  // APPLICATION_RECEIVED above. Email already goes out with reply-to
+  // set to the patient (buildEnquiryEmail in lib/mailer.js); this is
+  // the bell + push half, so a specialist who does not have their
+  // contactEmail set, or who works from the dashboard rather than an
+  // inbox, still sees it. Informational, so left out of ACTIONABLE.
+  NEW_ENQUIRY: "new_enquiry",
+  // Same as NEW_ENQUIRY, for a patient's reply in an existing message
+  // thread (reply.controller.js) rather than the first message.
+  NEW_MESSAGE_REPLY: "new_message_reply",
   APPLICATION_DECIDED: "application_decided",
   REVIEW_PENDING: "review_pending",
   REVIEW_OVERDUE: "review_overdue",

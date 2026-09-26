@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import { leadMessages as messageRepo, specialists as specialistRepo } from "../db/repos.js";
 import { sendMail, buildPatientReplyEmail } from "../lib/mailer.js";
+import { NOTIFICATION_TYPES, notify } from "../lib/notifications.js";
 import { siteUrl } from "../lib/urls.js";
 
 /* ------------------------------------------------------------------ *
@@ -53,5 +54,24 @@ export async function postReply(req, res) {
     const profileUrl = `${siteUrl()}/dashboard/messages`;
     delivery = await sendMail(buildPatientReplyEmail({ specialist, lead, body: parsed.data.body, profileUrl }));
   }
+
+  /* The bell + push half of the same event, independent of whether
+     there was a contactEmail to send to above -- a specialist without
+     one, or who works from the dashboard rather than an inbox, had no
+     way to learn a patient had replied at all. Only for a claimed
+     account (specialist.userId); never allowed to fail the request. */
+  if (specialist?.userId) {
+    await notify({
+      userId: String(specialist.userId),
+      type: NOTIFICATION_TYPES.NEW_MESSAGE_REPLY,
+      title: `${lead.patientName} replied`,
+      body: parsed.data.body.length > 140 ? `${parsed.data.body.slice(0, 140)}…` : parsed.data.body,
+      url: "/dashboard/messages",
+      subjectId: message.id,
+      key: `${NOTIFICATION_TYPES.NEW_MESSAGE_REPLY}:${message.id}`,
+      channels: { inApp: true, email: false, push: true },
+    }).catch(() => {});
+  }
+
   res.status(201).json({ ok: true, message, delivery });
 }

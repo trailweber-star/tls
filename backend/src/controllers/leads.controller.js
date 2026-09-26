@@ -4,7 +4,7 @@ import { leads as leadRepo, specialists as specialistRepo, facilities as facilit
 import { specialists as mockSpecialists, facilities as mockFacilities } from "../data/mock.js";
 import { demoAccounts } from "../data/accounts.js";
 import { buildEnquiryEmail, buildFacilityEnquiryEmail, sendMail } from "../lib/mailer.js";
-import { NOTIFICATION_TYPES, notifyAdmins } from "../lib/notifications.js";
+import { NOTIFICATION_TYPES, notify, notifyAdmins } from "../lib/notifications.js";
 import { SUPPORT_EMAIL } from "./contact.controller.js";
 import { FORWARD_BACKOFF_MS, forwardSavedLead, forwardingGate } from "../lib/clinwellEnquiries.js";
 import { demoLeads } from "../data/leads-store.js";
@@ -40,6 +40,37 @@ async function notifySpecialist(specialist, lead) {
       profileUrl: `${SITE_URL}/specialists/${specialist.slug}`,
     })
   );
+}
+
+/*
+ * The bell + push half of a new enquiry, alongside the email
+ * notifySpecialist already sends. Without this, a specialist who
+ * has not set a contactEmail -- or who simply works from the
+ * dashboard rather than an inbox -- had no way to learn about an
+ * enquiry at all except by happening to check their messages page.
+ * Only fires for a claimed account (specialist.userId): an imported,
+ * unclaimed listing has no dashboard to show a bell on. Never throws
+ * or holds up the response either way -- a notification failing is
+ * not a reason to fail the enquiry, which is already saved.
+ */
+async function notifyNewEnquiryBell(specialist, lead) {
+  if (!specialist?.userId) return;
+  await notify({
+    userId: String(specialist.userId),
+    type: NOTIFICATION_TYPES.NEW_ENQUIRY,
+    title: `New enquiry from ${lead.patientName}`,
+    body: lead.message
+      ? lead.message.length > 140
+        ? `${lead.message.slice(0, 140)}…`
+        : lead.message
+      : `${lead.patientName} sent you an enquiry.`,
+    url: "/dashboard/messages",
+    subjectId: lead.id ?? null,
+    key: lead.id ? `${NOTIFICATION_TYPES.NEW_ENQUIRY}:${lead.id}` : null,
+    // The email is the full message with reply-to set to the patient;
+    // this is bell + push only, not a second, plainer email.
+    channels: { inApp: true, email: false, push: true },
+  }).catch(() => {});
 }
 
 /*
@@ -164,6 +195,7 @@ export async function createLead(req, res) {
     let delivery;
     if (specialist) {
       delivery = await notifySpecialist(specialist, parsed.data);
+      await notifyNewEnquiryBell(specialist, lead);
     } else if (parsed.data.facilityId) {
       delivery = await notifyFacility(await findFacility(parsed.data.facilityId), lead);
     } else {
@@ -213,6 +245,7 @@ export async function createLead(req, res) {
       delivery = { sent: false, reason: "held-monthly-cap" };
     } else if (specialist) {
       delivery = await notifySpecialist(specialist, parsed.data);
+      await notifyNewEnquiryBell(specialist, lead);
     } else if (parsed.data.facilityId) {
       delivery = await notifyFacility(await findFacility(parsed.data.facilityId), lead);
     } else {
