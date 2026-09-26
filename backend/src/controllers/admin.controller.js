@@ -3,11 +3,13 @@ import { isDbConfigured } from "../config/db.js";
 import {
   leads as leadRepo,
   specialists as specialistRepo,
+  facilities as facilityRepo,
   users as userRepo,
 } from "../db/repos.js";
 import {
   mockSpecialistsWithRelations,
   specialists as mockSpecialists,
+  facilities as mockFacilities,
   recordDemoVerification,
   updateDemoSpecialist,
 } from "../data/mock.js";
@@ -34,12 +36,14 @@ const SITE_URL = siteUrl();
 // GET /api/admin/overview
 export async function getAdminOverview(req, res) {
   /* One shape, two sources. The demo branch and the database branch
-     differ only in where the three lists come from; every number below
+     differ only in where the four lists come from; every number below
      is computed once, so the two modes can never disagree about the
-     same data. */
-  const [all, enquiries, accounts] = isDbConfigured()
-    ? await Promise.all([specialistRepo.all(), leadRepo.all(), userRepo.count()])
-    : [mockSpecialistsWithRelations, demoLeads.all(), demoAccounts.all().length];
+     same data. Facilities are fetched alongside specialists purely so
+     buildRecentEnquiries below can name one when an enquiry has a
+     facilityId and no specialistId — nothing else here uses the list. */
+  const [all, enquiries, accounts, facilitiesList] = isDbConfigured()
+    ? await Promise.all([specialistRepo.all(), leadRepo.all(), userRepo.count(), facilityRepo.all()])
+    : [mockSpecialistsWithRelations, demoLeads.all(), demoAccounts.all().length, mockFacilities];
 
   const byStatus = (status) => all.filter((s) => s.verificationStatus === status).length;
   const dayAgo = Date.now() - 86400000;
@@ -66,7 +70,7 @@ export async function getAdminOverview(req, res) {
     recentActivity: buildActivity(recent),
     trend: buildTrend(all, enquiries),
     topSpecialties: buildSpecialtyBreakdown(all),
-    recentEnquiries: buildRecentEnquiries(enquiries, all),
+    recentEnquiries: buildRecentEnquiries(enquiries, all, facilitiesList),
     system: systemStatus(),
   });
 }
@@ -140,9 +144,16 @@ function buildSpecialtyBreakdown(specialists) {
 
 /* Latest enquiries across the whole platform. The message is trimmed to
    a line: an administrator needs to see that patients are getting
-   through and who to, not to read their correspondence. */
-function buildRecentEnquiries(enquiries, specialists) {
+   through and who to, not to read their correspondence.
+
+   A facility-only enquiry (facilityId set, no specialistId) used to come
+   through here with specialistName: null and nothing else — visible in
+   the data, but with no name attached, easy to mistake for a specialist
+   lookup that simply failed. facilityName resolves it the same way
+   specialistName already does for specialists. */
+function buildRecentEnquiries(enquiries, specialists, facilities = []) {
   const nameById = new Map(specialists.map((s) => [String(s.id ?? s._id), s.fullName]));
+  const facilityNameById = new Map(facilities.map((f) => [String(f.id ?? f._id), f.name]));
   return [...enquiries]
     .sort((a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0))
     .slice(0, 5)
@@ -151,6 +162,7 @@ function buildRecentEnquiries(enquiries, specialists) {
       patientName: l.patientName ?? "Someone",
       subject: (l.message ?? "").trim().slice(0, 70) || "General enquiry",
       specialistName: nameById.get(String(l.specialistId)) ?? null,
+      facilityName: l.facilityId ? facilityNameById.get(String(l.facilityId)) ?? null : null,
       status: l.status ?? "new",
       createdAt: l.createdAt,
     }));

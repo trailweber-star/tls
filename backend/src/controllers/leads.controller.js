@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
-import { leads as leadRepo, specialists as specialistRepo } from "../db/repos.js";
-import { specialists as mockSpecialists } from "../data/mock.js";
-import { buildEnquiryEmail, sendMail } from "../lib/mailer.js";
+import { leads as leadRepo, specialists as specialistRepo, facilities as facilityRepo, users as userRepo } from "../db/repos.js";
+import { specialists as mockSpecialists, facilities as mockFacilities } from "../data/mock.js";
+import { demoAccounts } from "../data/accounts.js";
+import { buildEnquiryEmail, buildFacilityEnquiryEmail, sendMail } from "../lib/mailer.js";
+import { NOTIFICATION_TYPES, notifyAdmins } from "../lib/notifications.js";
+import { SUPPORT_EMAIL } from "./contact.controller.js";
 import { FORWARD_BACKOFF_MS, forwardSavedLead, forwardingGate } from "../lib/clinwellEnquiries.js";
 import { demoLeads } from "../data/leads-store.js";
 import { entitlementsFor } from "../lib/plans.js";
@@ -17,6 +20,14 @@ async function findSpecialist(id) {
   return specialistRepo.rawById(id);
 }
 
+// Same lookup, for a facility-only enquiry (EnquiryForm on
+// FacilityProfile.tsx passes facilityId with no specialistId at all).
+async function findFacility(id) {
+  if (!id) return null;
+  if (!isDbConfigured()) return mockFacilities.find((f) => f.id === id) ?? null;
+  return facilityRepo.findById(id);
+}
+
 // Notify the specialist. Never throws: a mail failure must not lose the
 // enquiry, so the result is reported back but the lead still stands.
 async function notifySpecialist(specialist, lead) {
@@ -29,6 +40,86 @@ async function notifySpecialist(specialist, lead) {
       profileUrl: `${SITE_URL}/specialists/${specialist.slug}`,
     })
   );
+}
+
+/*
+ * Notify the facility. contactEmail is where a facility's enquiries are
+ * routed — the exact same design as a specialist's own inbox (see the
+ * "Where enquiries are routed" comment on both columns in db/schema.js)
+ * — so this mirrors notifySpecialist above.
+ *
+ * The difference is what happens when there is nowhere to send it.
+ * Facilities have no owner account or dashboard anywhere in this
+ * product, so a missing/unknown facility can't just report
+ * "facility-not-found" and stop the way notifySpecialist does: until
+ * real facility accounts exist, that silently dropped the enquiry on
+ * the floor with the patient told it had been "sent". This stopgap
+ * instead falls back to the support inbox and every admin's bell — the
+ * same channel contact.controller.js already uses for the site's
+ * contact form — so a human sees it and can follow up by hand.
+ */
+async function notifyFacility(facility, lead) {
+  if (facility?.contactEmail) {
+    return sendMail(
+      buildFacilityEnquiryEmail({
+        facility,
+        lead,
+        profileUrl: facility.slug ? `${SITE_URL}/facilities/${facility.slug}` : undefined,
+      })
+    );
+  }
+  return notifySupportFallback(facility, lead);
+}
+
+async function notifySupportFallback(facility, lead) {
+  const facilityName = facility?.name ?? "an unlisted facility";
+  const reason = facility ? "facility-no-contact-email" : "facility-not-found";
+
+  const admins = isDbConfigured()
+    ? await userRepo.admins()
+    : demoAccounts.all().filter((u) => u.role === "admin" && u.active);
+
+  await notifyAdmins(admins, {
+    type: NOTIFICATION_TYPES.ENQUIRY_RECEIVED,
+    title: `Facility enquiry: ${facilityName}`,
+    body: lead.message
+      ? lead.message.length > 140
+        ? `${lead.message.slice(0, 140)}…`
+        : lead.message
+      : `${lead.patientName} enquired about ${facilityName}.`,
+    url: "/admin/messages",
+    subjectId: lead.id ?? null,
+    // The bell is the alert; the support-inbox email below carries the
+    // full message with reply-to set to the patient, so an admin can
+    // just hit reply rather than needing a second copy from notify().
+    key: lead.id ? `facility-enquiry:${lead.id}` : null,
+    channels: { inApp: true, email: false, push: true },
+  });
+
+  const delivery = await sendMail({
+    to: SUPPORT_EMAIL,
+    replyTo: lead.email || undefined,
+    subject: `New facility enquiry — ${facilityName}`,
+    text: [
+      facility
+        ? `A patient enquired about ${facilityName}, which has no contact email on file.`
+        : `A patient enquired about a facility listing that could not be found (id may be stale).`,
+      ``,
+      `From: ${lead.patientName}`,
+      lead.email ? `Email: ${lead.email}` : null,
+      lead.phone ? `Phone: ${lead.phone}` : null,
+      ``,
+      lead.message ? `Message:` : null,
+      lead.message ? lead.message : null,
+      ``,
+      facility?.slug ? `Listing: ${SITE_URL}/facilities/${facility.slug}` : null,
+      ``,
+      `Reply directly to this email to reach ${lead.patientName}.`,
+    ]
+      .filter((l) => l !== null)
+      .join("\n"),
+  });
+  return { ...delivery, reason: delivery.sent ? undefined : delivery.reason ?? reason, routedTo: "support" };
 }
 
 /**
@@ -68,9 +159,16 @@ export async function createLead(req, res) {
   if (!isDbConfigured()) {
     // Demo mode keeps enquiries in memory (data/leads-store.js) so they
     // show up in the specialist's dashboard exactly as a saved lead would.
-    demoLeads.create(parsed.data);
+    const lead = demoLeads.create(parsed.data);
     const specialist = await findSpecialist(parsed.data.specialistId);
-    const delivery = await notifySpecialist(specialist, parsed.data);
+    let delivery;
+    if (specialist) {
+      delivery = await notifySpecialist(specialist, parsed.data);
+    } else if (parsed.data.facilityId) {
+      delivery = await notifyFacility(await findFacility(parsed.data.facilityId), lead);
+    } else {
+      delivery = await notifySpecialist(specialist, parsed.data);
+    }
     return res.json({ ok: true, demo: true, delivery });
   }
 
@@ -106,10 +204,20 @@ export async function createLead(req, res) {
     // The lead is saved first: it is the record of record. Email is a
     // notification on top of it, so a delivery problem is reported but
     // never fails the request. A held enquiry is stored in full and the
-    // alert waits for the cap to reset.
-    const delivery = held
-      ? { sent: false, reason: "held-monthly-cap" }
-      : await notifySpecialist(specialist, parsed.data);
+    // alert waits for the cap to reset. A facility-only lead (no
+    // specialistId) has no specialist to alert, so it goes to
+    // notifyFacility instead — see the comment there for why that's not
+    // just a silent "not found" the way it used to be.
+    let delivery;
+    if (held) {
+      delivery = { sent: false, reason: "held-monthly-cap" };
+    } else if (specialist) {
+      delivery = await notifySpecialist(specialist, parsed.data);
+    } else if (parsed.data.facilityId) {
+      delivery = await notifyFacility(await findFacility(parsed.data.facilityId), lead);
+    } else {
+      delivery = await notifySpecialist(specialist, parsed.data);
+    }
 
     /* One attempt now so the practice sees it in ClinWell while the
        patient is still on the page; the sweep owns every retry after

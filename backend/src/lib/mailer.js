@@ -509,6 +509,38 @@ export function buildEnquiryEmail({ specialist, lead, profileUrl }) {
 }
 
 /**
+ * The message a facility receives when a patient enquires, at the
+ * contactEmail address captured when the listing was set up ("Where
+ * enquiries are routed" — db/schema.js). Mirrors buildEnquiryEmail
+ * above; a facility has a name rather than a specialist's fullName, and
+ * "listing" rather than "profile", but the shape is otherwise the same,
+ * right down to reply-to being the patient so a hit-reply reaches them.
+ */
+export function buildFacilityEnquiryEmail({ facility, lead, profileUrl }) {
+  const lines = [
+    `You have a new enquiry from your Top Local Specialists listing.`,
+    ``,
+    `From: ${lead.patientName}`,
+    lead.email ? `Email: ${lead.email}` : null,
+    lead.phone ? `Phone: ${lead.phone}` : null,
+    ``,
+    lead.message ? `Message:` : null,
+    lead.message ? lead.message : null,
+    ``,
+    profileUrl ? `Your listing: ${profileUrl}` : null,
+    ``,
+    `Reply directly to this email to reach ${lead.patientName}.`,
+  ].filter((l) => l !== null);
+
+  return {
+    to: facility.contactEmail,
+    replyTo: lead.email || undefined,
+    subject: `New enquiry for ${facility.name}`,
+    text: lines.join("\n"),
+  };
+}
+
+/**
  * A specialist's reply in a message thread, to the patient -- who has
  * no account, so the link back is the token in the URL, not a sign-in.
  */

@@ -642,7 +642,11 @@ export default function AdminOverview() {
                           <span className="block truncate text-[13px] font-bold text-ink">{e.patientName}</span>
                           <span className="block truncate text-[12px] text-ink-muted">{e.subject}</span>
                           <span className="block text-[11px] text-ink-faint">
-                            {e.specialistName ? `to ${e.specialistName} · ` : ""}
+                            {e.specialistName
+                              ? `to ${e.specialistName} · `
+                              : e.facilityName
+                                ? `to ${e.facilityName} (facility) · `
+                                : ""}
                             {relativeTime(e.createdAt)}
                           </span>
                         </span>

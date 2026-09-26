@@ -410,6 +410,7 @@ export interface AdminOverview {
     patientName: string;
     subject: string;
     specialistName: string | null;
+    facilityName: string | null;
     status: string;
     createdAt: string;
   }[];
