@@ -32,12 +32,23 @@ import type { ClinWellStatus } from "../../lib/plansApi";
  *   2. Expect two-step verification on first sign-in. A minute with an
  *      authenticator app, but alarming if unannounced.
  *
- * Four states, each saying something true rather than filling space:
+ * Five states, each saying something true rather than filling space:
  *   not entitled        — what tier it needs
  *   no workspace yet    — being prepared, nothing to do
+ *   not connected       — workspace exists, but ClinWell itself isn't
+ *                         wired up on our side yet (lib/clinwell.js has
+ *                         no client set) — must not be shown as active
  *   pending_invite      — check your email, and which address
  *   active              — how to get in, plus the two warnings
  *   suspended           — §6.5, and that it is fixed here, not there
+ *
+ * `status.connected` comes straight from workspaceSummary() in
+ * lib/clinwell.js: false means the placeholder is answering (no real
+ * ClinWell client configured), and status.status is undefined in that
+ * case. Skipping this check used to let a not-connected workspace fall
+ * through every other branch into "active", showing green checkmarks
+ * and a live "Open ClinWell" button for a service that was not
+ * actually reachable. Check `connected` before trusting `status`.
  * ------------------------------------------------------------------ */
 
 /** Where a practitioner signs in. Not an SSO hand-off — just the door. */
@@ -206,6 +217,34 @@ export function ClinWellPanel() {
         <Note icon={<ShieldCheck className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.5} />}>
           Your tier includes all five modules and your workspace is being set up now. ClinWell will email your
           invitation when it is ready — there is nothing for you to do, and nothing has gone wrong.
+        </Note>
+      </Panel>
+    );
+  }
+
+  /* --------------------------- workspace exists, but ClinWell itself
+     is not connected on our side (lib/clinwell.js has no client set,
+     so workspaceSummary() answered with its placeholder). This must be
+     checked before the "active" fallback below, or a not-connected
+     workspace reads as fully active. */
+  if (!status.connected) {
+    return (
+      <Panel title="ClinWell.ai" action={<Badge tone="waiting">Not connected</Badge>}>
+        <ul className="space-y-2.5">
+          {(status.modules ?? []).map((m) => (
+            <li key={m.key} className="flex gap-2.5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber" aria-hidden />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-ink">{m.name}</span>
+                <span className="block text-[12px] leading-snug text-ink-muted">{m.description}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <Note icon={<AlertTriangle className="h-3.5 w-3.5 text-ink-faint" strokeWidth={2.5} />} tone="warn">
+          Your workspace is provisioned, but ClinWell is not connected yet, so none of these modules are actually
+          live and there is nowhere to sign in to. This is not something on your end — it clears up once the
+          connection is switched on.
         </Note>
       </Panel>
     );
