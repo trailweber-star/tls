@@ -13,7 +13,17 @@ import { ApiError, createAppointment, getAvailableSlots } from "../lib/api";
 const DAYS_OFFERED = 14;
 
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  // The LOCAL calendar date, not the UTC one -- toISOString().slice(0, 10)
+  // reports whatever date UTC is on, which briefly disagrees with the
+  // visitor's own "today" every night (from midnight local until
+  // midnight UTC catches up), sending the wrong date to the backend and
+  // showing the wrong day label right next to it. dayLabel below already
+  // uses the visitor's local calendar via toLocaleDateString; this keeps
+  // the two in agreement for the same Date object.
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 function dayLabel(d: Date, isFirst: boolean) {
   if (isFirst) return "Today";

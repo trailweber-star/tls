@@ -580,7 +580,14 @@ export function buildPatientReplyEmail({ specialist, lead, body, profileUrl }) {
 
 /** An appointment just booked through a specialist's public profile. */
 export function buildAppointmentEmails({ specialist, appointment, profileUrl }) {
+  // Without an explicit timeZone this renders in whatever timezone the
+  // server process happens to be running in -- on a cloud host that is
+  // usually UTC, not the UK, so the email could say an hour that was
+  // never agreed on regardless of the GMT/BST time of year. Both
+  // specialist and patient are UK-based (see lib/londonTime.js), so the
+  // email should always say the UK's own local time.
   const when = new Date(appointment.startsAt).toLocaleString("en-GB", {
+    timeZone: "Europe/London",
     weekday: "long",
     day: "numeric",
     month: "long",

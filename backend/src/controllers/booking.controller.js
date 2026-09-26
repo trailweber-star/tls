@@ -7,17 +7,21 @@ import {
 } from "../db/repos.js";
 import { sendMail, buildAppointmentEmails } from "../lib/mailer.js";
 import { siteUrl } from "../lib/urls.js";
+import { londonMinutesToUtc, nextDateStr, utcToLondonParts } from "../lib/londonTime.js";
 
 /* ------------------------------------------------------------------ *
  * Booking, from a specialist's public profile
  *
  * No sign-in on this side -- a patient booking an appointment has no
- * account, same reasoning as an enquiry. Time is handled as minutes
- * since UTC midnight throughout (see schema.js): simple, and correct
- * for a single-country UK directory right up until the day it needs a
- * specialist who consults across time zones, which is a real limit
- * worth knowing about rather than a timezone library nobody asked for
- * yet.
+ * account, same reasoning as an enquiry.
+ *
+ * Availability rules (specialistAvailability.startMinute/endMinute) are
+ * minutes since LOCAL midnight -- a UK clinician's own wall clock, per
+ * schema.js's comment on the column and the plain <input type="time">
+ * that sets it in the dashboard. Every conversion to and from a real
+ * UTC instant goes through lib/londonTime.js, which is DST-aware, so a
+ * "9am" rule means 9am on the specialist's clock whether that is GMT
+ * or BST, not 9am UTC.
  * ------------------------------------------------------------------ */
 
 const SLOT_MINUTES = 30;
@@ -36,15 +40,18 @@ export async function getAvailableSlots(req, res) {
   const dateStr = req.query.date;
   if (!isValidDateStr(dateStr)) return res.status(400).json({ error: "date must be YYYY-MM-DD" });
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  if (Number.isNaN(dayStart.getTime())) return res.status(400).json({ error: "Invalid date" });
+  // dateStr is a local (Europe/London) calendar date -- the day the
+  // booking widget's picker and the specialist's own dashboard show,
+  // not a UTC one. Reject anything before today on that same calendar,
+  // not before today in UTC, which around midnight would disagree.
+  const todayDateStr = utcToLondonParts(new Date()).dateStr;
+  if (dateStr < todayDateStr) return res.json({ slots: [], slotMinutes: SLOT_MINUTES });
 
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-  if (dayStart < todayStart) return res.json({ slots: [], slotMinutes: SLOT_MINUTES });
-
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-  const weekday = dayStart.getUTCDay();
+  const dayStart = londonMinutesToUtc(dateStr, 0);
+  const dayEnd = londonMinutesToUtc(nextDateStr(dateStr), 0);
+  // The weekday of a YYYY-MM-DD string is unambiguous local-calendar
+  // arithmetic -- no instant, no offset, so no DST question to ask.
+  const weekday = new Date(`${dateStr}T00:00:00.000Z`).getUTCDay();
 
   const rules = (await availabilityRepo.forSpecialist(specialist.id)).filter((r) => r.weekday === weekday);
   if (rules.length === 0) return res.json({ slots: [], slotMinutes: SLOT_MINUTES });
@@ -56,7 +63,7 @@ export async function getAvailableSlots(req, res) {
   const slots = [];
   for (const rule of rules) {
     for (let m = rule.startMinute; m + SLOT_MINUTES <= rule.endMinute; m += SLOT_MINUTES) {
-      const slotStart = new Date(dayStart.getTime() + m * 60000);
+      const slotStart = londonMinutesToUtc(dateStr, m);
       if (slotStart < now) continue;
       if (bookedStarts.has(slotStart.toISOString())) continue;
       slots.push(slotStart.toISOString());
@@ -98,20 +105,37 @@ export async function createAppointment(req, res) {
      that guarantee, not the "payment system" version: good enough that
      two people picking the same slot within the same request is rare
      and gets a clear 409 rather than a double booking, not a database
-     constraint that makes it provably impossible. */
-  const weekday = startsAt.getUTCDay();
-  const startMinuteOfDay = startsAt.getUTCHours() * 60 + startsAt.getUTCMinutes();
+     constraint that makes it provably impossible.
+
+     Both checks below matter, and used to only be the first one:
+
+     - withinRule also requires the offset from the rule's own start to
+       be a whole number of slots. Without it, a request for 09:17 --
+       never a slot getAvailableSlots would offer against a 09:00 rule
+       -- still passed, because the old check only compared against the
+       rule's start and end minute, not the slot grid inside it.
+
+     - the overlap check below compares real time ranges, not just an
+       exact startsAt match. Combined with the gap above, an
+       off-grid 09:17 booking would not have collided with a 09:00 or
+       09:30 booking on an exact-timestamp check, despite genuinely
+       overlapping both. */
+  const { weekday, minuteOfDay: startMinuteOfDay, dateStr } = utcToLondonParts(startsAt);
   const rules = await availabilityRepo.forSpecialist(specialist.id);
   const withinRule = rules.some(
-    (r) => r.weekday === weekday && startMinuteOfDay >= r.startMinute && startMinuteOfDay + SLOT_MINUTES <= r.endMinute
+    (r) =>
+      r.weekday === weekday &&
+      startMinuteOfDay >= r.startMinute &&
+      startMinuteOfDay + SLOT_MINUTES <= r.endMinute &&
+      (startMinuteOfDay - r.startMinute) % SLOT_MINUTES === 0
   );
   if (!withinRule) return res.status(409).json({ error: "That time is no longer available" });
 
-  const dayStart = new Date(startsAt);
-  dayStart.setUTCHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart.getTime() + 86400000);
+  const dayStart = londonMinutesToUtc(dateStr, 0);
+  const dayEnd = londonMinutesToUtc(nextDateStr(dateStr), 0);
   const booked = await appointmentRepo.activeOnDay(specialist.id, dayStart, dayEnd);
-  if (booked.some((a) => new Date(a.startsAt).getTime() === startsAt.getTime())) {
+  const overlaps = booked.some((a) => new Date(a.startsAt) < endsAt && new Date(a.endsAt) > startsAt);
+  if (overlaps) {
     return res.status(409).json({ error: "That time was just booked by someone else" });
   }
 
