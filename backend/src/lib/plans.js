@@ -34,6 +34,7 @@ export const PLANS = [
       { label: "Practitioner Account Dashboard", included: true },
       { label: "Profile Photo & Headshot Upload", included: true },
       { label: "Office Phone Contact Display", included: true },
+      { label: "Direct On-Profile Patient Email Contact Form", included: true },
       { label: "Specialty & Sub-specialty Tags", included: true },
       { label: "Google Maps Location Pin", included: true },
       { label: "ClinWell EMR Suite (Not Included)", included: false },
@@ -56,7 +57,10 @@ export const PLANS = [
       enquiryForm: true,
       enquiryMonthlyCap: 5,
       instantEnquiryAlerts: false,
-      publicContactEmail: false,
+      // Parity with phoneReveal: a free listing's whole value is being
+      // reachable, so the on-profile email contact form is not held back
+      // for upgrade the way the enquiry cap and instant alerts are.
+      publicContactEmail: true,
       privateChat: false,
       reviewReplies: false,
       photoGallery: false,
@@ -83,7 +87,6 @@ export const PLANS = [
       { label: "#1 Top Priority Ranking in Search Results", included: true },
       { label: "Direct Calendar & Booking Link Integration", included: true },
       { label: "Custom Clinical Gallery & Video Bios", included: true },
-      { label: "Direct On-Profile Patient Email Contact Form", included: true },
       { label: "ClinWell EMR Suite (Not Included)", included: false },
     ],
     features: {
@@ -366,7 +369,7 @@ export const PRICING_FAQ = [
   },
   {
     q: "Can patients contact me on the free Basic plan?",
-    a: "Yes. Basic listings show a click-to-call phone button and include a patient enquiry form, capped at 5 enquiries a month — enough that patients can always reach you. Premium removes the cap, adds instant alerts when an enquiry lands, publishes a direct contact email on your profile, and opens private chat. Enquiries beyond your monthly cap are held and released when the cap resets, so nobody is turned away at your door.",
+    a: "Yes. Basic listings show a click-to-call phone button, a direct on-profile email contact form, and a patient enquiry form capped at 5 enquiries a month — enough that patients can always reach you. Premium removes the cap, adds instant alerts when an enquiry lands, and opens private chat. Enquiries beyond your monthly cap are held and released when the cap resets, so nobody is turned away at your door.",
   },
   {
     q: "What is the ClinWell.ai EMR Suite, and is it included free?",
