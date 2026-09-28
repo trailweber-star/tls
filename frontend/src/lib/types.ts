@@ -83,6 +83,8 @@ export interface ClinicLocationWithCity {
   address: string;
   postcode: string | null;
   phone: string | null;
+  /** Same shape as a facility's, and just as often not entered yet. */
+  openingHours?: OpeningHours | null;
   /**
    * The address's own coordinates, when it was picked from the geocoded
    * suggestions rather than typed. Null means the map falls back to the

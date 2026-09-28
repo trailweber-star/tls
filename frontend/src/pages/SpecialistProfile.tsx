@@ -9,6 +9,7 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Compass,
   FlaskConical,
   Globe,
@@ -40,6 +41,7 @@ import { ReviewForm } from "../components/ReviewForm";
 import { SOCIAL_BRANDS, SocialGlyph } from "../lib/socialBrands";
 import { heroPhotoFor } from "../lib/specialtyHeroes";
 import { HEADER_HEIGHT } from "../components/Header";
+import { DAY_KEYS, DAY_LABELS } from "../lib/facilityFacets";
 import NotFound from "./NotFound";
 import type { Review, SpecialistWithRelations, Specialty } from "../lib/types";
 import { specialistJsonLd } from "../lib/structuredData";
@@ -792,6 +794,11 @@ export default function SpecialistProfile() {
                       </a>
                     </p>
                   )}
+                  {/* Absent entirely rather than "not published" on every
+                      card — nearly every location has none of this yet
+                      (see LocationHours), and a caption on every single
+                      card in a multi-location list would be pure noise. */}
+                  {l.openingHours && <LocationHours hours={l.openingHours} />}
                 </div>
 
               </div>
@@ -1768,6 +1775,49 @@ function ContactStrip({ specialist }: { specialist: SpecialistWithRelations }) {
           ))}
         </span>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Practice hours, per location
+ *
+ * The same shape and the same "not published" convention as a facility's
+ * OpeningHoursCard (FacilityProfile.tsx) — deliberately not a second
+ * design, because a patient reading either page type is asking the same
+ * question. The difference here is only where it lives: not every
+ * specialist has hours entered yet (almost none do, at the time this was
+ * added — see import-specialists.mjs), so the caller renders this
+ * component only when hours exist rather than this component explaining
+ * their absence on every card, which the full-page facility version can
+ * afford to do and a card in a list of several cannot.
+ * ------------------------------------------------------------------ */
+function LocationHours({ hours }: { hours: NonNullable<SpecialistWithRelations["clinicLocations"][number]["openingHours"]> }) {
+  const todayKey = DAY_KEYS[(new Date().getDay() + 6) % 7];
+  return (
+    <div className="mt-3 border-t border-line-soft pt-3">
+      <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-faint">
+        <Clock className="h-3.5 w-3.5" strokeWidth={2} />
+        Hours at this location
+      </p>
+      <dl className="mt-2 space-y-0.5">
+        {DAY_KEYS.map((key) => {
+          const day = hours[key];
+          const isToday = key === todayKey;
+          return (
+            <div
+              key={key}
+              className={`flex items-baseline justify-between gap-3 rounded-lg px-1.5 py-1 text-[12.5px] ${
+                isToday ? "bg-paper-tint font-bold text-ink" : "text-ink-muted"
+              }`}
+            >
+              <dt>{DAY_LABELS[key]}</dt>
+              <dd className="tabular-nums">{day ? `${day.open} – ${day.close}` : "Closed"}</dd>
+            </div>
+          );
+        })}
+      </dl>
+      {hours.notes && <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{hours.notes}</p>}
     </div>
   );
 }

@@ -335,6 +335,14 @@ export const clinicLocations = pgTable(
     lat: doublePrecision("lat"),
     lng: doublePrecision("lng"),
     phone: text("phone"),
+    // Same shape and same convention as facilities.openingHours:
+    // { mon: { open: "08:00", close: "20:00" } … sun: null, notes: "" }.
+    // A null day means closed; the whole object empty means unpublished.
+    // Lives here rather than on the specialist because hours are a fact
+    // about the PRACTICE ADDRESS — a consultant who sees patients at two
+    // hospitals on different days needs one set of hours per location,
+    // not one blanket answer for the person.
+    openingHours: jsonb("opening_hours").notNull().default({}),
   },
   (t) => [
     index("clinic_locations_clinic_idx").on(t.clinicId),

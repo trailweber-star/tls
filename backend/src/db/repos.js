@@ -267,6 +267,13 @@ async function assembleSpecialists(rows) {
           if (!loc) return null;
           return {
             ...loc,
+            // Same normalisation normaliseFacility gives openingHours:
+            // an empty {} (the column default — no hours entered yet)
+            // reads as "not published", not as "closed every day".
+            openingHours:
+              loc.openingHours && typeof loc.openingHours === "object" && Object.keys(loc.openingHours).length
+                ? loc.openingHours
+                : null,
             city: cityById.get(loc.cityId) ?? null,
             clinic: loc.clinicId ? clinicById.get(loc.clinicId) ?? null : null,
           };

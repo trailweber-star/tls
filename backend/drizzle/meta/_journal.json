@@ -141,6 +141,13 @@
       "when": 1790300200000,
       "tag": "0019_drop_appointment_clinic_location",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790300250000,
+      "tag": "0020_clinic_location_hours",
+      "breakpoints": true
     }
   ]
 }
