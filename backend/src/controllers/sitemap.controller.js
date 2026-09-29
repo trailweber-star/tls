@@ -197,6 +197,27 @@ export async function sitemapXml(req, res) {
     });
   }
 
+  /* One landing page per city that has at least one publicly-listed
+     specialist, with no specialty filter -- "specialists in Leeds" is
+     a real, high-intent local-search query, and Search.tsx already
+     renders and indexes this exact URL shape (see seoTitle/hasFilters
+     there); it just never had anywhere to be discovered from until
+     now. Built from the same citySlugs already collected per specialist
+     above rather than a second pass over them. */
+  const citySlugsOnly = new Set();
+  for (const s of specialists) {
+    for (const loc of s.clinicLocations ?? []) {
+      if (loc.city?.slug) citySlugsOnly.add(loc.city.slug);
+    }
+  }
+  for (const citySlug of citySlugsOnly) {
+    urls.push({
+      loc: `${base}/search?location=${encodeURIComponent(citySlug)}`,
+      changefreq: "weekly",
+      priority: "0.6",
+    });
+  }
+
   for (const s of specialists) {
     urls.push({
       loc: `${base}/specialists/${encodeURIComponent(s.slug)}`,
