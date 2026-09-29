@@ -107,7 +107,12 @@ export default function Home() {
           </div>
 
           <div className="mt-12 max-w-5xl">
-            <TrustBar variant="onHero" />
+            <TrustBar
+              variant="onHero"
+              cityCount={specialtiesLoading ? undefined : cities.length}
+              specialtyCount={specialtiesLoading ? undefined : topLevelSpecialties.length}
+              loading={specialtiesLoading}
+            />
           </div>
         </div>
       </section>
