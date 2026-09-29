@@ -31,9 +31,10 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { getAllSpecialties, getSpecialistBySlug, getSpecialistReviews } from "../lib/api";
+import { getAllSpecialties, getSpecialistBySlug, getSpecialistReviews, searchSpecialists } from "../lib/api";
 import { formatAvailability, formatPrice, formatRating } from "../lib/format";
 import { EnquiryForm } from "../components/EnquiryForm";
+import { SpecialistCard } from "../components/SpecialistCard";
 import { BookingWidget } from "../components/BookingWidget";
 import { MapPreview } from "../components/MapPreview";
 import { Dialog } from "../components/Dialog";
@@ -942,6 +943,8 @@ export default function SpecialistProfile() {
         </section>
       </div>
 
+      <RelatedSpecialists specialist={specialist} />
+
       {/* The enquiry itself. Submitting posts a lead and notifies the
           specialist at the address they registered with — see the
           backend's lib/mailer.js for the send path. */}
@@ -1737,6 +1740,56 @@ function MedicoLegalCV({ specialist }: { specialist: SpecialistWithRelations }) 
  * email address is not. Each item renders only if the API sent it, which
  * is the same thing as saying the plan allows it.
  * ------------------------------------------------------------------ */
+/* "You might also like" -- the one internal link a specialist profile
+   never had. Same primary specialty, same city when the specialist has
+   one, excluding the specialist whose page this is; the search endpoint
+   already ranks by relevance, so the first few results are simply used
+   as-is. A profile with nowhere further to click was a dead end for both
+   a visitor and a crawler -- this gives Google a path from every profile
+   back into the specialty+city pages the sitemap now indexes, and gives
+   a visitor a reason to keep browsing instead of bouncing. */
+function RelatedSpecialists({ specialist }: { specialist: SpecialistWithRelations }) {
+  const [related, setRelated] = useState<SpecialistWithRelations[] | null>(null);
+  const specialtySlug = specialist.primarySpecialty?.slug ?? specialist.specialties[0]?.slug ?? null;
+  const citySlug = specialist.clinicLocations?.[0]?.city?.slug ?? null;
+
+  useEffect(() => {
+    if (!specialtySlug) {
+      setRelated([]);
+      return;
+    }
+    let cancelled = false;
+    searchSpecialists({ specialty: specialtySlug, location: citySlug ?? undefined, pageSize: 5 })
+      .then((res) => {
+        if (cancelled) return;
+        setRelated(res.results.filter((s) => s.id !== specialist.id).slice(0, 4));
+      })
+      .catch(() => {
+        if (!cancelled) setRelated([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [specialtySlug, citySlug, specialist.id]);
+
+  if (!related || related.length === 0) return null;
+
+  return (
+    <section className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8">
+      <div className="mb-6">
+        <h2 className="font-display text-[22px] font-bold text-ink sm:text-[26px]">
+          {citySlug ? `More ${specialist.primarySpecialty?.name ?? "specialists"} near you` : "Similar specialists"}
+        </h2>
+      </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {related.map((s) => (
+          <SpecialistCard key={s.id} specialist={s} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ContactStrip({ specialist }: { specialist: SpecialistWithRelations }) {
   const socials = specialist.socials ?? {};
   // Driven by the shared brand list rather than a second hand-written
