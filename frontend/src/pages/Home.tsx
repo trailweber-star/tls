@@ -52,8 +52,8 @@ export default function Home() {
   return (
     <main className="flex flex-1 flex-col bg-navy-950" style={{ marginTop: -HEADER_HEIGHT }}>
       <Seo
-        title="Top Local Specialists — Find Verified UK Healthcare Specialists"
-        description="Search verified consultants, surgeons, dentists and therapists across the UK by condition, treatment and location. Every specialist is checked against their regulator before they appear."
+        title="Top Local Specialists — Find Verified UK Specialists Near You"
+        description="Search verified consultants, surgeons, dentists and therapists near you, UK-wide. Every specialist is checked against the GMC, GDC or equivalent regulator before their profile appears — compare experience, patient reviews and consultation prices before you get in touch."
         path="/"
         jsonLd={[
           ORGANISATION_JSON_LD,

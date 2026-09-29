@@ -292,6 +292,25 @@ export default function SpecialistProfile() {
   const practice = practiceGroups(specialist);
 
   const primaryLocation = specialist.clinicLocations[0] ?? null;
+  // The title tag is the single highest-value line on the page for
+  // search — it's what shows as the blue link and what Google weighs
+  // most heavily — and it used to carry only the name and job title,
+  // with no city. FacilityProfile has always put the city in its title;
+  // a specialist's profile is exactly as much of a local-search page and
+  // was missing the thing local search runs on: "— Orthopaedic Surgeon
+  // in Birmingham" is a phrase someone actually searches, "— Mr Aria
+  // Ghassemi" on its own is not. Medico-legal listings have no clinic
+  // city, so they fall back to the region they cover instead.
+  const seoTitleSuffix = [
+    specialist.title ?? specialist.primarySpecialty?.name ?? specialist.specialties[0]?.name ?? null,
+    primaryLocation?.city?.name
+      ? `in ${primaryLocation.city.name}`
+      : isMedicoLegal && specialist.coveredRegions?.length
+        ? `covering ${specialist.coveredRegions[0]}`
+        : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const seoDescription = [
     specialist.title ?? "Specialist",
     primaryLocation?.city?.name
@@ -318,7 +337,7 @@ export default function SpecialistProfile() {
           star rating rather than a bare blue link. Ratings are only
           published when reviews actually exist. */}
       <Seo
-        title={`${specialist.fullName}${specialist.title ? ` — ${specialist.title}` : ""}`}
+        title={seoTitleSuffix ? `${specialist.fullName} — ${seoTitleSuffix}` : specialist.fullName}
         description={seoDescription}
         path={`/specialists/${specialist.slug}`}
         image={specialist.photoUrl ?? undefined}

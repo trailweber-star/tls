@@ -314,6 +314,14 @@ export function facilityJsonLd(f: FacilityWithRelations, schemaType: string) {
     breadcrumb([
       { name: "Home", path: "/" },
       { name: "Find care", path: "/search" },
+      // Mirrors specialistJsonLd's breadcrumb, which has always had a
+      // specialty in the middle step — this one had gone straight from
+      // "Find care" to the facility's own name, skipping the category
+      // that a search engine (and a patient reading the crumb) uses to
+      // place the page.
+      ...(f.categories?.[0]
+        ? [{ name: f.categories[0].name, path: `/search?type=${f.facilityType}&category=${f.categories[0].slug}` }]
+        : []),
       { name: f.name },
     ]),
   ];

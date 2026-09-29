@@ -14,7 +14,7 @@ import { SpecialistResultCard } from "../components/SpecialistResultCard";
 import { heroHeadingFor, heroPhotoFor, placeHeroFor, specialtyDisplayName } from "../lib/specialtyHeroes";
 import { HEADER_HEIGHT } from "../components/Header";
 import type { City, SearchResponse, SortOption, Specialty } from "../lib/types";
-import { Seo } from "../components/Seo";
+import { Seo, SITE_URL } from "../components/Seo";
 
 // Filter state lives in the URL, using the same parameter names the API
 // takes. So a search is a shareable link, the back button steps through
@@ -388,34 +388,124 @@ export default function Search() {
   const total = data?.total ?? 0;
   const sortLabel = SORT_LABELS.find((s) => s.value === filters.sort)?.label ?? "Best match";
 
-  // A filtered search is a near-duplicate of every other filtered
-  // search, so only the bare /search page is offered to crawlers. The
-  // title still describes what is on screen, for the browser tab and for
-  // anyone sharing the link.
+  // A filtered search is a near-duplicate of every other filtered search,
+  // so only a bare specialty and/or location combination is offered to
+  // crawlers — "orthopaedic surgeon in Birmingham" is a page worth
+  // indexing; the same list re-sorted, paginated or narrowed by free text
+  // or a sub-filter is not. Location used to be lumped in with the noise
+  // below, which meant the single most valuable page pattern on the
+  // site — a specialty in a place, exactly what a directory lives or
+  // dies on — was invisible to Google however many specialists were on it.
   const hasFilters =
     Boolean(filters.q) ||
-    Boolean(filters.location) ||
     filters.subspecialties.length > 0 ||
+    Boolean(filters.region) ||
+    filters.practiceAreas.length > 0 ||
+    filters.clinicalSpecialties.length > 0 ||
     filters.page > 1 ||
-    filters.sort !== "best-match";
+    filters.sort !== "best-match" ||
+    Boolean(filters.minRating) ||
+    Boolean(filters.minPriceMinor) ||
+    Boolean(filters.maxPriceMinor) ||
+    filters.verifiedOnly ||
+    Boolean(filters.availableWithinDays);
+  // An empty result is thin content whatever filters produced it — never
+  // worth a crawl budget, and not a page we want to be the version of
+  // "orthopaedic surgeon in Truro" that Google keeps on file.
+  const isEmptyResult = Boolean(data) && total === 0;
   const specialtyLabel = specialty ? specialtyDisplayName(specialty.name, specialty.slug) : null;
   const seoTitle = specialtyLabel
     ? `${specialtyLabel}${locationLabel ? ` in ${locationLabel}` : " specialists"}`
-    : "Find a Specialist";
+    : locationLabel
+      ? `Specialists in ${locationLabel}`
+      : "Find a Specialist";
   const seoDescription = specialtyLabel
     ? `Compare ${total} verified ${specialtyLabel.toLowerCase()} specialists${locationLabel ? ` near ${locationLabel}` : " across the UK"} — credentials, prices, availability and patient reviews.`
-    : "Search verified UK specialists by condition, treatment and location. Compare credentials, consultation prices, availability and patient reviews.";
+    : locationLabel
+      ? `Compare ${total} verified specialists near ${locationLabel} across every condition and treatment — credentials, prices, availability and patient reviews.`
+      : "Search verified UK specialists by condition, treatment and location. Compare credentials, consultation prices, availability and patient reviews.";
+
+  /* --------------------------------------------------------------- *
+   * Structured data + on-page copy for an indexable specialty page.
+   * Templated, not hand-written per page — the same pattern Zocdoc,
+   * Yelp and every directory that ranks on "[thing] in [place]" uses:
+   * the template supplies the shape, the live result set supplies the
+   * substance, so no two rendered pages are actually identical.
+   * ------------------------------------------------------------- */
+  const priceRangeText =
+    data?.facets.price.minMinor != null && data?.facets.price.maxMinor != null
+      ? `Typical consultation fees here range from £${Math.round(data.facets.price.minMinor / 100)} to £${Math.round(data.facets.price.maxMinor / 100)}, though every specialist sets and publishes their own price.`
+      : "Consultation prices vary by specialist — each profile lists its own price before you book.";
+  const faqItems =
+    specialtyLabel && !placeMode
+      ? [
+          {
+            q: `How much does it cost to see a ${specialtyLabel.toLowerCase()}${locationLabel ? ` in ${locationLabel}` : " in the UK"}?`,
+            a: priceRangeText,
+          },
+          {
+            q: `Are the ${specialtyLabel.toLowerCase()} specialists listed here regulator-checked?`,
+            a: "Every profile marked Verified has been checked against the relevant UK regulator — the GMC, GDC or equivalent — by a person before it was published. Unclaimed listings are marked as such rather than assumed to be checked.",
+          },
+          {
+            q: `How do I book an appointment with a ${specialtyLabel.toLowerCase()}${locationLabel ? ` in ${locationLabel}` : ""}?`,
+            a: "Open a specialist's profile to see their next available date, consultation price and booking or enquiry options, then contact them directly from the page.",
+          },
+        ]
+      : [];
+  const faqJsonLd =
+    faqItems.length > 0 && !isEmptyResult
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqItems.map((item) => ({
+            "@type": "Question",
+            name: item.q,
+            acceptedAnswer: { "@type": "Answer", text: item.a },
+          })),
+        }
+      : null;
+  const breadcrumbJsonLd =
+    specialty && specialtyLabel && !placeMode && !isEmptyResult
+      ? {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+            { "@type": "ListItem", position: 2, name: "Find a Specialist", item: `${SITE_URL}/search` },
+            {
+              "@type": "ListItem",
+              position: 3,
+              name: locationLabel ? `${specialtyLabel} in ${locationLabel}` : specialtyLabel,
+            },
+          ],
+        }
+      : null;
+  const introText =
+    specialtyLabel && !placeMode
+      ? `Compare ${total} verified ${specialtyLabel.toLowerCase()} specialist${total === 1 ? "" : "s"}${locationLabel ? ` near ${locationLabel}` : " across the UK"}. Every profile links to the specialist's regulator record, real patient reviews and an up-front consultation price, so you can compare before you book.`
+      : null;
 
   return (
     <main className="flex flex-1 flex-col bg-paper" style={{ marginTop: -HEADER_HEIGHT }}>
       {/* Filtered result pages are near-duplicates of one another, so
-          only the bare /search page is offered to crawlers — the rest
-          would dilute it rather than rank. */}
+          only the bare /search page, a bare specialty, a bare location
+          and a specialty+location combination are offered to crawlers —
+          the rest would dilute them rather than rank. */}
       <Seo
         title={seoTitle}
         description={seoDescription}
-        path="/search"
-        noIndex={hasFilters}
+        path={
+          specialty
+            ? `/search?specialty=${encodeURIComponent(specialty.slug)}${
+                filters.location ? `&location=${encodeURIComponent(filters.location)}` : ""
+              }`
+            : filters.location
+              ? `/search?location=${encodeURIComponent(filters.location)}`
+              : "/search"
+        }
+        noIndex={hasFilters || isEmptyResult}
+        jsonLd={[breadcrumbJsonLd, faqJsonLd].filter((x): x is NonNullable<typeof x> => x !== null)}
       />
       {/* Hero — photo, heading and location all follow the live query */}
       <section
@@ -522,6 +612,13 @@ export default function Search() {
             />
 
             <section aria-live="polite" className="min-w-0">
+              {/* The paragraph a "[specialty] in [city]" page needs to be
+                  more than a bare result list — visible copy that names
+                  the specialty and place, for the same reason the meta
+                  description does. */}
+              {introText && (
+                <p className="mb-4 max-w-3xl text-[14.5px] leading-relaxed text-ink-muted">{introText}</p>
+              )}
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper-muted px-4 py-3">
                 <span className="flex items-center gap-2 text-[13px] font-bold text-ink">
                   <Sparkles className="h-4 w-4 text-teal-600" strokeWidth={2} />
@@ -586,6 +683,23 @@ export default function Search() {
                   We couldn&apos;t pinpoint &ldquo;{data.location.query}&rdquo;, so these are name matches rather than a
                   radius search.
                 </p>
+              )}
+
+              {/* Same three questions as faqJsonLd above, in the words a
+                  patient would actually read — the schema describes this
+                  markup, it doesn't replace it. */}
+              {faqItems.length > 0 && !isEmptyResult && (
+                <div className="mt-10 border-t border-line pt-8">
+                  <h2 className="font-display text-[18px] font-bold text-ink">Common questions</h2>
+                  <dl className="mt-4 space-y-5">
+                    {faqItems.map((item) => (
+                      <div key={item.q}>
+                        <dt className="text-[14px] font-bold text-ink">{item.q}</dt>
+                        <dd className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">{item.a}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
               )}
             </section>
           </div>

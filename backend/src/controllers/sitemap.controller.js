@@ -104,9 +104,15 @@ export function robotsTxt(req, res) {
       "Disallow: /uploads/",
       "",
       "# Filtered search results are near-duplicates of each other and",
-      "# effectively infinite. The pages worth indexing are the profiles",
-      "# and the guides, which the sitemap lists explicitly.",
-      "Disallow: /search?",
+      "# effectively infinite, so most /search? URLs are unwanted here —",
+      "# but a blanket \"Disallow: /search?\" used to sit here and block the",
+      "# whole path, including the specialty and specialty+location pages",
+      "# the sitemap below lists as pages worth indexing (Google never",
+      "# fetches a Disallowed URL at all, so it never even reached the",
+      "# per-page <meta name=\"robots\"> tag that was supposed to decide this",
+      "# case by case). Fine-grained control now lives entirely in that meta",
+      "# tag — see hasFilters in frontend/src/pages/Search.tsx — so nothing",
+      "# under /search is blocked here.",
       "",
       `Sitemap: ${base}/sitemap.xml`,
       "",
@@ -149,6 +155,35 @@ export async function sitemapXml(req, res) {
       loc: `${base}/search?specialty=${encodeURIComponent(s.slug)}`,
       changefreq: "weekly",
       priority: "0.7",
+    });
+  }
+
+  /* One landing page per specialty+city that actually has someone on
+     it — "orthopaedic surgeon in Birmingham" is the pattern a local
+     directory lives or dies on, and it's exactly what the sitemap was
+     missing: every one of these was previously invisible, blocked by a
+     blanket robots.txt disallow on the whole /search path regardless of
+     what was on the page (see robotsTxt above).
+     Built from the specialist list already fetched above rather than a
+     second query, and — this matters — only for combinations with at
+     least one verified specialist. Listing "urologist in Truro" with
+     nobody on it would tell Google the page is empty the first time it
+     crawls, which is a worse signal than never listing it. */
+  const specialtyCityPairs = new Map();
+  for (const s of specialists) {
+    if (s.verificationStatus && s.verificationStatus !== "verified") continue;
+    const citySlugs = new Set((s.clinicLocations ?? []).map((loc) => loc.city?.slug).filter(Boolean));
+    for (const specialty of s.specialties ?? []) {
+      for (const citySlug of citySlugs) {
+        specialtyCityPairs.set(`${specialty.slug}|${citySlug}`, { specialtySlug: specialty.slug, citySlug });
+      }
+    }
+  }
+  for (const { specialtySlug, citySlug } of specialtyCityPairs.values()) {
+    urls.push({
+      loc: `${base}/search?specialty=${encodeURIComponent(specialtySlug)}&location=${encodeURIComponent(citySlug)}`,
+      changefreq: "weekly",
+      priority: "0.6",
     });
   }
 
