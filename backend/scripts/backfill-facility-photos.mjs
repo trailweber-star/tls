@@ -61,10 +61,6 @@ const LIMIT = Number(option("limit", "0")) || Infinity;
        (Wolverhampton, WV10 0QP -- same building as the ENT and
        gynaecology department rows; ENT's photo picked arbitrarily,
        both are the same source site)
-     dudley-group-nhs-foundation-trust     -> (no harvest row at all --
-       Russells Hall Hospital is this Trust's acute hospital and has a
-       cached photo, but nothing in the harvest ties the two slugs
-       together, so it's left for a human to confirm before using)
      warwick-hospital                      -> warwick-hospital-dermatology
      university-hospital-coventry-and-warwickshire
                                             -> university-hospital-coventry-warwickshire
@@ -73,6 +69,27 @@ const FACILITY_SLUG_ALIASES = {
   "new-cross-hospital": "new-cross-hospital-ent",
   "warwick-hospital": "warwick-hospital-dermatology",
   "university-hospital-coventry-and-warwickshire": "university-hospital-coventry-warwickshire",
+};
+
+/* Facility slug -> photo filename, direct. For photos that were
+   confirmed by hand rather than resolved through mapped.csv (the
+   normal path above): the harvested row itself was filtered out of
+   mapped.csv during review (data/harvest/review.csv: "missing:
+   category") so it was never in bySlug at all, even though the photo
+   file is sitting right there on disk.
+
+     dudley-group-nhs-foundation-trust -> russells-hall-hospital.jpg
+       The Trust has no harvested photo of its own -- its harvested
+       page is dgft.nhs.uk's corporate homepage, which has none -- but
+       that same homepage lists Russells Hall Hospital as one of "Our
+       sites and visiting", and the harvest independently picked up a
+       "Russells Hall Hospital" listing at the identical address (Pensnett
+       Rd, Dudley DY1 2HQ) and phone number (+441384456111), confirming
+       it's the Trust's own acute hospital site rather than a
+       coincidence of name. Viewed by hand: a real hospital corridor
+       photo, not a logo or placeholder. */
+const FACILITY_PHOTO_FILE_OVERRIDES = {
+  "dudley-group-nhs-foundation-trust": "russells-hall-hospital.jpg",
 };
 
 if (!isDbConfigured()) {
@@ -169,7 +186,7 @@ for (const f of facilities) {
   if (done >= LIMIT) break;
 
   const csvSlug = FACILITY_SLUG_ALIASES[f.slug] ?? f.slug;
-  const file = bySlug.get(csvSlug) ?? null;
+  const file = FACILITY_PHOTO_FILE_OVERRIDES[f.slug] ?? bySlug.get(csvSlug) ?? null;
   if (!file) {
     summary.notMatched += 1;
     console.log(`  no harvest photo for ${f.slug} (${f.name})`);
