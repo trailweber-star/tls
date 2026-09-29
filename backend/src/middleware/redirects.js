@@ -108,6 +108,47 @@ function loadMap() {
 
 const MAP = loadMap();
 
+/* ------------------------------------------------------------------ *
+ * Hand-curated extras
+ *
+ * data/redirects.csv is generated wholesale by build-redirects.mjs from
+ * data/harvest/profiles.ndjson, which only ever captured the old site's
+ * two-segment listing URLs (/category/specialist-slug). The old
+ * Brilliant Directories install also had single-segment category,
+ * city and utility pages that harvest never saw, and Google has some
+ * of them indexed regardless (found via a manual "site:" search, Sep
+ * 2026). Re-running build-redirects.mjs overwrites the whole CSV from
+ * that same harvest, so a row added there for one of these would be
+ * silently deleted on the next regen. They live here instead, applied
+ * on top of the generated map, so they survive it.
+ * ------------------------------------------------------------------ */
+const MANUAL_EXTRAS = [
+  // BD's search page; the new one is at the same job, different name.
+  ["/search_results", { status: 301, to: "/search" }],
+  // No "electrotherapy" treatment exists in this taxonomy — physiotherapy
+  // is the closest real category, and better than a dead end.
+  ["/electrotherapy", { status: 301, to: "/search?specialty=physiotherapy" }],
+  // Exact match: physiotherapy > general-physiotherapy > joint-injections.
+  [
+    "/joint-injection",
+    { status: 301, to: "/search?specialty=physiotherapy&subspecialty=joint-injections" },
+  ],
+  // A delivery mode (video vs in-person), not a specialty or a filter
+  // this site has — nothing to send it to.
+  ["/video-consultation", { status: 410 }],
+  // A demo/placeholder town from the Brilliant Directories template,
+  // not a UK location this directory ever served.
+  ["/plainville", { status: 410 }],
+  // A sitewide reviews hub; this site's reviews live per-specialist now,
+  // and there is no equivalent aggregate page to send it to.
+  ["/reviews", { status: 410 }],
+  // A Brilliant Directories feature not carried into the rebuild.
+  ["/events-calendar", { status: 410 }],
+];
+for (const [from, hit] of MANUAL_EXTRAS) {
+  if (!MAP.has(from)) MAP.set(from, hit);
+}
+
 export function redirects(req, res, next) {
   /* A redirect answers a person following a link. Anything else —
      a POST, an API call, an uploaded image — is not that, and a 301
