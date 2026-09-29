@@ -144,6 +144,105 @@ const MANUAL_EXTRAS = [
   ["/reviews", { status: 410 }],
   // A Brilliant Directories feature not carried into the rebuild.
   ["/events-calendar", { status: 410 }],
+
+  /* -------------------------------------------------------------- *
+   * Round two: the 113 unique paths behind GSC's 416 "Soft 404"
+   * rows (exported 2026-09-29), once the ~80 per-listing
+   * "/.../writeareview" pages are pulled out below into a single
+   * suffix check instead of ~80 near-identical rows here.
+   * -------------------------------------------------------------- */
+
+  // Bare specialty hub pages from the old site's single-segment
+  // category URLs — build-redirects.mjs only ever harvested the
+  // two-segment /category/specialist-slug listing pages, so these
+  // never made it into the CSV. Real specialties in this taxonomy,
+  // sent to the equivalent live search.
+  ["/orthopaedics", { status: 301, to: "/search?specialty=orthopaedics" }],
+  ["/dentistry", { status: 301, to: "/search?specialty=dentistry" }],
+  ["/physiotherapist", { status: 301, to: "/search?specialty=physiotherapy" }],
+  ["/ent-surgeon", { status: 301, to: "/search?specialty=ent" }],
+  // Not its own top-level specialty here — "dermatologist" is a
+  // subspecialty under Aesthetics.
+  [
+    "/dermatologist",
+    {
+      status: 301,
+      to: "/search?specialty=aesthetics-specialists&subspecialty=aesthetics-specialists-dermatology",
+    },
+  ],
+
+  // The same hub pages again under the old site's region/country
+  // prefixes (England, Scotland, or the full ISO country name). This
+  // directory is UK-only, so the region segment adds nothing a UK
+  // search doesn't already assume — drop it and land on the same
+  // specialty search as the bare version above.
+  ["/england/orthopaedics", { status: 301, to: "/search?specialty=orthopaedics" }],
+  ["/england/physiotherapist", { status: 301, to: "/search?specialty=physiotherapy" }],
+  ["/scotland/orthopaedics", { status: 301, to: "/search?specialty=orthopaedics" }],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/orthopaedics",
+    { status: 301, to: "/search?specialty=orthopaedics" },
+  ],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/physiotherapist",
+    { status: 301, to: "/search?specialty=physiotherapy" },
+  ],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/dentistry",
+    { status: 301, to: "/search?specialty=dentistry" },
+  ],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/aesthetic-doctors",
+    { status: 301, to: "/search?specialty=aesthetics-specialists" },
+  ],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/general-practioners",
+    { status: 301, to: "/search?specialty=general-practice" },
+  ],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/england/orthopaedics",
+    { status: 301, to: "/search?specialty=orthopaedics" },
+  ],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/england/physiotherapist",
+    { status: 301, to: "/search?specialty=physiotherapy" },
+  ],
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland/england/general-physiotherapy",
+    {
+      status: 301,
+      to: "/search?specialty=physiotherapy&subspecialty=physiotherapy-general-physiotherapy",
+    },
+  ],
+  // The bare country hub, with no specialty at all — the closest live
+  // equivalent is the unfiltered search, not the homepage.
+  [
+    "/united-kingdom-of-great-britain-and-northern-ireland",
+    { status: 301, to: "/search" },
+  ],
+
+  // A location-only hub, and a specialty+city combination, from the
+  // old site's flatter URL scheme.
+  ["/england/london", { status: 301, to: "/search?location=london" }],
+  [
+    "/london/hip",
+    {
+      status: 301,
+      to: "/search?specialty=orthopaedics&subspecialty=orthopaedics-hip&location=london",
+    },
+  ],
+
+  // Brilliant Directories platform pages with no rebuilt equivalent —
+  // not healthcare content, just the old CMS showing through.
+  ["/products", { status: 410 }], // BD's directory-wide marketplace/listings feature
+  ["/copy-7", { status: 410 }], // a duplicated template page, not real content
+  ["/events", { status: 410 }],
+  ["/event-calendar-json", { status: 410 }], // the JSON feed behind the old events widget
+  ["/api/widget/html/summary/whmcs - adminauth", { status: 410 }], // a stray admin/billing widget endpoint, never public
+
+  // A single old business listing with no healthcare specialty
+  // attached and no owner-claimed profile to send it to.
+  ["/united-kingdom/birmingham/dana-rusu", { status: 410 }],
 ];
 for (const [from, hit] of MANUAL_EXTRAS) {
   if (!MAP.has(from)) MAP.set(from, hit);
@@ -154,10 +253,34 @@ export function redirects(req, res, next) {
      a POST, an API call, an uploaded image — is not that, and a 301
      on a POST is a good way to lose a form submission. */
   if (req.method !== "GET" && req.method !== "HEAD") return next();
-  if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
 
-  const hit = MAP.get(normalise(req.path));
+  const normalised = normalise(req.path);
+
+  /* The old site's per-listing "write a review" pages — one per
+     listing, for businesses this directory mostly never covered (a
+     vape shop in Winnipeg, a criminal law firm, a pest control
+     company), with no rebuilt equivalent for any of them. GSC's real
+     Soft 404 export had ~80 of these as distinct rows; a suffix check
+     here does that job instead of ~80 near-identical MANUAL_EXTRAS
+     entries. */
+  if (normalised.endsWith("/writeareview")) {
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    return res.status(410).type("text/plain").send("This page is gone and will not be coming back.");
+  }
+
+  const hit = MAP.get(normalised);
+
+  /* The /api and /uploads prefixes are skipped here rather than up
+     front: real API calls and uploaded files never end up in MAP (it
+     is built from the old BD harvest plus a short hand-curated list),
+     so this only ever fires for the one legacy BD widget URL below
+     that happens to look like an API path but is really an indexed,
+     dead page someone can still click on. Checking the hit first
+     keeps that one redirectable without opening the door to real
+     /api traffic. */
   if (!hit) return next();
+  if (req.path.startsWith("/api") && normalised !== "/api/widget/html/summary/whmcs - adminauth") return next();
+  if (req.path.startsWith("/uploads")) return next();
 
   if (hit.status === 410) {
     res.setHeader("Cache-Control", "public, max-age=86400");
