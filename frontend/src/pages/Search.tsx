@@ -481,6 +481,24 @@ export default function Search() {
           ],
         }
       : null;
+  /* A lightweight ItemList so an indexable results page can pick up a
+     sitelinks-style rich result for its top specialists, same as the
+     FAQ and breadcrumb entries above — full Physician markup already
+     lives on each profile page (see structuredData.ts), so this only
+     needs enough to name and link each entry, not repeat it. */
+  const itemListJsonLd =
+    !hasFilters && !isEmptyResult && (data?.results.length ?? 0) > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          itemListElement: data!.results.slice(0, 20).map((specialist, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            url: `${SITE_URL}/specialists/${specialist.slug}`,
+            name: specialist.fullName,
+          })),
+        }
+      : null;
   const introText =
     specialtyLabel && !placeMode
       ? `Compare ${total} verified ${specialtyLabel.toLowerCase()} specialist${total === 1 ? "" : "s"}${locationLabel ? ` near ${locationLabel}` : " across the UK"}. Every profile links to the specialist's regulator record, real patient reviews and an up-front consultation price, so you can compare before you book.`
@@ -505,7 +523,7 @@ export default function Search() {
               : "/search"
         }
         noIndex={hasFilters || isEmptyResult}
-        jsonLd={[breadcrumbJsonLd, faqJsonLd].filter((x): x is NonNullable<typeof x> => x !== null)}
+        jsonLd={[breadcrumbJsonLd, faqJsonLd, itemListJsonLd].filter((x): x is NonNullable<typeof x> => x !== null)}
       />
       {/* Hero — photo, heading and location all follow the live query */}
       <section
