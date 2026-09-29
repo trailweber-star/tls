@@ -9,9 +9,20 @@ export default function NotFound() {
       <p className="mt-2 text-sm text-ink-muted">
         The page you&apos;re looking for doesn&apos;t exist or may have moved.
       </p>
-      <Link to="/" className="mt-6 rounded-full bg-navy-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-teal-700">
-        Back home
-      </Link>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <Link
+          to="/"
+          className="rounded-full bg-navy-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
+        >
+          Back home
+        </Link>
+        <Link
+          to="/search"
+          className="rounded-full border border-line px-5 py-2 text-sm font-semibold text-ink transition hover:border-teal-200 hover:text-teal-700"
+        >
+          Search specialists
+        </Link>
+      </div>
     </main>
   );
 }
