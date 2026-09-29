@@ -10,6 +10,8 @@ import dentistryPhoto from "../assets/images/tile-dentistry.webp";
 import aestheticsPhoto from "../assets/images/tile-aesthetics.webp";
 import expertWitnessPhoto from "../assets/images/tile-expert-witness.jpg";
 import pharmacyPhoto from "../assets/images/tile-pharmacy.webp";
+import careHomePhoto from "../assets/images/tile-care-home.webp";
+import hospitalPhoto from "../assets/images/tile-hospital.webp";
 
 export const CATEGORY_PHOTOS: Record<string, string> = {
   orthopaedics: orthopaedicsPhoto,
@@ -63,4 +65,29 @@ export const PHARMACY_TILE = {
   description: "Prescriptions, advice & healthcare essentials",
   photo: pharmacyPhoto,
   href: "/search?type=pharmacy",
+};
+
+// Same story as Pharmacy above — Care Homes is also a FACILITY category
+// (facilityType "care_home" in the backend's search tabs, see
+// backend/src/lib/searchTabs.js), not a specialty, so it's rendered as
+// another extra tile rather than going through the specialty taxonomy.
+// Reuses the same photo as the care-home search results page hero
+// (lib/specialtyHeroes.ts), just resized down to tile size.
+export const CARE_HOME_TILE = {
+  id: "care-home",
+  name: "Care Homes",
+  description: "Residential & nursing care you can trust",
+  photo: careHomePhoto,
+  href: "/search?type=care-home",
+};
+
+// Same story again — Hospitals is also a FACILITY category (facilityType
+// "hospital" in backend/src/lib/searchTabs.js), rendered as another extra
+// tile. Reuses the hospital search-results-page hero photo, resized down.
+export const HOSPITAL_TILE = {
+  id: "hospital",
+  name: "Hospitals",
+  description: "Inpatient care, surgery & specialist units",
+  photo: hospitalPhoto,
+  href: "/search?type=hospital",
 };
