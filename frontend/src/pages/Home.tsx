@@ -27,6 +27,11 @@ export default function Home() {
   const [cities, setCities] = useState<City[]>([]);
   const [featured, setFeatured] = useState<SpecialistWithRelations[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Drives the specialty tiles' skeleton placeholders below — without it
+  // the grid jumps from just the facility tiles (Pharmacy/Care Homes/
+  // Hospitals, which don't depend on this fetch) to the full 8-tile grid
+  // the instant the taxonomy request resolves.
+  const [specialtiesLoading, setSpecialtiesLoading] = useState(true);
 
   useEffect(() => {
     // The search bar fetches its own taxonomy on demand now, so the
@@ -37,7 +42,8 @@ export default function Home() {
         setCities(cityList);
         setFeatured(featuredList);
       })
-      .catch((err) => setLoadError(err instanceof Error ? err.message : "Could not load the homepage"));
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Could not load the homepage"))
+      .finally(() => setSpecialtiesLoading(false));
   }, []);
 
   if (loadError) {
@@ -127,6 +133,8 @@ export default function Home() {
               (s): s is Specialty => Boolean(s)
             )}
             extra={[PHARMACY_TILE, CARE_HOME_TILE, HOSPITAL_TILE]}
+            loading={specialtiesLoading}
+            skeletonCount={HOMEPAGE_SPECIALTY_SLUGS.length}
           />
         </section>
 

@@ -20,12 +20,35 @@ export interface ExtraCategoryTile {
 export function CategoryGrid({
   specialties,
   extra = [],
+  loading = false,
+  skeletonCount = 5,
 }: {
   specialties: Specialty[];
   extra?: ExtraCategoryTile[];
+  /** True while the specialty taxonomy is still being fetched — renders
+      placeholder cards in its place so the grid doesn't visibly jump from
+      just the `extra` tiles to the full set once the fetch resolves. */
+  loading?: boolean;
+  /** How many placeholder cards to show while loading. Defaults to the
+      homepage's specialty-tile count. */
+  skeletonCount?: number;
 }) {
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 sm:gap-6">
+      {loading &&
+        specialties.length === 0 &&
+        Array.from({ length: skeletonCount }).map((_, i) => (
+          <div
+            key={`specialty-skeleton-${i}`}
+            className="flex flex-col overflow-hidden rounded-[1.375rem] border border-line bg-white p-2.5 shadow-sm"
+          >
+            <div className="aspect-[5/4] w-full animate-pulse rounded-[1rem] bg-paper-muted" />
+            <div className="flex flex-1 flex-col gap-2 px-2.5 pb-2 pt-4">
+              <div className="h-4 w-3/4 animate-pulse rounded bg-paper-muted" />
+              <div className="h-3 w-full animate-pulse rounded bg-paper-muted" />
+            </div>
+          </div>
+        ))}
       {specialties.map((specialty) => {
         const photo = CATEGORY_PHOTOS[specialty.slug];
         const { icon: Icon, gradient } = categoryVisual(specialty.slug);
