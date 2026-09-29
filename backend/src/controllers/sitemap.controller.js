@@ -166,12 +166,22 @@ export async function sitemapXml(req, res) {
      what was on the page (see robotsTxt above).
      Built from the specialist list already fetched above rather than a
      second query, and — this matters — only for combinations with at
-     least one verified specialist. Listing "urologist in Truro" with
-     nobody on it would tell Google the page is empty the first time it
-     crawls, which is a worse signal than never listing it. */
+     least one publicly-listed specialist. Listing "urologist in Truro"
+     with nobody on it would tell Google the page is empty the first
+     time it crawls, which is a worse signal than never listing it.
+
+     "Publicly-listed" is verified OR unverified — specialistRepo.verified()
+     above already narrows the query to exactly those two statuses (an
+     unverified listing is unclaimed, not hidden: SpecialistProfile.tsx
+     shows it plainly as "unclaimed listing" rather than a false verified
+     claim). A second, stricter check here that let only the literal
+     "verified" string through used to silently drop every one of
+     them — of 2,808 specialists in production, the sample checked while
+     building this was 100% "unverified", so that check was quietly
+     emptying the sitemap of every specialist page and every combo
+     built from them, not narrowing it. */
   const specialtyCityPairs = new Map();
   for (const s of specialists) {
-    if (s.verificationStatus && s.verificationStatus !== "verified") continue;
     const citySlugs = new Set((s.clinicLocations ?? []).map((loc) => loc.city?.slug).filter(Boolean));
     for (const specialty of s.specialties ?? []) {
       for (const citySlug of citySlugs) {
@@ -188,7 +198,6 @@ export async function sitemapXml(req, res) {
   }
 
   for (const s of specialists) {
-    if (s.verificationStatus && s.verificationStatus !== "verified") continue;
     urls.push({
       loc: `${base}/specialists/${encodeURIComponent(s.slug)}`,
       lastmod: iso(s.updatedAt ?? s.createdAt),
