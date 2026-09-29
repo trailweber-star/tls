@@ -161,6 +161,10 @@ const MANUAL_EXTRAS = [
   ["/dentistry", { status: 301, to: "/search?specialty=dentistry" }],
   ["/physiotherapist", { status: 301, to: "/search?specialty=physiotherapy" }],
   ["/ent-surgeon", { status: 301, to: "/search?specialty=ent" }],
+  // Found in a later export (GSC "Blocked due to access forbidden",
+  // 2026-09-29) — the bare version of the general-practioners hub
+  // page, same fix as its country-prefixed sibling below.
+  ["/general-practioners", { status: 301, to: "/search?specialty=general-practice" }],
   // Not its own top-level specialty here — "dermatologist" is a
   // subspecialty under Aesthetics.
   [
