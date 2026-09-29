@@ -34,6 +34,7 @@ export function SpecialistCard({ specialist }: { specialist: SpecialistWithRelat
           <img
             src={specialist.photoUrl}
             alt={specialist.fullName}
+            loading="lazy"
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (

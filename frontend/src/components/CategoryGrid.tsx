@@ -41,7 +41,8 @@ export function CategoryGrid({
               {photo ? (
                 <img
                   src={photo}
-                  alt=""
+                  alt={`${name} specialists`}
+                  loading="lazy"
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />
               ) : (
@@ -72,7 +73,8 @@ export function CategoryGrid({
           <div className="aspect-[5/4] w-full overflow-hidden rounded-[1rem] bg-paper-muted">
             <img
               src={tile.photo}
-              alt=""
+              alt={`${tile.name} specialists`}
+              loading="lazy"
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
           </div>
