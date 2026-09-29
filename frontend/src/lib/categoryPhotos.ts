@@ -78,7 +78,7 @@ export const CARE_HOME_TILE = {
   name: "Care Homes",
   description: "Residential & nursing care you can trust",
   photo: careHomePhoto,
-  href: "/search?type=care-home",
+  href: "/search?type=care_home",
 };
 
 // Same story again — Hospitals is also a FACILITY category (facilityType
