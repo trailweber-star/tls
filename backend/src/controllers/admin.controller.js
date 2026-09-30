@@ -20,6 +20,7 @@ import { isPaidPlan } from "../lib/plans.js";
 import { notificationStore } from "../lib/notifications.js";
 
 import { hasMailer, sendMail } from "../lib/mailer.js";
+import { missingRequiredForVerification } from "./dashboard.controller.js";
 import { hasPaymentProvider, paymentProviderName } from "../lib/payments.js";
 import { storageProviderName } from "../lib/storage.js";
 import { hasPushProvider, pushProviderName } from "../lib/push.js";
@@ -398,6 +399,27 @@ export async function decideVerification(req, res) {
   // moves them from "waiting on our review" to "ready to pay", which is
   // the point their dashboard first asks for a card.
   const advancesToPayment = action === "approve" || action === "reinstate";
+
+  // The gate itself. "verified" is what makes a listing public (see
+  // PUBLIC_STATUSES in specialists.controller.js) -- approving or
+  // reinstating someone with no photo, no specialty, or no location
+  // would put a broken-looking page live the moment this request
+  // succeeds. Checked before anything is written, against the
+  // fully-assembled specialist (relations included, not just the raw
+  // row) since locations live in a join table rather than a column.
+  if (status === "verified") {
+    const candidate = isDbConfigured()
+      ? await specialistRepo.findById(req.params.id)
+      : mockSpecialistsWithRelations.find((s) => s.id === req.params.id);
+    if (!candidate) return res.status(404).json({ error: "Application not found" });
+    const missing = missingRequiredForVerification(candidate);
+    if (missing.length > 0) {
+      return res.status(409).json({
+        error: `This profile can't go live yet -- still missing: ${missing.join(", ")}.`,
+        missing,
+      });
+    }
+  }
 
   let specialist;
   if (!isDbConfigured()) {

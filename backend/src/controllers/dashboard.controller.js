@@ -38,7 +38,18 @@ import { UK_REGION_SET } from "../lib/ukRegions.js";
  * specialist straight to what is missing instead of to a generic form.
  * ------------------------------------------------------------------ */
 const COMPLETION_ITEMS = [
-  { key: "photoUrl", label: "Add a profile photo", section: "basic", weight: 2, has: (s) => Boolean(s.photoUrl) },
+  {
+    key: "photoUrl",
+    label: "Add a profile photo",
+    section: "basic",
+    weight: 2,
+    has: (s) => Boolean(s.photoUrl),
+    // Gates whether an admin can approve this listing -- see
+    // requiredForVerification() below. A verified listing with no photo,
+    // specialty or location is a broken-looking page the moment it goes
+    // public, so these three are load-bearing rather than merely scored.
+    required: true,
+  },
   { key: "title", label: "Add your professional title", section: "basic", weight: 2, has: (s) => Boolean(s.title) },
   { key: "bio", label: "Write your biography", section: "basic", weight: 2, has: (s) => (s.bio ?? "").length > 80 },
   {
@@ -61,6 +72,8 @@ const COMPLETION_ITEMS = [
     section: "specialties",
     weight: 3,
     has: (s) => Boolean(s.primarySpecialty ?? s.primarySpecialtyId),
+  
+    required: true,
   },
   {
     key: "treatments",
@@ -75,6 +88,8 @@ const COMPLETION_ITEMS = [
     section: "locations",
     weight: 3,
     has: (s) => (s.clinicLocations ?? []).length > 0,
+  
+    required: true,
   },
   {
     key: "consultationPrice",
@@ -112,6 +127,21 @@ export function profileCompletion(specialist) {
       section,
     })),
   };
+}
+
+/**
+ * The subset of profileCompletion() that isn't just a nudge -- it's
+ * what an admin's approval is gated on. Called from
+ * admin.controller.js's decideVerification before a listing is allowed
+ * to go public: a specialist can be short a bio or a price and still
+ * make a reasonable first listing, but not a photo, a specialty, or a
+ * location, since those are what the public profile and search results
+ * are built around. Reuses the same has() checks profileCompletion()
+ * already scores with, so the two can never silently disagree about
+ * what "done" means for a field.
+ */
+export function missingRequiredForVerification(specialist) {
+  return COMPLETION_ITEMS.filter((i) => i.required && !i.has(specialist)).map((i) => i.label);
 }
 
 /* ------------------------------------------------------------------ *
