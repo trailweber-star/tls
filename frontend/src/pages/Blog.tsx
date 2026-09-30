@@ -364,7 +364,16 @@ function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: str
           floor height, so a card with a one-line excerpt and no tags
           doesn't end up visibly shorter than one with three lines and
           two tags -- the line-clamps below cap the tall end, this caps
-          the short end. */}
+          the short end.
+
+          The photo is `sm:absolute inset-0` rather than `sm:h-full` --
+          the same trick the article hero image uses in BlogPost.tsx.
+          A tall (portrait) source photo sized with `h-full` inside an
+          auto-height grid row feeds its own intrinsic aspect ratio back
+          into that row's height calculation and blows the whole card
+          out to the photo's shape. Taking the photo out of flow with
+          `absolute` means only the text column's height counts, and the
+          photo just crops to fill whatever that turns out to be. */}
       <div className={article.heroImageUrl ? "grid sm:min-h-64 sm:grid-cols-[240px_1fr]" : "sm:min-h-64"}>
         {article.heroImageUrl && (
           <Link to={`/blog/${article.slug}`} className="relative block overflow-hidden bg-paper-tint">
@@ -372,7 +381,7 @@ function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: str
               src={article.heroImageUrl}
               alt={article.heroImageAlt ?? ""}
               loading="lazy"
-              className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-full"
+              className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:absolute sm:inset-0 sm:h-full sm:w-full"
             />
             {article.specialty && (
               <span className="absolute left-3 top-3 rounded-full bg-navy-950/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-teal-300 backdrop-blur">
@@ -382,7 +391,7 @@ function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: str
           </Link>
         )}
 
-        <div className="flex h-full min-h-[190px] flex-col p-5 sm:p-6">
+        <div className="flex flex-col p-5 sm:p-6">
           {!article.heroImageUrl && article.specialty && (
             <span className="mb-2.5 inline-block w-fit rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-teal-700">
               {article.specialty.name}
