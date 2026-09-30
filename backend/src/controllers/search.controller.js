@@ -268,6 +268,32 @@ export async function searchPanel(req, res) {
     return node?.name ?? null;
   }
 
+  /** Same walk, but the slug -- what the "Specialty" href below needs.
+   *  A subspecialty pick used to link to `/search?subspecialty=braces`
+   *  with no `specialty=` at all, so the results page could still
+   *  resolve and title itself "Braces Specialists" (the backend works
+   *  it out independently), but the sidebar's Specialty dropdown reads
+   *  that param directly off the URL and had nothing to show but "All
+   *  specialties" -- and the Sub-specialty checklist didn't render at
+   *  all, since it requires a specialty first. Only a pick that already
+   *  landed on a top-level specialty carried the param through, which
+   *  is why this worked for some categories and not others. */
+  function rootSpecialtySlug(id) {
+    let node = id ? specialtyById.get(id) : null;
+    const guard = new Set();
+    while (node?.parentId && !guard.has(node.id)) {
+      guard.add(node.id);
+      node = specialtyById.get(node.parentId);
+    }
+    return node?.slug ?? null;
+  }
+
+  function specialtyHref(sp) {
+    if (!sp.parentId) return `/search?specialty=${sp.slug}`;
+    const rootSlug = rootSpecialtySlug(sp.id);
+    return rootSlug ? `/search?specialty=${rootSlug}&subspecialty=${sp.slug}` : `/search?subspecialty=${sp.slug}`;
+  }
+
   /* --------------------------------------------------------- column 1
      Every tier of the specialty tree — category, sub-category and the
      narrow procedure level — condensed into one scrolling column. A
@@ -292,7 +318,7 @@ export async function searchPanel(req, res) {
     kind: "specialty",
     label: sp.name,
     sublabel: parentName(sp.parentId) ?? "Specialty",
-    href: sp.parentId ? `/search?subspecialty=${sp.slug}` : `/search?specialty=${sp.slug}`,
+    href: specialtyHref(sp),
   }));
 
   /* --------------------------------------------------------- column 2
