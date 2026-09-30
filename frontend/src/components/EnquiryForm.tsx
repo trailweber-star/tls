@@ -10,7 +10,13 @@ interface EnquiryFormProps {
 }
 
 export function EnquiryForm({ specialistId, clinicId, facilityId, recipientName }: EnquiryFormProps) {
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  // "sent" means the specialist/facility was actually notified. "saved"
+  // covers every other non-throwing outcome (no contact email on file,
+  // held by the monthly cap, a mail-provider hiccup, ...): the lead row
+  // is written to the database in all of those cases too (see
+  // leads.controller.js), so it is never lost — it just hasn't reached
+  // anyone yet. Only a thrown request (network error, 4xx/5xx) is "error".
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "saved" | "error">("idle");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,7 +29,7 @@ export function EnquiryForm({ specialistId, clinicId, facilityId, recipientName 
     const formEl = event.currentTarget;
     const form = new FormData(formEl);
     try {
-      await createLead({
+      const response = await createLead({
         patientName: String(form.get("patientName") || ""),
         email: String(form.get("email") || ""),
         phone: String(form.get("phone") || ""),
@@ -33,17 +39,29 @@ export function EnquiryForm({ specialistId, clinicId, facilityId, recipientName 
         facilityId,
       });
       formEl.reset();
-      setStatus("sent");
+      // delivery.sent === false covers no-contact-email, held-monthly-cap,
+      // and any other reason the notification didn't go out — the lead is
+      // still saved, so this is a distinct, non-alarming state, not an error.
+      setStatus(response.delivery?.sent === false ? "saved" : "sent");
     } catch {
       setStatus("error");
     }
   }
 
-  if (status === "sent") {
+  if (status === "sent" || status === "saved") {
     return (
       <div className="rounded-xl border border-teal-500/30 bg-teal-500/10 p-4 text-sm text-ink">
-        Thanks — your enquiry has been sent to {recipientName}. They (or their clinic) will get back
-        to you directly.
+        {status === "sent" ? (
+          <>
+            Thanks — your enquiry has been sent to {recipientName}. They (or their clinic) will get
+            back to you directly.
+          </>
+        ) : (
+          <>
+            Thanks — your enquiry has been received. We're following up to make sure it reaches{" "}
+            {recipientName}.
+          </>
+        )}
       </div>
     );
   }

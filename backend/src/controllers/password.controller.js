@@ -60,7 +60,7 @@ const SITE_URL = siteUrl();
 /* One hour. Long enough to fetch the email on another device and come
    back to it; short enough that a link still sitting in a shared inbox
    next week is already dead. */
-const TOKEN_TTL_MS = 60 * 60 * 1000;
+export const TOKEN_TTL_MS = 60 * 60 * 1000;
 
 /* Three links an hour per account. Enough for somebody who deleted the
    first email by accident, few enough that this cannot be used to bury
@@ -86,13 +86,13 @@ function fromThisMachine(req) {
 
 /* ------------------------------------------------------------ tokens */
 
-const hashToken = (token) => crypto.createHash("sha256").update(String(token)).digest("hex");
+export const hashToken = (token) => crypto.createHash("sha256").update(String(token)).digest("hex");
 
 /* 32 bytes from the CSPRNG. The only property that matters is that it
    cannot be guessed: a reset token IS a password for the minute it
    lives, so it gets more entropy than any password a person would
    choose. */
-const mintToken = () => crypto.randomBytes(32).toString("base64url");
+export const mintToken = () => crypto.randomBytes(32).toString("base64url");
 
 /* Demo mode has no database, so the same three operations live in a Map
    for the life of the process. Shape parity with the repo, deliberately:
@@ -150,7 +150,7 @@ const demoStore = {
    a plain object, which is a 500 that only ever happens with no database
    attached and therefore only ever in front of somebody trying the
    build for the first time. */
-const resets = () => (isDbConfigured() ? resetRepo : demoStore);
+export const resets = () => (isDbConfigured() ? resetRepo : demoStore);
 const accountByEmail = async (email) =>
   isDbConfigured() ? userRepo.findByEmail(email) : demoAccounts.findByEmail(email);
 const accountById = async (id) => (isDbConfigured() ? userRepo.findById(id) : demoAccounts.findById(id));

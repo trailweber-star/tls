@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  KeyRound,
   Link2,
   Loader2,
   Mail,
@@ -311,6 +312,7 @@ function ApplicationDrawer({
 }) {
   const [application, setApplication] = useState<OrganisationApplication | null>(null);
   const [history, setHistory] = useState<OrganisationApplication[]>([]);
+  const [hasLogin, setHasLogin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -320,6 +322,7 @@ function ApplicationDrawer({
       const data = await organisationsApi.get(id);
       setApplication(data.application);
       setHistory(data.history ?? []);
+      setHasLogin(data.hasLogin);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load that application.");
@@ -394,6 +397,14 @@ function ApplicationDrawer({
               <PaymentBox
                 application={application}
                 onSent={(message) => {
+                  onChanged(message);
+                  void load();
+                }}
+              />
+              <LoginBox
+                application={application}
+                hasLogin={hasLogin}
+                onDone={(message) => {
                   onChanged(message);
                   void load();
                 }}
@@ -854,6 +865,80 @@ function PaymentBox({
               Create a payment link
             </button>
           )}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Signing them in
+ *
+ * Paying does not by itself give an organisation a way to manage their
+ * listing -- the webhook provisions a login the moment their order
+ * clears, automatically. This box is only needed when that has not
+ * visibly happened yet: `hasLogin` is null before there is even a paid
+ * order to hang one off, false once there is a listing but no account,
+ * and true once there is. The call is the same idempotent action
+ * either way, so the button just changes what it says it will do.
+ * ------------------------------------------------------------------ */
+function LoginBox({
+  application,
+  hasLogin,
+  onDone,
+}: {
+  application: OrganisationApplication;
+  hasLogin: boolean | null;
+  onDone: (note: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await organisationsApi.createLogin(application.id);
+      onDone(
+        result.alreadyHadLogin
+          ? `Welcome email resent to ${application.contactEmail}.`
+          : `Login created for ${application.organisationName} and a welcome email sent to ${application.contactEmail}.`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not do that.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Panel title="Their login">
+      {hasLogin === null ? (
+        <p className="text-[13px] leading-relaxed text-ink-muted">
+          No listing is attached yet -- take payment first. Once an order exists, a login gets created for it
+          automatically when it's paid.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-[13px] leading-relaxed text-ink-muted">
+            {hasLogin
+              ? "They already have a login on this listing. Resend the link if they never got it, or lost it."
+              : "This normally happens on its own the moment they pay. Use this if it hasn't -- it creates their account and emails them a link to set a password."}
+          </p>
+          {error && (
+            <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-[13px] font-semibold text-danger">
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => void run()}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-ink/10 px-5 py-2.5 text-[13px] font-bold text-ink transition hover:border-ink/20 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" strokeWidth={2.5} />}
+            {hasLogin ? "Resend welcome email" : "Create login"}
+          </button>
         </div>
       )}
     </Panel>

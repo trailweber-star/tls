@@ -187,21 +187,29 @@ function ClaimDialog({
   onDecided: () => void;
 }) {
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof claimsApi.adminGet>> | null>(null);
+  const [detailLoading, setDetailLoading] = useState(true);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [decision, setDecision] = useState<"approve" | "reject" | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    claimsApi
-      .adminGet(claim.id)
-      .then((res) => !cancelled && setDetail(res))
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
+  const loadDetail = useCallback(async () => {
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const res = await claimsApi.adminGet(claim.id);
+      setDetail(res);
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : "Couldn't load claim details");
+    } finally {
+      setDetailLoading(false);
+    }
   }, [claim.id]);
+
+  useEffect(() => {
+    loadDetail();
+  }, [loadDetail]);
 
   async function confirm() {
     if (!decision) return;
@@ -295,7 +303,9 @@ function ClaimDialog({
         </div>
 
         {/* -------------------------------- what they'd inherit */}
-        {specialist && (
+        {detailLoading && <LoadingBlock label="Loading claim details…" />}
+        {detailError && !detailLoading && <ErrorBlock message={detailError} onRetry={loadDetail} />}
+        {specialist && !detailLoading && !detailError && (
           <div className="rounded-xl bg-paper-muted p-4">
             <p className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
               What transfers on approval

@@ -22,6 +22,7 @@ import * as t from "./schema.js";
 import { newId } from "./schema.js";
 import { aggregateReviewScores } from "../lib/reviews.js";
 import { deriveRating } from "../lib/ratings.js";
+import { rootSpecialtyOf } from "../lib/specialtyTree.js";
 
 const db = () => getDb();
 
@@ -246,7 +247,16 @@ async function assembleSpecialists(rows) {
     // The primary specialty is always part of the set, whether or not a
     // join row was written for it — the profile and the search facets
     // both assume that.
-    const primarySpecialty = row.primarySpecialtyId ? specialtyById.get(row.primarySpecialtyId) ?? null : null;
+    const rawPrimarySpecialty = row.primarySpecialtyId ? specialtyById.get(row.primarySpecialtyId) ?? null : null;
+    // rootSlug is what a specialist-profile breadcrumb needs to link
+    // back into search (frontend/src/lib/structuredData.ts) — the
+    // search sidebar's Specialty dropdown only renders top-level
+    // options, so a primary specialty that is itself a sub-specialty
+    // needs its root's slug, not just its own. See lib/specialtyTree.js
+    // — same walk src/controllers/search.controller.js uses.
+    const primarySpecialty = rawPrimarySpecialty
+      ? { ...rawPrimarySpecialty, rootSlug: rootSpecialtyOf(specialtyById, rawPrimarySpecialty.id)?.slug ?? rawPrimarySpecialty.slug }
+      : null;
     const specialtySet = new Map(linkedSpecialties.map((s) => [s.id, s]));
     if (primarySpecialty) specialtySet.set(primarySpecialty.id, primarySpecialty);
 
@@ -1563,6 +1573,25 @@ export const organisationApplications = {
       .from(t.organisationApplications)
       .where(eq(t.organisationApplications.contactEmail, String(email ?? "").toLowerCase()))
       .orderBy(desc(t.organisationApplications.createdAt));
+  },
+
+  /**
+   * The application a paid order came from, if it was one.
+   *
+   * There is no foreign key the other way -- orders serve every
+   * specialist, organisations included, and the vast majority never
+   * came from an application -- so this is the lookup the payment
+   * webhook uses to notice "this order just settled an organisation's
+   * quote" and move it to won.
+   */
+  async findByOrderId(orderId) {
+    if (!orderId) return null;
+    const [row] = await db()
+      .select()
+      .from(t.organisationApplications)
+      .where(eq(t.organisationApplications.orderId, orderId))
+      .limit(1);
+    return row ?? null;
   },
 
   async update(id, patch) {

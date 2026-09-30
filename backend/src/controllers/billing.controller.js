@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
-import { specialists as specialistRepo } from "../db/repos.js";
+import { organisationApplications as organisationApplicationRepo, specialists as specialistRepo } from "../db/repos.js";
 import {
   PLANS,
   PLAN_IDS,
@@ -29,6 +29,7 @@ import {
    synchronous "provision" call to make. */
 import { isClinWellConnected, ssoUrl, workspaceSummary } from "../lib/clinwell.js";
 import { onCancelled, onPaymentFailed, onPaymentSucceeded } from "../lib/clinwellLifecycle.js";
+import { provisionOrganisationLogin } from "../lib/organisationProvisioning.js";
 import { mockSpecialistsWithRelations, updateDemoSpecialist } from "../data/mock.js";
 import { specialistIdOf } from "../middleware/auth.js";
 import { sendMail } from "../lib/mailer.js";
@@ -341,6 +342,35 @@ async function activateSubscription(order, { providerRef } = {}) {
   // retried by the sweep instead, and until it succeeds the dashboard
   // shows "workspace being prepared" rather than a broken page.
   await patchSpecialist(order.specialistId, patch);
+
+  /* An order that came from an organisation's quote (see
+     organisations.controller.js's createOrganisationPaymentLink) closes
+     the loop here: the application becomes won -- the one thing nothing
+     lets an admin set by hand, because "won" is supposed to mean "paid"
+     -- and whoever applied gets an account linked to the listing this
+     payment just activated, with a link to set a password on it. Most
+     orders are not one of these, hence the lookup, and none of this can
+     be allowed to take the webhook down with it: the payment already
+     cleared, and a practice that paid must not see an error because its
+     login could not be provisioned this second. The admin "create
+     login" action is the manual fallback if this fails or the email
+     goes astray. */
+  if (isDbConfigured()) {
+    try {
+      const application = await organisationApplicationRepo.findByOrderId(order.id);
+      if (application && application.status !== "won") {
+        const won = await organisationApplicationRepo.update(application.id, {
+          status: "won",
+          decidedAt: new Date(),
+          // Not decidedByUserId -- this was the payment deciding it,
+          // not an admin, and that column should say so by staying null.
+        });
+        if (before) await provisionOrganisationLogin(won ?? application, before);
+      }
+    } catch (err) {
+      console.error(`[billing] could not settle the organisation application for order ${order.id}:`, err?.message ?? err);
+    }
+  }
 
   if (getPlan(order.planId).features.clinwell) {
     /* The workspace is created by the subscription.activated event, and

@@ -36,6 +36,7 @@ import { MAX_UPLOAD_BYTES, MAX_VIDEO_BYTES } from "../lib/storage.js";
 import { createLead } from "../controllers/leads.controller.js";
 import {
   applyAsOrganisation,
+  createOrganisationLogin,
   createOrganisationPaymentLink,
   getOrganisationApplication,
   listOrganisationApplications,
@@ -443,6 +444,12 @@ router.post(
   requireAuth,
   requireRole("admin"),
   createOrganisationPaymentLink
+);
+router.post(
+  "/admin/organisations/:id/create-login",
+  requireAuth,
+  requireRole("admin"),
+  createOrganisationLogin
 );
 
 router.get("/admin/clinwell", requireAuth, requireRole("admin"), getClinwellOutbox);

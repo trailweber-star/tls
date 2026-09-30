@@ -315,7 +315,31 @@ export interface LeadInput {
   facilityId?: string;
 }
 
-export async function createLead(input: LeadInput): Promise<{ ok: boolean; demo?: boolean }> {
+/**
+ * What actually happened to the notification for a saved lead. `sent`
+ * is the only field the UI should branch on — the lead row is saved
+ * whenever this type exists at all, so a false `sent` never means the
+ * enquiry was lost, only that nobody was emailed about it yet (no
+ * contact email on file, held by the monthly cap, or a mail-provider
+ * hiccup). `reason` mirrors backend/src/lib/mailer.js and
+ * leads.controller.js and is not meant to be shown verbatim.
+ */
+export interface LeadDelivery {
+  sent: boolean;
+  reason?: string;
+  detail?: string;
+  provider?: string;
+  id?: string | null;
+  routedTo?: string;
+}
+
+export interface CreateLeadResponse {
+  ok: boolean;
+  demo?: boolean;
+  delivery?: LeadDelivery;
+}
+
+export async function createLead(input: LeadInput): Promise<CreateLeadResponse> {
   const res = await fetch(`${API_URL}/leads`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

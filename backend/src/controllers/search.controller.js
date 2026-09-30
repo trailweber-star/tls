@@ -1,6 +1,7 @@
 import { isDbConfigured } from "../config/db.js";
 import { facilities as facilityRepo, specialists as specialistRepo, taxonomy } from "../db/repos.js";
 import { tabFor, branchIdsFor, rootSlugsFor } from "../lib/searchTabs.js";
+import { rootSpecialtyOf, specialtyHref as sharedSpecialtyHref } from "../lib/specialtyTree.js";
 import {
   mockSpecialistsWithRelations,
   mockFacilitiesWithRelations,
@@ -257,42 +258,27 @@ export async function searchPanel(req, res) {
 
   /** The top-level specialty a node belongs to — "Orthopaedics", not
    *  "Total Knee Replacement". That is what a patient recognises as
-   *  someone's field, so it is what a result card carries. */
-  function rootSpecialtyName(id) {
-    let node = id ? specialtyById.get(id) : null;
-    const guard = new Set();
-    while (node?.parentId && !guard.has(node.id)) {
-      guard.add(node.id);
-      node = specialtyById.get(node.parentId);
-    }
-    return node?.name ?? null;
-  }
+   *  someone's field, so it is what a result card carries.
+   *
+   *  This walk, and the href below that reuses it, live in
+   *  lib/specialtyTree.js now — the article and specialist-profile
+   *  responses need the exact same root-of-a-node resolution to build
+   *  their own specialty links (BlogPost.tsx, structuredData.ts), and a
+   *  second hand-written copy of the walk is how those two would drift
+   *  from this one. */
+  const rootSpecialtyName = (id) => rootSpecialtyOf(specialtyById, id)?.name ?? null;
 
-  /** Same walk, but the slug -- what the "Specialty" href below needs.
-   *  A subspecialty pick used to link to `/search?subspecialty=braces`
-   *  with no `specialty=` at all, so the results page could still
-   *  resolve and title itself "Braces Specialists" (the backend works
-   *  it out independently), but the sidebar's Specialty dropdown reads
-   *  that param directly off the URL and had nothing to show but "All
-   *  specialties" -- and the Sub-specialty checklist didn't render at
-   *  all, since it requires a specialty first. Only a pick that already
-   *  landed on a top-level specialty carried the param through, which
-   *  is why this worked for some categories and not others. */
-  function rootSpecialtySlug(id) {
-    let node = id ? specialtyById.get(id) : null;
-    const guard = new Set();
-    while (node?.parentId && !guard.has(node.id)) {
-      guard.add(node.id);
-      node = specialtyById.get(node.parentId);
-    }
-    return node?.slug ?? null;
-  }
-
-  function specialtyHref(sp) {
-    if (!sp.parentId) return `/search?specialty=${sp.slug}`;
-    const rootSlug = rootSpecialtySlug(sp.id);
-    return rootSlug ? `/search?specialty=${rootSlug}&subspecialty=${sp.slug}` : `/search?subspecialty=${sp.slug}`;
-  }
+  /** The "Specialty" href for a result row. A subspecialty pick used to
+   *  link to `/search?subspecialty=braces` with no `specialty=` at all,
+   *  so the results page could still resolve and title itself "Braces
+   *  Specialists" (the backend works it out independently), but the
+   *  sidebar's Specialty dropdown reads that param directly off the URL
+   *  and had nothing to show but "All specialties" -- and the
+   *  Sub-specialty checklist didn't render at all, since it requires a
+   *  specialty first. Only a pick that already landed on a top-level
+   *  specialty carried the param through, which is why this worked for
+   *  some categories and not others. */
+  const specialtyHref = (sp) => sharedSpecialtyHref(specialtyById, sp);
 
   /* --------------------------------------------------------- column 1
      Every tier of the specialty tree — category, sub-category and the

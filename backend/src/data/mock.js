@@ -11,6 +11,7 @@ import { flattenTaxonomyTree, branchSlugs, childrenOf, topLevelOf } from "./taxo
 import { buildDemoDirectory } from "./demo-directory.js";
 import { aggregateReviewScores } from "../lib/reviews.js";
 import { deriveRating } from "../lib/ratings.js";
+import { rootSpecialtyOf } from "../lib/specialtyTree.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const specialtyTree = JSON.parse(fs.readFileSync(path.join(__dirname, "taxonomy/specialty-tree.json"), "utf8"));
@@ -44,6 +45,11 @@ export const regulators = [
 // specialties: Orthopaedics, Physiotherapy, Dentistry, Aesthetics
 // Specialists, ENT, Gynaecology — tags on Specialist records.
 export const specialties = flattenTaxonomyTree(specialtyTree, "sp");
+
+// A lookup by id, built once, for resolving a node's top-level
+// ancestor (see buildSpecialistWithRelations' primarySpecialty.rootSlug
+// below) without re-scanning the flattened tree on every specialist.
+const specialtyById = new Map(specialties.map((s) => [s.id, s]));
 
 // facilityCategories: Hospital Care, Care Homes, Pharmacy, Clinics,
 // Hospitals — a separate taxonomy for Facility records (hospitals,
@@ -416,7 +422,15 @@ export function nextAvailableIso(days) {
 }
 
 export function buildSpecialistWithRelations(specialist) {
-  const primarySpecialty = specialties.find((s) => s.id === specialist.primarySpecialtyId) ?? null;
+  const rawPrimarySpecialty = specialties.find((s) => s.id === specialist.primarySpecialtyId) ?? null;
+  // rootSlug is what a specialist-profile breadcrumb needs to link back
+  // into search (frontend/src/lib/structuredData.ts) — the search
+  // sidebar's Specialty dropdown only renders top-level options, so a
+  // primary specialty that is itself a sub-specialty needs its root's
+  // slug, not just its own. See lib/specialtyTree.js.
+  const primarySpecialty = rawPrimarySpecialty
+    ? { ...rawPrimarySpecialty, rootSlug: rootSpecialtyOf(specialtyById, rawPrimarySpecialty.id)?.slug ?? rawPrimarySpecialty.slug }
+    : null;
   const regulator = regulators.find((r) => r.id === specialist.regulatorId) ?? null;
 
   const clinicLocationsForSpecialist = specialistClinicLocations

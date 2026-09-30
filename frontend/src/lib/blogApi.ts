@@ -18,7 +18,13 @@ export interface ArticleCard {
   heroImageAlt: string | null;
   authorName: string | null;
   tags: string[];
-  specialty: { slug: string; name: string } | null;
+  // rootSlug is the top-level ancestor's slug (equal to `slug` itself
+  // when the article's specialty already IS a top-level one) — see
+  // backend/src/lib/specialtyTree.js. It's what a `/search` link needs
+  // as `specialty=`; the search sidebar's Specialty dropdown only ever
+  // renders top-level options, so a bare sub-specialty slug there has
+  // nothing to select.
+  specialty: { slug: string; name: string; rootSlug: string } | null;
   publishedAt: string;
   readingMinutes: number;
 }

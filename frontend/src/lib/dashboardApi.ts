@@ -621,6 +621,8 @@ export const dashboardApi = {
       status,
     }),
   reviews: () => get<ReviewsResponse>("/dashboard/reviews"),
+  respondToReview: (id: string, response: string) =>
+    post<{ ok: boolean; review: OwnReview }>(`/dashboard/reviews/${id}/respond`, { response }),
 
   // Analytics -- persistent view/referrer/search-term tracking.
   analytics: (days = 30) => get<AnalyticsData>(`/dashboard/analytics?days=${days}`),
@@ -726,6 +728,9 @@ export interface OwnReview {
   patientName: string | null;
   verified: boolean;
   scores?: { communication?: number; expertise?: number; care?: number; waitTime?: number } | null;
+  /** The specialist's own reply, published immediately once written. */
+  response: string | null;
+  responseAt: string | null;
   createdAt: string;
 }
 

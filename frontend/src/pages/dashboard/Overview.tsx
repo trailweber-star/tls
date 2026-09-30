@@ -20,7 +20,7 @@ import heroImg from "../../assets/images/dashboard-hero.webp";
 import { EmptyState, ErrorBlock, KpiCard, LoadingBlock, ProgressBar, Sparkline, relativeTime, initials } from "../../components/dashboard/ui";
 import { VerificationCard } from "../../components/dashboard/VerificationCard";
 import { dashboardApi } from "../../lib/dashboardApi";
-import type { Overview as OverviewData } from "../../lib/dashboardApi";
+import type { Overview as OverviewData, Appointment, AvailabilityBlock } from "../../lib/dashboardApi";
 import { useAuth } from "../../lib/auth";
 
 /** "Mr James Whitfield" → "James": drop the honorific, take the first name. */
@@ -421,13 +421,43 @@ export default function DashboardOverview() {
  * Booking calendar
  *
  * A real, navigable month grid — it knows today, the weeks and the month
- * boundaries. It carries no invented bookings: there is no appointment
- * model behind it yet, and the footnote says so rather than dotting the
- * grid with fictional patients.
+ * boundaries. The footnote below it reflects whether this specialist has
+ * actually switched booking on (set any weekly hours), rather than
+ * assuming either way.
  * ------------------------------------------------------------------ */
 function BookingCalendar() {
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  // Whether this specialist has switched booking on at all, and what's
+  // coming up if they have. The overview endpoint doesn't carry either,
+  // so this widget fetches them for itself rather than assuming.
+  const [availability, setAvailability] = useState<AvailabilityBlock[] | null>(null);
+  const [upcoming, setUpcoming] = useState<Appointment[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [avail, appts] = await Promise.all([
+          dashboardApi.availability(),
+          dashboardApi.appointments({ from: new Date().toISOString() }),
+        ]);
+        if (cancelled) return;
+        setAvailability(avail.results);
+        setUpcoming(appts.results);
+      } catch {
+        // Decorative widget -- if this fails, fall back to the "not set
+        // up yet" prompt rather than leaving the footnote blank.
+        if (!cancelled) setAvailability([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasAvailability = (availability?.length ?? 0) > 0;
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -494,10 +524,48 @@ function BookingCalendar() {
           )
         )}
       </div>
-      <p className="mt-4 border-t border-line-soft pt-3 text-[11.5px] leading-relaxed text-ink-faint">
-        Appointments booked through Top Local Specialists will be marked here. Online booking is not switched on for
-        your profile yet.
-      </p>
+      {availability === null ? (
+        <p className="mt-4 border-t border-line-soft pt-3 text-[11.5px] leading-relaxed text-ink-faint">
+          Checking your booking setup…
+        </p>
+      ) : hasAvailability ? (
+        <div className="mt-4 border-t border-line-soft pt-3">
+          {upcoming.length > 0 ? (
+            <ul className="space-y-1.5">
+              {upcoming.slice(0, 3).map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-2 text-[11.5px]">
+                  <span className="min-w-0 truncate font-semibold text-ink">{a.patientName}</span>
+                  <span className="shrink-0 text-ink-faint">{formatUpcoming(a.startsAt)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11.5px] leading-relaxed text-ink-faint">
+              Online booking is switched on. Nothing booked yet — once a patient books, it will show up here.
+            </p>
+          )}
+          <Link
+            to="/dashboard/appointments"
+            className="mt-2.5 inline-flex items-center gap-1 text-[11.5px] font-bold text-teal-700 hover:underline"
+          >
+            View all appointments
+            <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
+          </Link>
+        </div>
+      ) : (
+        <p className="mt-4 border-t border-line-soft pt-3 text-[11.5px] leading-relaxed text-ink-faint">
+          Online booking isn't switched on yet.{" "}
+          <Link to="/dashboard/appointments" className="font-bold text-teal-700 hover:underline">
+            Set your weekly hours
+          </Link>{" "}
+          and patients can book straight from your profile.
+        </p>
+      )}
     </Panel>
   );
+}
+
+/** "2026-09-30T09:00:00Z" -> "Wed 30 Sep", for the compact upcoming list. */
+function formatUpcoming(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }

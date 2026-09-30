@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
-import { articles as articleRepo, specialists as specialistRepo, taxonomy as taxonomyRepo } from "../db/repos.js";
+import { adminAudit, articles as articleRepo, specialists as specialistRepo, taxonomy as taxonomyRepo } from "../db/repos.js";
 import { specialistIdOf } from "../middleware/auth.js";
 import { entitlementsFor } from "../lib/plans.js";
 import { NOTIFICATION_TYPES, notify, notifyAdmins } from "../lib/notifications.js";
+import { clientIp } from "../lib/requestIp.js";
 import {
   excerptFrom,
   readingMinutes,
@@ -372,6 +373,14 @@ export async function assignArticle(req, res) {
     submittedAt: null,
   });
 
+  await audit(req, {
+    action: "article.assign",
+    subjectType: "article",
+    subjectId: row.id,
+    subjectLabel: row.title,
+    detail: { specialistId: specialist.id, specialistName: specialist.fullName, note: parsed.data.note?.trim() || null },
+  });
+
   /* Told, not left to be discovered. A draft sitting in a dashboard
      nobody mentioned is a draft nobody reads. */
   await notify({
@@ -425,6 +434,14 @@ export async function reviewArticle(req, res) {
     publishedAt: decision === "publish" ? (existing.publishedAt ?? new Date()) : existing.publishedAt,
   });
 
+  await audit(req, {
+    action: `article.review.${decision}`,
+    subjectType: "article",
+    subjectId: row.id,
+    subjectLabel: row.title,
+    detail: { from: existing.status, to: target, note: decision === "changes" ? note.trim() : null },
+  });
+
   const author = row.authorSpecialistId ? await specialistRepo.findById(row.authorSpecialistId) : null;
   if (author?.userId) {
     await notify({
@@ -442,4 +459,17 @@ export async function reviewArticle(req, res) {
   }
 
   res.json({ article: toRow(row, await specialtyIndex()) });
+}
+
+/* ------------------------------------------------------------- audit */
+
+async function audit(req, entry) {
+  if (!isDbConfigured()) return null;
+  return adminAudit.record({
+    actorUserId: req.user?.id ?? null,
+    actorName: req.user?.fullName ?? "Unknown",
+    actorEmail: req.user?.email ?? null,
+    ip: clientIp(req),
+    ...entry,
+  });
 }

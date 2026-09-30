@@ -226,7 +226,11 @@ export interface SpecialistWithRelations {
   // once it resolves to coordinates, and why this result matched.
   distanceKm?: number | null;
   matchReasons?: MatchReason[];
-  primarySpecialty: { id: string; slug: string; name: string } | null;
+  // rootSlug is the top-level ancestor's slug (equal to `slug` itself
+  // when this specialty is already top-level) — see
+  // backend/src/lib/specialtyTree.js. Used to build a `/search` link
+  // the sidebar's Specialty dropdown can actually resolve.
+  primarySpecialty: { id: string; slug: string; name: string; rootSlug: string } | null;
   regulator: Regulator | null;
   specialties: { id: string; slug: string; name: string }[];
   conditions: Condition[];

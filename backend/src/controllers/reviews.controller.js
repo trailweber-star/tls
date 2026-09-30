@@ -1,5 +1,6 @@
 import { isDbConfigured } from "../config/db.js";
 import {
+  adminAudit,
   facilities as facilityRepo,
   reviews as reviewRepo,
   specialists as specialistRepo,
@@ -19,6 +20,7 @@ import {
   conditions as mockConditions,
 } from "../data/mock.js";
 import { NOTIFICATION_TYPES, notifyAdmins } from "../lib/notifications.js";
+import { clientIp } from "../lib/requestIp.js";
 
 /* ------------------------------------------------------------------ *
  * Reviews
@@ -376,10 +378,34 @@ export async function moderateReview(req, res) {
     else await specialistRepo.recomputeRating(row.subjectId);
   }
 
+  // The row is moderated above — a patient's words made public or
+  // suppressed — which is exactly the kind of decision the audit log
+  // exists to answer "who did this, and why" for.
+  await audit(req, {
+    action: `review.${status === "approved" ? "approve" : "reject"}`,
+    subjectType: "review",
+    subjectId: id,
+    subjectLabel: loaded.subjectName,
+    detail: { subjectType: loaded.subjectType, note: note || null },
+  });
+
   // Clear the admin to-do items for this review, for every admin — so
   // two admins never moderate the same review twice.
   const { notificationStore } = await import("../lib/notifications.js");
   await notificationStore.resolveSubject(id);
 
   res.json({ ok: true, id, status, subject: loaded.subjectName });
+}
+
+/* ------------------------------------------------------------- audit */
+
+async function audit(req, entry) {
+  if (!isDbConfigured()) return null;
+  return adminAudit.record({
+    actorUserId: req.user?.id ?? null,
+    actorName: req.user?.fullName ?? "Unknown",
+    actorEmail: req.user?.email ?? null,
+    ip: clientIp(req),
+    ...entry,
+  });
 }

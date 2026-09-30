@@ -4,7 +4,7 @@ import { isDbConfigured } from "../config/db.js";
 import { asc, desc, eq, and, sql } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { claims as claimsTable } from "../db/schema.js";
-import { specialists as specialistRepo, users as userRepo } from "../db/repos.js";
+import { adminAudit, specialists as specialistRepo, users as userRepo } from "../db/repos.js";
 import { demoAccounts } from "../data/accounts.js";
 import { mockSpecialistsWithRelations, updateDemoSpecialist } from "../data/mock.js";
 import { issueSession } from "../lib/sessions.js";
@@ -12,6 +12,7 @@ import { hashPassword } from "../lib/auth.js";
 import { getPlan, isPaidPlan } from "../lib/plans.js";
 import { sendMail } from "../lib/mailer.js";
 import { NOTIFICATION_TYPES, notificationStore, notifyAdmins } from "../lib/notifications.js";
+import { clientIp } from "../lib/requestIp.js";
 
 import { siteUrl } from "../lib/urls.js";
 const SITE_URL = siteUrl();
@@ -413,12 +414,36 @@ export async function decideClaim(req, res) {
     });
   }
 
+  // The decision is written to the claim row above; the audit entry
+  // records it happened and who made it, same as every other admin
+  // decision that changes what a listing shows or who owns it.
+  await audit(req, {
+    action: `claim.${action}`,
+    subjectType: "claim",
+    subjectId: claim.id,
+    subjectLabel: `${claim.fullName} <${claim.email}> → ${specialist.fullName}`,
+    detail: { specialistId: specialist.id, note: note || null },
+  });
+
   // The admin's to-do item is done; clear it for every admin at once.
   await notificationStore.resolveSubject(claim.id);
 
   const delivery = await sendMail(buildClaimEmail({ claim, specialist, action, note, planStatus: isPaidPlan(claim.plan) }));
 
   res.json({ ok: true, status: action === "approve" ? "approved" : "rejected", delivery });
+}
+
+/* ------------------------------------------------------------- audit */
+
+async function audit(req, entry) {
+  if (!isDbConfigured()) return null;
+  return adminAudit.record({
+    actorUserId: req.user?.id ?? null,
+    actorName: req.user?.fullName ?? "Unknown",
+    actorEmail: req.user?.email ?? null,
+    ip: clientIp(req),
+    ...entry,
+  });
 }
 
 function buildClaimEmail({ claim, specialist, action, note }) {

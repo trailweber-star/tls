@@ -31,8 +31,9 @@ import { organisationApplications as repo, specialists as specialistRepo, users 
 import { NOTIFICATION_TYPES, notifyAdmins } from "../lib/notifications.js";
 import { sendMail } from "../lib/mailer.js";
 import { clientIp } from "../lib/requestIp.js";
-import { createCheckout, quoteAmount } from "../lib/payments.js";
+import { createCheckout, orderStore, quoteAmount } from "../lib/payments.js";
 import { getPlan } from "../lib/plans.js";
+import { provisionOrganisationLogin } from "../lib/organisationProvisioning.js";
 
 import { siteUrl } from "../lib/urls.js";
 const SITE_URL = siteUrl();
@@ -187,6 +188,23 @@ export async function listOrganisationApplications(req, res) {
   res.json({ results, counts });
 }
 
+/**
+ * The order and listing an application's payment link produced, if any.
+ *
+ * `orders.specialistId` is the reliable link -- the application itself
+ * never stores a specialist id directly (see the module comment on
+ * createOrganisationPaymentLink), only the order that came out of
+ * paying. Null at any step just means "not there yet", not an error.
+ */
+async function resolveOrderSpecialist(application) {
+  if (!application.orderId) return null;
+  const order = await orderStore.find(application.orderId);
+  if (!order) return null;
+  const specialist = await specialistRepo.rawById(order.specialistId);
+  if (!specialist) return null;
+  return { order, specialist };
+}
+
 // GET /api/admin/organisations/:id
 export async function getOrganisationApplication(req, res) {
   if (!isDbConfigured()) return res.status(503).json({ error: "This needs a database." });
@@ -196,7 +214,15 @@ export async function getOrganisationApplication(req, res) {
      from the same address is usually a follow-up, and quoting it as if
      it were new is how you quote the same hospital twice, differently. */
   const history = await repo.byEmail(application.contactEmail);
-  res.json({ application, history: history.filter((h) => h.id !== application.id) });
+  const resolved = await resolveOrderSpecialist(application);
+  res.json({
+    application,
+    history: history.filter((h) => h.id !== application.id),
+    // null: no paid order to hang a login off yet. Otherwise whether
+    // that listing already has one -- what the admin screen uses to
+    // show "Create login" or "Resend welcome email".
+    hasLogin: resolved ? Boolean(resolved.specialist.userId) : null,
+  });
 }
 
 const quoteSchema = z.object({
@@ -372,4 +398,32 @@ export async function createOrganisationPaymentLink(req, res) {
     totalMinor: pricing.totalMinor,
     currency: pricing.currency,
   });
+}
+
+/**
+ * POST /api/admin/organisations/:id/create-login
+ *
+ * The webhook does this automatically the moment a payment clears (see
+ * billing.controller.js's paymentWebhook), so most applications never
+ * need this button pressed. It exists for the two ways that can fail
+ * to happen on its own: the welcome email bounced or was never seen,
+ * or something about that automatic run needs retrying by hand. Either
+ * way it is the same call -- provisionOrganisationLogin is idempotent,
+ * so pressing it again just resends the link rather than doing
+ * anything twice.
+ */
+export async function createOrganisationLogin(req, res) {
+  if (!isDbConfigured()) return res.status(503).json({ error: "This needs a database." });
+
+  const application = await repo.findById(String(req.params.id ?? ""));
+  if (!application) return res.status(404).json({ error: "No such application." });
+
+  const resolved = await resolveOrderSpecialist(application);
+  if (!resolved) {
+    return res.status(409).json({ error: "This application isn't linked to a paid order yet." });
+  }
+
+  const { alreadyHadLogin } = await provisionOrganisationLogin(application, resolved.specialist, { req });
+
+  res.json({ ok: true, alreadyHadLogin });
 }

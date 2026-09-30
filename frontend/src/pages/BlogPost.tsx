@@ -11,6 +11,19 @@ const SITE_URL = import.meta.env.VITE_SITE_URL || "https://www.toplocalspecialis
 /** Structured data needs absolute URLs; an uploaded cover is a path. */
 const absolute = (url: string) => (/^https?:\/\//i.test(url) ? url : `${SITE_URL}${url}`);
 
+/** The `/search` link for an article's specialty. Mirrors
+ *  backend/src/lib/specialtyTree.js's specialtyHref: the sidebar's
+ *  Specialty dropdown only ever renders top-level options, so a
+ *  sub-specialty link needs the root slug in `specialty=` AND its own
+ *  slug in `subspecialty=` — a bare `specialty=<sub-slug>` leaves that
+ *  dropdown with nothing to select. */
+function specialtySearchHref(specialty: { slug: string; rootSlug: string } | null) {
+  if (!specialty) return "/search";
+  return specialty.rootSlug === specialty.slug
+    ? `/search?specialty=${specialty.slug}`
+    : `/search?specialty=${specialty.rootSlug}&subspecialty=${specialty.slug}`;
+}
+
 /* ------------------------------------------------------------------ *
  * One article
  *
@@ -225,7 +238,7 @@ export default function BlogPost() {
               <>
                 <span aria-hidden>·</span>
                 <Link
-                  to={`/search?specialty=${article.specialty.slug}`}
+                  to={specialtySearchHref(article.specialty)}
                   className="text-teal-300 underline-offset-4 hover:underline"
                 >
                   {article.specialty.name}
@@ -309,7 +322,7 @@ export default function BlogPost() {
             appears, and the badge comes off automatically if their registration lapses.
           </p>
           <Link
-            to={article.specialty ? `/search?specialty=${article.specialty.slug}` : "/search"}
+            to={specialtySearchHref(article.specialty)}
             className="mt-6 inline-flex items-center gap-2 rounded-full bg-teal-500 px-5 py-3 text-[14px] font-bold text-navy-950 transition hover:bg-teal-400"
           >
             Search the directory

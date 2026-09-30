@@ -80,9 +80,12 @@ export const organisationsApi = {
     ),
 
   get: (id: string) =>
-    request<{ application: OrganisationApplication; history: OrganisationApplication[] }>(
-      `/admin/organisations/${id}`
-    ),
+    request<{
+      application: OrganisationApplication;
+      history: OrganisationApplication[];
+      /** null: not linked to a paid order yet, so there's no listing to provision a login for. */
+      hasLogin: boolean | null;
+    }>(`/admin/organisations/${id}`),
 
   /**
    * `amount` is in pounds, because that is what a person types. The
@@ -109,4 +112,15 @@ export const organisationsApi = {
       `/admin/organisations/${id}/payment-link`,
       { method: "POST", body: JSON.stringify({ specialistId }) }
     ),
+
+  /**
+   * Normally automatic -- the payment webhook does this the moment a
+   * quote is paid. This is the manual fallback: create the account if
+   * somehow it never happened, or just resend the welcome email if it
+   * already exists. `alreadyHadLogin` says which one happened.
+   */
+  createLogin: (id: string) =>
+    request<{ ok: true; alreadyHadLogin: boolean }>(`/admin/organisations/${id}/create-login`, {
+      method: "POST",
+    }),
 };

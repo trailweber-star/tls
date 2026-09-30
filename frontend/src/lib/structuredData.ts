@@ -207,8 +207,23 @@ export function specialistJsonLd(s: SpecialistWithRelations) {
     breadcrumb([
       { name: "Home", path: "/" },
       { name: "Find a specialist", path: "/search" },
+      // The breadcrumb path has to be something the search sidebar can
+      // actually resolve. Its Specialty dropdown only renders top-level
+      // options, so a primary specialty that is itself a sub-specialty
+      // (e.g. "Knee Replacement") needs its root ("Orthopaedics") in
+      // `specialty=` and its own slug in `subspecialty=` — a bare
+      // `specialty=<sub-slug>` leaves the dropdown with nothing
+      // selected. See backend/src/lib/specialtyTree.js.
       ...(s.primarySpecialty
-        ? [{ name: s.primarySpecialty.name, path: `/search?specialty=${s.primarySpecialty.slug}` }]
+        ? [
+            {
+              name: s.primarySpecialty.name,
+              path:
+                s.primarySpecialty.rootSlug === s.primarySpecialty.slug
+                  ? `/search?specialty=${s.primarySpecialty.slug}`
+                  : `/search?specialty=${s.primarySpecialty.rootSlug}&subspecialty=${s.primarySpecialty.slug}`,
+            },
+          ]
         : []),
       { name: s.fullName },
     ]),

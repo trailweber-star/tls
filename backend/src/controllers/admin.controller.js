@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import {
+  adminAudit,
   leads as leadRepo,
   specialists as specialistRepo,
   facilities as facilityRepo,
@@ -23,6 +24,7 @@ import { hasPaymentProvider, paymentProviderName } from "../lib/payments.js";
 import { storageProviderName } from "../lib/storage.js";
 import { hasPushProvider, pushProviderName } from "../lib/push.js";
 import { mapProvider } from "../lib/maps.js";
+import { clientIp } from "../lib/requestIp.js";
 
 import { siteUrl } from "../lib/urls.js";
 const SITE_URL = siteUrl();
@@ -428,6 +430,18 @@ export async function decideVerification(req, res) {
     });
   }
 
+  // The verification decision itself is confirmed at this point — the
+  // audit entry records it alongside the specialist's own history,
+  // which is what makes "who approved this" answerable from the admin
+  // side even if the specialist row is later edited or deleted.
+  await audit(req, {
+    action: `specialist.verification.${action}`,
+    subjectType: "specialist",
+    subjectId: specialist.id,
+    subjectLabel: specialist.fullName ?? specialist.slug ?? req.params.id,
+    detail: { from: HISTORY_ACTION[action], to: status, note: note || null },
+  });
+
   if (advancesToPayment && isPaidPlan(specialist.plan ?? "basic") && specialist.planStatus === "pending_verification") {
     specialist = isDbConfigured()
       ? await specialistRepo.update(req.params.id, { planStatus: "pending_payment" })
@@ -443,6 +457,19 @@ export async function decideVerification(req, res) {
     verificationStatus: specialist.verificationStatus,
     verificationHistory: specialist.verificationHistory,
     delivery,
+  });
+}
+
+/* ------------------------------------------------------------- audit */
+
+async function audit(req, entry) {
+  if (!isDbConfigured()) return null;
+  return adminAudit.record({
+    actorUserId: req.user?.id ?? null,
+    actorName: req.user?.fullName ?? "Unknown",
+    actorEmail: req.user?.email ?? null,
+    ip: clientIp(req),
+    ...entry,
   });
 }
 

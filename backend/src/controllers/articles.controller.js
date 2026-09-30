@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import {
+  adminAudit,
   articles as articleRepo,
   specialists as specialistRepo,
   taxonomy as taxonomyRepo,
@@ -17,6 +18,8 @@ import {
   withHeadingIds,
 } from "../lib/articleContent.js";
 import { optionalUrlField } from "../lib/urls.js";
+import { rootSpecialtyOf } from "../lib/specialtyTree.js";
+import { clientIp } from "../lib/requestIp.js";
 
 /* ------------------------------------------------------------------ *
  * The blog
@@ -127,7 +130,16 @@ function toCard(row, specialtyById) {
     specialty: row.specialtyId
       ? (() => {
           const s = specialtyById.get(row.specialtyId);
-          return s ? { slug: s.slug, name: s.name } : null;
+          if (!s) return null;
+          // rootSlug lets the frontend build a `specialty=<root>` link
+          // that the search sidebar can actually resolve — an article
+          // is often filed under a sub-specialty (e.g. "Braces"), and
+          // `/search?specialty=braces` on its own leaves the sidebar's
+          // Specialty dropdown with nothing to select. See
+          // lib/specialtyTree.js for why this is a shared walk rather
+          // than a second copy of the one in search.controller.js.
+          const root = rootSpecialtyOf(specialtyById, s.id);
+          return { slug: s.slug, name: s.name, rootSlug: root?.slug ?? s.slug };
         })()
       : null,
     publishedAt: row.publishedAt,
@@ -590,6 +602,20 @@ export async function updateArticle(req, res) {
   if (patch.status === "published" && !existing.publishedAt) patch.publishedAt = new Date();
 
   const row = await articleRepo.update(existing.id, patch);
+
+  // Only the publish/unpublish toggle is logged here, not every field
+  // edit — a typo fix to a paragraph isn't the kind of decision the
+  // audit log is for, but taking an article live or off the site is.
+  if (patch.status && patch.status !== existing.status && (patch.status === "published" || existing.status === "published")) {
+    await audit(req, {
+      action: patch.status === "published" ? "article.publish" : "article.unpublish",
+      subjectType: "article",
+      subjectId: row.id,
+      subjectLabel: row.title,
+      detail: { from: existing.status, to: patch.status },
+    });
+  }
+
   res.json({ article: { ...row, bodyHtml: undefined, bodySource: undefined } });
 }
 
@@ -599,5 +625,27 @@ export async function deleteArticle(req, res) {
   const existing = await articleRepo.findById(req.params.id);
   if (!existing) return res.status(404).json({ error: "No such article." });
   await articleRepo.remove(existing.id);
+
+  await audit(req, {
+    action: "article.delete",
+    subjectType: "article",
+    subjectId: existing.id,
+    subjectLabel: existing.title,
+    detail: { status: existing.status },
+  });
+
   res.json({ deleted: true });
+}
+
+/* ------------------------------------------------------------- audit */
+
+async function audit(req, entry) {
+  if (!isDbConfigured()) return null;
+  return adminAudit.record({
+    actorUserId: req.user?.id ?? null,
+    actorName: req.user?.fullName ?? "Unknown",
+    actorEmail: req.user?.email ?? null,
+    ip: clientIp(req),
+    ...entry,
+  });
 }
