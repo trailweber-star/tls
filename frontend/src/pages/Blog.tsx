@@ -360,7 +360,12 @@ export default function Blog() {
 function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: string) => void }) {
   return (
     <article className="group overflow-hidden rounded-2xl border border-line bg-white transition hover:border-teal-300 hover:shadow-[0_18px_40px_-28px_rgba(6,22,38,.45)]">
-      <div className={article.heroImageUrl ? "grid sm:grid-cols-[240px_1fr]" : ""}>
+      {/* sm:min-h-64 gives every row (with or without a photo) the same
+          floor height, so a card with a one-line excerpt and no tags
+          doesn't end up visibly shorter than one with three lines and
+          two tags -- the line-clamps below cap the tall end, this caps
+          the short end. */}
+      <div className={article.heroImageUrl ? "grid sm:min-h-64 sm:grid-cols-[240px_1fr]" : "sm:min-h-64"}>
         {article.heroImageUrl && (
           <Link to={`/blog/${article.slug}`} className="relative block overflow-hidden bg-paper-tint">
             <img
@@ -377,14 +382,14 @@ function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: str
           </Link>
         )}
 
-        <div className="p-5 sm:p-6">
+        <div className="flex h-full min-h-[190px] flex-col p-5 sm:p-6">
           {!article.heroImageUrl && article.specialty && (
-            <span className="mb-2.5 inline-block rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-teal-700">
+            <span className="mb-2.5 inline-block w-fit rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-teal-700">
               {article.specialty.name}
             </span>
           )}
 
-          <h3 className="font-display text-[20px] font-bold leading-snug text-ink sm:text-[22px]">
+          <h3 className="line-clamp-2 font-display text-[20px] font-bold leading-snug text-ink sm:text-[22px]">
             <Link to={`/blog/${article.slug}`} className="transition hover:text-teal-700">
               {article.title}
             </Link>
@@ -408,9 +413,12 @@ function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: str
             </span>
           </p>
 
-          <p className="mt-3 text-[14.5px] leading-relaxed text-ink-muted">{article.excerpt}</p>
+          <p className="mt-3 line-clamp-2 text-[14.5px] leading-relaxed text-ink-muted">{article.excerpt}</p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          {/* mt-auto pins this row to the card's bottom edge regardless
+              of how many lines the title/excerpt above actually used,
+              so "Continue reading" lines up card to card. */}
+          <div className="mt-auto flex flex-wrap items-center gap-3 pt-4">
             <Link
               to={`/blog/${article.slug}`}
               className="inline-flex items-center gap-2 rounded-full bg-navy-950 px-4 py-2 text-[13px] font-bold text-white transition group-hover:bg-teal-700"
