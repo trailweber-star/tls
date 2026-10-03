@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BadgeCheck, BedDouble, Clock, MapPin, ShieldCheck, Star, Stethoscope, Users } from "lucide-react";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatDistance, formatRating } from "../lib/format";
 import { FACILITY_TYPES, REGULATORS, REGULATOR_RATINGS, hoursSummary, isOpenNow } from "../lib/facilityFacets";
 import { placeHeroFor } from "../lib/specialtyHeroes";
@@ -65,8 +66,10 @@ export function FacilityCard({
                 it has uploaded one, and the house image for its type if
                 it has not. A grey box would be the only wrong answer. */}
             <img
-              src={facility.photoUrl ?? placeHeroFor(facility.facilityType)}
+              src={cloudinaryUrl(facility.photoUrl) ?? placeHeroFor(facility.facilityType)}
               alt={facility.name}
+              width={96}
+              height={112}
               className="h-full w-full object-cover"
               loading="lazy"
             />

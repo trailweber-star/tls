@@ -72,6 +72,9 @@ export function OrganisationEnquiry() {
     siteCount: "",
     needsClinwell: false,
     notes: "",
+    // Honeypot — always empty when a person fills the form. See the
+    // hidden input below and contact.controller.js on the server.
+    company: "",
   });
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [specialtyDraft, setSpecialtyDraft] = useState("");
@@ -343,6 +346,20 @@ export function OrganisationEnquiry() {
             {error}
           </p>
         )}
+
+        {/* Honeypot. Hidden from people and from screen readers; bots
+            fill it, and a filled one is dropped server-side with a
+            normal-looking response. */}
+        <input
+          type="text"
+          name="company"
+          value={form.company}
+          onChange={(e) => set("company", e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="absolute left-[-9999px] h-0 w-0 opacity-0"
+        />
 
         <div className="flex flex-wrap items-center gap-4">
           <button

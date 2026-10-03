@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getAllSpecialties, getSpecialistBySlug, getSpecialistReviews, searchSpecialists } from "../lib/api";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatAvailability, formatPrice, formatRating } from "../lib/format";
 import { EnquiryForm } from "../components/EnquiryForm";
 import { SpecialistCard } from "../components/SpecialistCard";
@@ -358,7 +359,13 @@ export default function SpecialistProfile() {
           <div className="glass-frame w-40 shrink-0 rounded-[1.5rem] p-2 sm:w-52">
             <div className="aspect-[4/5] w-full overflow-hidden rounded-[1.1rem] bg-navy-800">
               {specialist.photoUrl ? (
-                <img src={specialist.photoUrl} alt={specialist.fullName} className="h-full w-full object-cover" />
+                <img
+                  src={cloudinaryUrl(specialist.photoUrl)}
+                  alt={specialist.fullName}
+                  width={208}
+                  height={260}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="grid h-full w-full place-items-center font-display text-4xl font-bold text-white/80">
                   {initialsOf(specialist.fullName)}
@@ -1590,8 +1597,10 @@ function Gallery({ images }: { images: { url: string; caption: string | null }[]
               style={{ aspectRatio: "4 / 3" }}
             >
               <img
-                src={image.url}
+                src={cloudinaryUrl(image.url)}
                 alt={image.caption ?? ""}
+                width={400}
+                height={300}
                 loading="lazy"
                 className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
               />

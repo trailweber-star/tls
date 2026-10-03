@@ -176,6 +176,11 @@ const leadSchema = z.object({
   specialistId: z.string().optional().or(z.literal("")),
   clinicId: z.string().optional().or(z.literal("")),
   facilityId: z.string().optional().or(z.literal("")),
+  // Bots fill hidden fields; people do not. A filled honeypot is
+  // accepted with a normal-looking response and then dropped, so a
+  // spammer gets no signal about what was rejected -- same field, same
+  // behaviour as contact.controller.js.
+  company: z.string().max(200).optional().or(z.literal("")),
 });
 
 // POST /api/leads — public enquiry endpoint. Anyone can create a lead,
@@ -185,6 +190,11 @@ export async function createLead(req, res) {
   const parsed = leadSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid enquiry", issues: parsed.error.issues });
+  }
+
+  if (parsed.data.company) {
+    // Honeypot tripped. Look successful, save nothing.
+    return res.json({ ok: true });
   }
 
   if (!isDbConfigured()) {

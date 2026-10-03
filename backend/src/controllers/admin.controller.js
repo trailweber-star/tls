@@ -274,27 +274,22 @@ export async function listVerifications(req, res) {
     });
   }
 
-  const everyone = await specialistRepo.all();
-  // Newest applications first — an admin works the queue from the most
-  // recent submission down.
-  const all = everyone
-    .filter((s) => s.verificationStatus === status)
-    .sort((a, b) => {
-      const at = a.application?.submittedAt ? new Date(a.application.submittedAt).getTime() : 0;
-      const bt = b.application?.submittedAt ? new Date(b.application.submittedAt).getTime() : 0;
-      return bt - at;
-    });
-  const counts = Object.fromEntries(
-    QUEUE_STATUSES.map((st) => [st, everyone.filter((s) => s.verificationStatus === st).length])
-  );
+  // The page the admin is looking at, sorted and sliced in SQL —
+  // byStatusPaged() only assembles relations for these rows, not every
+  // specialist at this status.
+  const [pageRows, counts] = await Promise.all([
+    specialistRepo.byStatusPaged({ status, page, pageSize }),
+    specialistRepo.countByStatus(),
+  ]);
+  const total = counts[status] ?? 0;
 
   res.json({
-    results: all.slice((page - 1) * pageSize, page * pageSize).map(shape),
-    total: all.length,
+    results: pageRows.map(shape),
+    total,
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(all.length / pageSize)),
-    counts,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    counts: Object.fromEntries(QUEUE_STATUSES.map((st) => [st, counts[st] ?? 0])),
   });
 }
 
@@ -584,17 +579,16 @@ export async function listAdminSpecialists(req, res) {
     });
   }
 
-  let rows = await specialistRepo.all();
-  if (status && status !== "all") rows = rows.filter((s) => s.verificationStatus === status);
-  if (q) rows = rows.filter((s) => s.fullName.toLowerCase().includes(q) || s.slug.includes(q));
-  rows.sort((a, b) => a.fullName.localeCompare(b.fullName));
+  // Filtered, sorted and sliced in SQL — searchPaged() assembles
+  // relations only for the one page requested, not the whole table.
+  const { rows, total } = await specialistRepo.searchPaged({ q, status, page, pageSize });
 
   res.json({
-    results: rows.slice((page - 1) * pageSize, page * pageSize).map(shape),
-    total: rows.length,
+    results: rows.map(shape),
+    total,
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(rows.length / pageSize)),
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
   });
 }
 

@@ -55,6 +55,9 @@ export function ReviewForm({
   const [comment, setComment] = useState("");
   const [patientName, setPatientName] = useState("");
   const [conditionId, setConditionId] = useState("");
+  // Honeypot — always empty when a person fills the form. See the
+  // hidden input below and contact.controller.js on the server.
+  const [company, setCompany] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +84,7 @@ export function ReviewForm({
         care: scores.care || null,
         waitTime: scores.waitTime || null,
       },
+      company,
     };
 
     try {
@@ -217,6 +221,20 @@ export function ReviewForm({
         />
         <span className="mt-1 block text-right text-[11.5px] text-ink-faint">{comment.length}/2000</span>
       </label>
+
+      {/* Honeypot. Hidden from people and from screen readers; bots
+          fill it, and a filled one is dropped server-side with a
+          normal-looking response. */}
+      <input
+        type="text"
+        name="company"
+        value={company}
+        onChange={(e) => setCompany(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] h-0 w-0 opacity-0"
+      />
 
       <label className="block">
         <span className="text-[13px] font-bold text-ink">Your name</span>

@@ -36,6 +36,8 @@ type Values = {
   linkedin: string;
   instagram: string;
   bookingUrl: string;
+  /** Honeypot — always empty when a person fills the form. */
+  company: string;
 };
 
 const EMPTY: Values = {
@@ -51,6 +53,7 @@ const EMPTY: Values = {
   linkedin: "",
   instagram: "",
   bookingUrl: "",
+  company: "",
 };
 
 const inputClass =
@@ -155,6 +158,7 @@ export default function Register() {
             }
           : {}),
         ...(features?.bookingLink ? { bookingUrl: values.bookingUrl.trim() || undefined } : {}),
+        company: values.company,
       });
       // A paid plan lands on billing, where the next step is explained;
       // a free one goes straight to the dashboard.
@@ -247,6 +251,20 @@ export default function Register() {
       </ol>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {/* Honeypot. Hidden from people and from screen readers; bots
+            fill it, and a filled one is dropped server-side with a
+            normal-looking response. */}
+        <input
+          type="text"
+          name="company"
+          value={values.company}
+          onChange={set("company")}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="absolute left-[-9999px] h-0 w-0 opacity-0"
+        />
+
         {formError && (
           <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-[13px] font-semibold text-danger">
             {formError}

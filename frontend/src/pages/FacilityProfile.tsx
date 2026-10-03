@@ -23,6 +23,7 @@ import {
   Users,
 } from "lucide-react";
 import { getFacilityBySlug, getFacilityReviews } from "../lib/api";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatRating } from "../lib/format";
 import { EnquiryForm } from "../components/EnquiryForm";
 import { MapPreview } from "../components/MapPreview";
@@ -178,8 +179,10 @@ export default function FacilityProfile() {
                 portrait is a photograph of a wall. */}
             <div className="aspect-[4/3] w-full overflow-hidden rounded-[1.1rem] bg-navy-800">
               <img
-                src={facility.photoUrl ?? placeHeroFor(facility.facilityType)}
+                src={cloudinaryUrl(facility.photoUrl) ?? placeHeroFor(facility.facilityType)}
                 alt={facility.name}
+                width={208}
+                height={156}
                 className="h-full w-full object-cover"
               />
             </div>
@@ -407,7 +410,14 @@ export default function FacilityProfile() {
                 >
                   <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-paper-muted">
                     {member.photoUrl ? (
-                      <img src={member.photoUrl} alt={member.fullName} className="h-full w-full object-cover" loading="lazy" />
+                      <img
+                        src={cloudinaryUrl(member.photoUrl)}
+                        alt={member.fullName}
+                        width={64}
+                        height={80}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
                     ) : (
                       <div className="grid h-full w-full place-items-center bg-gradient-to-br from-paper-tint to-teal-50 font-display text-lg font-bold text-teal-700">
                         {member.fullName

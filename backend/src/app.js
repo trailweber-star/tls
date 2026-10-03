@@ -6,6 +6,7 @@ import { UPLOAD_DIR } from "./lib/storage.js";
 import cors from "cors";
 import morgan from "morgan";
 import apiRoutes from "./routes/index.js";
+import { siteUrl } from "./lib/urls.js";
 import { isDbConfigured } from "./config/db.js";
 import { robotsTxt, sitemapXml } from "./controllers/sitemap.controller.js";
 import { previewGate } from "./middleware/previewGate.js";
@@ -77,7 +78,69 @@ app.get("/sitemap.xml", sitemapXml);
    HTTP Basic auth. */
 previewGate(app);
 
-app.use(cors());
+/* ------------------------------------------------------------------ *
+ * CORS
+ *
+ * Production and every preview serve the frontend and the API from the
+ * same origin -- see the single-process block above, and VITE_API_URL
+ * baked in as a relative "/api" in render.yaml -- so a browser on the
+ * deployed site never sends an Origin header this check even looks at;
+ * same-origin requests are not subject to CORS at all. The one case
+ * that genuinely crosses origins is local development, where Vite
+ * serves the frontend on its own port and calls across to this API on
+ * another.
+ *
+ * `cors()` with no options reflects and allows ANY origin, which is
+ * what a security review is right to flag: it means a malicious page
+ * on somebody else's domain can read this API's responses out of a
+ * signed-in visitor's browser. The explicit allowlist below says which
+ * origins are trusted and refuses everything else.
+ */
+
+// This deployment's own address -- toplocalspecialists.com in
+// production, whatever SITE_URL/RENDER_EXTERNAL_URL resolves to on a
+// preview (see lib/urls.js). A same-origin request never reaches this
+// check, but it is kept in the allowlist anyway for the one legitimate
+// way to split the two: a frontend built with VITE_API_URL pointed at
+// this API from a different domain (see the Vercel/Netlify note in
+// DEPLOY.md).
+const PRODUCTION_ORIGIN = siteUrl();
+
+const DEV_ORIGINS = new Set([
+  "http://localhost:5173", // the Vite dev server the frontend runs on (frontend/.env's VITE_API_URL points here)
+  "http://localhost:4000", // this API's own dev port -- a local production-mode run (CLIENT_DIR set) serves the built frontend from here too
+]);
+
+// A Render preview link from before the custom domain's DNS cut over --
+// see the redirect to LIVE_HOST above, which exists because these
+// addresses are still reachable afterwards too.
+const RENDER_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.onrender\.com$/i;
+
+function originAllowed(origin) {
+  // No Origin header at all: a server-to-server call, curl, or the
+  // payment/mail webhooks hitting this API directly. None of those are
+  // a browser enforcing CORS, so there is nothing here to protect by
+  // refusing them.
+  if (!origin) return true;
+  if (origin === PRODUCTION_ORIGIN) return true;
+  if (DEV_ORIGINS.has(origin)) return true;
+  if (RENDER_PREVIEW_ORIGIN.test(origin)) return true;
+  return false;
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (originAllowed(origin)) return callback(null, true);
+      callback(new Error("Not allowed by CORS"));
+    },
+    // No cookie ever travels cross-origin: the dashboard client carries
+    // its session as an Authorization header, not a cookie (see the
+    // header comment on lib/dashboardApi.ts), so there is nothing for
+    // `credentials` to protect here -- turning it on would only widen
+    // what a trusted origin could do, for no gain.
+  })
+);
 /* The raw bytes are kept alongside the parsed body because a payment
    webhook's signature is computed over exactly what was sent — re-encoding
    the parsed object changes key order and whitespace, and the signature

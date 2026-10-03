@@ -16,7 +16,7 @@
  * place to fix it is here, behind these function signatures.
  * ------------------------------------------------------------------ */
 
-import { and, asc, desc, eq, gte, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./client.js";
 import * as t from "./schema.js";
 import { newId } from "./schema.js";
@@ -331,6 +331,119 @@ export const specialists = {
   async byStatus(status) {
     const rows = await db().select().from(t.specialists).where(eq(t.specialists.verificationStatus, status));
     return assembleSpecialists(rows);
+  },
+
+  /**
+   * One page of the verification queue for one status, newest
+   * application first.
+   *
+   * byStatus() above hands back the WHOLE status, fully assembled —
+   * every specialty, condition, treatment, clinic location and
+   * approved review joined in for every row — and the admin queue
+   * then sorted and sliced that in JavaScript. The sort and the page
+   * size are known before the query runs, so both move into SQL here:
+   * assembleSpecialists() now only has to join relations for the
+   * twenty or so rows the admin is actually looking at, not the whole
+   * queue.
+   */
+  async byStatusPaged({ status, page = 1, pageSize = 20 }) {
+    const offset = (Math.max(1, page) - 1) * pageSize;
+    const rows = await db()
+      .select()
+      .from(t.specialists)
+      .where(eq(t.specialists.verificationStatus, status))
+      // Missing submittedAt (an application that was never finished)
+      // sorts as the oldest thing in the queue, same as the JS
+      // version's `at ?? 0` — NULLS LAST is what that means in SQL for
+      // a descending, newest-first order.
+      .orderBy(sql`(${t.specialists.application}->>'submittedAt') DESC NULLS LAST`)
+      .limit(pageSize)
+      .offset(offset);
+    return assembleSpecialists(rows);
+  },
+
+  /**
+   * One page of the admin specialists table — status filter, a
+   * free-text match against name or slug, sorted by name — with the
+   * same WHERE applied to the count, so `total` describes the filtered
+   * set rather than the whole table.
+   *
+   * Replaces listAdminSpecialists() fetching and assembling every
+   * specialist in the database on every request just to filter, sort
+   * and slice the result down to one page in JavaScript.
+   */
+  async searchPaged({ q = "", status = null, page = 1, pageSize = 25 }) {
+    const clauses = [];
+    if (status && status !== "all") clauses.push(eq(t.specialists.verificationStatus, status));
+    if (q) clauses.push(or(ilike(t.specialists.fullName, `%${q}%`), ilike(t.specialists.slug, `%${q}%`)));
+    const where = clauses.length ? and(...clauses) : undefined;
+
+    const offset = (Math.max(1, page) - 1) * pageSize;
+    const base = () => (where ? db().select().from(t.specialists).where(where) : db().select().from(t.specialists));
+
+    const [rows, countRows] = await Promise.all([
+      base().orderBy(asc(t.specialists.fullName)).limit(pageSize).offset(offset),
+      where
+        ? db().select({ count: sql`count(*)::int` }).from(t.specialists).where(where)
+        : db().select({ count: sql`count(*)::int` }).from(t.specialists),
+    ]);
+
+    return { rows: await assembleSpecialists(rows), total: countRows[0]?.count ?? 0 };
+  },
+
+  /**
+   * Every specialist, but only what the members workspace table reads
+   * from the relations — the primary specialty's name and slug, and
+   * the first clinic location's city and address.
+   *
+   * loadMembers() (members.controller.js) needs every specialist on
+   * every request, because the page's counts and facet dropdowns are
+   * deliberately computed over the WHOLE membership, not the filtered
+   * page — that part is a documented trade-off, not a bug, and stays
+   * in JavaScript. What was a bug is reaching for all() to get there:
+   * all() runs assembleSpecialists(), which joins every condition,
+   * treatment, clinic location and approved review for every row, and
+   * shapeMember() reads none of that. This is the same loop without
+   * the joins nothing here uses.
+   */
+  async allLight() {
+    const rows = await db().select().from(t.specialists);
+    if (rows.length === 0) return [];
+    const ids = rows.map((r) => r.id);
+
+    const [allSpecialties, locationLinks] = await Promise.all([
+      db().select().from(t.specialties),
+      db().select().from(t.specialistClinicLocations).where(inArray(t.specialistClinicLocations.specialistId, ids)),
+    ]);
+    const specialtyById = indexById(allSpecialties);
+
+    // Same "first" as assembleSpecialists gives clinicLocations[0]:
+    // whichever row the unordered join returns first, since neither
+    // query declares an order to begin with.
+    const firstLocationLinkFor = new Map();
+    for (const link of locationLinks) {
+      if (!firstLocationLinkFor.has(link.specialistId)) firstLocationLinkFor.set(link.specialistId, link);
+    }
+    const locationIds = [...new Set([...firstLocationLinkFor.values()].map((l) => l.clinicLocationId))];
+    const locationRows = locationIds.length
+      ? await db().select().from(t.clinicLocations).where(inArray(t.clinicLocations.id, locationIds))
+      : [];
+    const locationById = indexById(locationRows);
+    const cityIds = [...new Set(locationRows.map((l) => l.cityId).filter(Boolean))];
+    const cityRows = cityIds.length ? await db().select().from(t.cities).where(inArray(t.cities.id, cityIds)) : [];
+    const cityById = indexById(cityRows);
+
+    return rows.map((raw) => {
+      const row = normaliseSpecialist(raw);
+      const primarySpecialty = row.primarySpecialtyId ? specialtyById.get(row.primarySpecialtyId) ?? null : null;
+      const link = firstLocationLinkFor.get(row.id);
+      const loc = link ? locationById.get(link.clinicLocationId) ?? null : null;
+      return {
+        ...row,
+        primarySpecialty,
+        clinicLocations: loc ? [{ ...loc, city: cityById.get(loc.cityId) ?? null }] : [],
+      };
+    });
   },
 
   async findBySlug(slug) {
@@ -886,15 +999,32 @@ export const reviews = {
    * different status is how the specialist's own dashboard sees what is
    * still waiting on us, and how the admin queue sees everything.
    */
-  async forSubject(subjectType, subjectId, { status = "approved" } = {}) {
+  async forSubject(subjectType, subjectId, { status = "approved", limit, offset } = {}) {
     const clauses = [eq(t.reviews.subjectType, subjectType), eq(t.reviews.subjectId, subjectId)];
     if (status) clauses.push(eq(t.reviews.moderationStatus, status));
-    const rows = await db()
+    let query = db()
       .select()
       .from(t.reviews)
       .where(and(...clauses))
       .orderBy(desc(t.reviews.createdAt));
+    // Both optional, and only used by the profile's "View all reviews"
+    // page — every other caller still gets every row, unpaged, exactly
+    // as before.
+    if (limit != null) query = query.limit(limit);
+    if (offset != null) query = query.offset(offset);
+    const rows = await query;
     return rows.map(toReview);
+  },
+
+  /** The count forSubject's own WHERE would return, for its pageCount. */
+  async countForSubject(subjectType, subjectId, { status = "approved" } = {}) {
+    const clauses = [eq(t.reviews.subjectType, subjectType), eq(t.reviews.subjectId, subjectId)];
+    if (status) clauses.push(eq(t.reviews.moderationStatus, status));
+    const [row] = await db()
+      .select({ count: sql`count(*)::int` })
+      .from(t.reviews)
+      .where(and(...clauses));
+    return row?.count ?? 0;
   },
 
   async findById(id) {

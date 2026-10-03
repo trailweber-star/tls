@@ -138,6 +138,7 @@ import {
   submitClaim,
 } from "../controllers/claims.controller.js";
 import { listContactMessages, submitContactMessage } from "../controllers/contact.controller.js";
+import { authLimiter, passwordResetLimiter, publicFormLimiter } from "../middleware/rateLimit.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import {
   assignArticle,
@@ -174,7 +175,9 @@ router.get("/specialists/search", searchSpecialists);
 // The homepage strip — approved reviews only, drawn from real rows.
 router.get("/reviews/featured", listFeaturedReviews);
 router.get("/specialists/:slug/reviews", listSpecialistReviews);
-router.post("/specialists/:slug/reviews", createSpecialistReview);
+// Capped per IP -- see middleware/rateLimit.js, same reasoning as the
+// enquiry route above.
+router.post("/specialists/:slug/reviews", publicFormLimiter, createSpecialistReview);
 router.get("/specialists/:slug", getSpecialistBySlug);
 
 // Public booking widget on a specialist's own profile -- no account,
@@ -246,7 +249,9 @@ router.get("/facilities/:slug", getFacilityBySlug);
 router.get("/facilities/:slug/reviews", listFacilityReviews);
 router.post("/facilities/:slug/reviews", createFacilityReview);
 
-router.post("/leads", createLead);
+// Capped per IP -- see middleware/rateLimit.js. A real enquiry is one
+// submission; this only ever catches a script.
+router.post("/leads", publicFormLimiter, createLead);
 
 // A patient's own side of a message thread -- the reply_token in the
 // URL is their whole access control, no account needed. See
@@ -258,7 +263,9 @@ router.post("/reply/:token", postReply);
    Hospitals, clinics, pharmacies and care homes are priced on how many
    clinicians they want covered, so there is no figure to publish and no
    self-serve checkout. They apply, we quote, they pay a link. */
-router.post("/organisations/apply", applyAsOrganisation);
+// Capped per IP -- see middleware/rateLimit.js, same reasoning as the
+// other public forms above.
+router.post("/organisations/apply", publicFormLimiter, applyAsOrganisation);
 
 /* ------------------------------------------------------------ contact
    Public. Stored, raised in the admin bell and emailed to support with
@@ -316,8 +323,11 @@ router.post("/mail/inbound", handleInboundMail);
 router.post("/partners/clinwell/practices/status", receivePracticeStatus);
 
 /* ---------------------------------------------------------------- auth */
-router.post("/auth/register", register);
-router.post("/auth/login", login);
+// Both capped per IP -- see middleware/rateLimit.js. A credential-
+// stuffing or fake-signup script is the thing this is for; a person
+// typing their own password wrong a few times never reaches it.
+router.post("/auth/register", authLimiter, register);
+router.post("/auth/login", authLimiter, login);
 router.get("/auth/me", requireAuth, me);
 router.get("/auth/demo-credentials", demoCredentials);
 
@@ -326,7 +336,9 @@ router.get("/auth/demo-credentials", demoCredentials);
    give nothing away to a caller guessing addresses or links. The third
    needs a session AND the current password; a session alone is only
    evidence that a browser was left open. */
-router.post("/auth/forgot-password", forgotPassword);
+// Capped per IP as well as per account -- see the comment on
+// passwordResetLimiter in middleware/rateLimit.js for why both exist.
+router.post("/auth/forgot-password", passwordResetLimiter, forgotPassword);
 router.post("/auth/reset-password", resetPassword);
 router.post("/auth/change-password", requireAuth, changePassword);
 

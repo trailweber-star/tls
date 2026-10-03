@@ -31,24 +31,28 @@ function childrenOf(rows, slug) {
 // specialty -> sub-specialty dropdowns, so the whole tree travels once
 // rather than a request per selection.
 export async function getAllSpecialties(req, res) {
+  res.set("Cache-Control", "public, max-age=3600");
   if (!isDbConfigured()) return res.json(mockSpecialties);
   res.json(await taxonomy.specialties());
 }
 
 // GET /api/specialties/top-level
 export async function getTopLevelSpecialties(req, res) {
+  res.set("Cache-Control", "public, max-age=3600");
   if (!isDbConfigured()) return res.json(topLevelSpecialties);
   res.json(topLevel(await taxonomy.specialties()));
 }
 
 // GET /api/specialties/:slug/subspecialties
 export async function getSubspecialties(req, res) {
+  res.set("Cache-Control", "public, max-age=3600");
   if (!isDbConfigured()) return res.json(subspecialtiesOf(req.params.slug));
   res.json(childrenOf(await taxonomy.specialties(), req.params.slug));
 }
 
 // GET /api/cities
 export async function getCities(req, res) {
+  res.set("Cache-Control", "public, max-age=3600");
   if (!isDbConfigured()) return res.json(mockCities);
   res.json(await taxonomy.cities());
 }
@@ -56,18 +60,21 @@ export async function getCities(req, res) {
 // GET /api/facility-categories — full flat tree (Hospital Care, Care
 // Homes, Pharmacy, Clinics, Hospitals and everything beneath them).
 export async function getAllFacilityCategories(req, res) {
+  res.set("Cache-Control", "public, max-age=3600");
   if (!isDbConfigured()) return res.json(mockFacilityCategories);
   res.json(await taxonomy.facilityCategories());
 }
 
 // GET /api/facility-categories/top-level
 export async function getTopLevelFacilityCategories(req, res) {
+  res.set("Cache-Control", "public, max-age=3600");
   if (!isDbConfigured()) return res.json(topLevelFacilityCategories);
   res.json(topLevel(await taxonomy.facilityCategories()));
 }
 
 // GET /api/facility-categories/:slug/children
 export async function getFacilityCategoryChildren(req, res) {
+  res.set("Cache-Control", "public, max-age=3600");
   if (!isDbConfigured()) return res.json(facilityCategoryChildrenOf(req.params.slug));
   res.json(childrenOf(await taxonomy.facilityCategories(), req.params.slug));
 }

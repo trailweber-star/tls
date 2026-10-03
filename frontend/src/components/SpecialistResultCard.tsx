@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BadgeCheck, CalendarClock, MapPin, Sparkles, Star } from "lucide-react";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatAvailability, formatDistance, formatPrice, formatRating } from "../lib/format";
 import type { SpecialistWithRelations } from "../lib/types";
 
@@ -74,8 +75,10 @@ export function SpecialistResultCard({
           <div className="h-24 w-20 overflow-hidden rounded-[0.875rem] bg-paper-muted sm:h-28 sm:w-24">
             {specialist.photoUrl ? (
               <img
-                src={specialist.photoUrl}
+                src={cloudinaryUrl(specialist.photoUrl)}
                 alt={specialist.fullName}
+                width={96}
+                height={112}
                 className="h-full w-full object-cover"
                 loading="lazy"
               />

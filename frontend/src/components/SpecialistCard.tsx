@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { MapPin, Star } from "lucide-react";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import type { SpecialistWithRelations } from "../lib/types";
 
 function initialsOf(fullName: string) {
@@ -32,8 +33,10 @@ export function SpecialistCard({ specialist }: { specialist: SpecialistWithRelat
       <div className="aspect-[4/5] w-full overflow-hidden rounded-[1rem] bg-paper-muted">
         {specialist.photoUrl ? (
           <img
-            src={specialist.photoUrl}
+            src={cloudinaryUrl(specialist.photoUrl)}
             alt={specialist.fullName}
+            width={400}
+            height={500}
             loading="lazy"
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />

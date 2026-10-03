@@ -49,6 +49,8 @@ export interface OrganisationApplicationInput {
   specialties?: string[];
   needsClinwell?: boolean;
   notes?: string;
+  /** Honeypot — always empty when a person fills the form. */
+  company?: string;
 }
 
 export interface OrganisationApplication extends OrganisationApplicationInput {

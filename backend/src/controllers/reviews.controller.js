@@ -105,24 +105,38 @@ export async function listSpecialistReviews(req, res) {
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize) || 10));
 
-  let all;
   if (!isDbConfigured()) {
     const specialist = mockSpecialistsWithRelations.find((s) => s.slug === slug);
     if (!specialist) return res.status(404).json({ error: "Specialist not found" });
     // mockSpecialistsWithRelations already carries approved rows only.
-    all = [...specialist.reviews].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  } else {
-    const doc = await specialistRepo.rawBySlug(slug);
-    if (!doc) return res.status(404).json({ error: "Specialist not found" });
-    all = await reviewRepo.forSubject("specialist", doc.id);
+    const all = [...specialist.reviews].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return res.json({
+      results: all.slice((page - 1) * pageSize, page * pageSize),
+      total: all.length,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(all.length / pageSize)),
+    });
   }
 
+  const doc = await specialistRepo.rawBySlug(slug);
+  if (!doc) return res.status(404).json({ error: "Specialist not found" });
+
+  // The one page requested, and the count behind its own WHERE —
+  // forSubject() used to hand back every approved review for this
+  // specialist on every request just so this could slice one page off
+  // the end of it.
+  const [results, total] = await Promise.all([
+    reviewRepo.forSubject("specialist", doc.id, { limit: pageSize, offset: (page - 1) * pageSize }),
+    reviewRepo.countForSubject("specialist", doc.id),
+  ]);
+
   res.json({
-    results: all.slice((page - 1) * pageSize, page * pageSize),
-    total: all.length,
+    results,
+    total,
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(all.length / pageSize)),
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
   });
 }
 
@@ -211,6 +225,18 @@ export async function listFeaturedReviews(req, res) {
 // POST /api/specialists/:slug/reviews
 export async function createSpecialistReview(req, res) {
   const { slug } = req.params;
+
+  // Bots fill hidden fields; people do not. A filled honeypot gets a
+  // normal-looking response and nothing is stored -- same field, same
+  // behaviour as contact.controller.js.
+  if (req.body?.company) {
+    return res.status(201).json({
+      ok: true,
+      moderationStatus: "pending",
+      message: "Thanks — your review has been sent to our team and will appear once it has been checked.",
+    });
+  }
+
   const rating = Number(req.body?.rating);
   if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
     return res.status(400).json({ error: "rating must be between 1 and 5" });

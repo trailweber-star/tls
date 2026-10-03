@@ -66,6 +66,10 @@ const applicationSchema = z.object({
   specialties: z.array(z.string().trim().min(1).max(120)).max(40).optional().default([]),
   needsClinwell: z.coerce.boolean().optional().default(false),
   notes: z.string().trim().max(4000).optional().or(z.literal("")),
+  // Bots fill hidden fields; people do not. A filled honeypot is
+  // accepted with a normal-looking response and then dropped -- same
+  // field, same behaviour as contact.controller.js.
+  company: z.string().max(200).optional().or(z.literal("")),
 });
 
 const blank = (v) => (v === undefined || v === null || v === "" ? null : v);
@@ -83,6 +87,11 @@ export async function applyAsOrganisation(req, res) {
     return res.status(400).json({ error: first?.message ?? "Please check the form.", issues: parsed.error.issues });
   }
   const data = parsed.data;
+
+  if (data.company) {
+    // Honeypot tripped. Look successful, save nothing.
+    return res.status(201).json({ ok: true });
+  }
 
   if (!isDbConfigured()) {
     /* Demo mode has nowhere to put it, and must not pretend otherwise:

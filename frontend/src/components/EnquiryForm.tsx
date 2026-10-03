@@ -37,6 +37,7 @@ export function EnquiryForm({ specialistId, clinicId, facilityId, recipientName 
         specialistId,
         clinicId,
         facilityId,
+        company: String(form.get("company") || ""),
       });
       formEl.reset();
       // delivery.sent === false covers no-contact-email, held-monthly-cap,
@@ -114,6 +115,18 @@ export function EnquiryForm({ specialistId, clinicId, facilityId, recipientName 
           className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-teal-500"
         />
       </div>
+      {/* Honeypot. Hidden from people and from screen readers; bots
+          fill it, and a filled one is dropped server-side with a
+          normal-looking response. */}
+      <input
+        type="text"
+        name="company"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] h-0 w-0 opacity-0"
+      />
+
       <button
         type="submit"
         disabled={status === "sending"}

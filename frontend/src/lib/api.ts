@@ -89,6 +89,8 @@ export interface ReviewInput {
     care?: number | null;
     waitTime?: number | null;
   };
+  /** Honeypot — always empty when a person fills the form. */
+  company?: string;
 }
 
 /**
@@ -313,6 +315,8 @@ export interface LeadInput {
   specialistId?: string;
   clinicId?: string;
   facilityId?: string;
+  /** Honeypot — always empty when a person fills the form. */
+  company?: string;
 }
 
 /**

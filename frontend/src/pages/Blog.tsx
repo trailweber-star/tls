@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, BookOpen, Clock, Loader2, Search, User, X } from "lucide-react";
 import { HEADER_HEIGHT } from "../components/Header";
 import { Seo, ORGANISATION_JSON_LD } from "../components/Seo";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatArticleDate, listArticles } from "../lib/blogApi";
 import type { ArticleCard, ArticleList } from "../lib/blogApi";
 import heroImg from "../assets/images/hero-clinic.jpg";
@@ -378,8 +379,10 @@ function ArticleRow({ article, onTag }: { article: ArticleCard; onTag: (tag: str
         {article.heroImageUrl && (
           <Link to={`/blog/${article.slug}`} className="relative block overflow-hidden bg-paper-tint">
             <img
-              src={article.heroImageUrl}
+              src={cloudinaryUrl(article.heroImageUrl)}
               alt={article.heroImageAlt ?? ""}
+              width={400}
+              height={192}
               loading="lazy"
               className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:absolute sm:inset-0 sm:h-full sm:w-full"
             />

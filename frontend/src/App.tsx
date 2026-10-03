@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes, useParams } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Header } from "./components/Header";
@@ -23,26 +24,31 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ConfirmEmail from "./pages/ConfirmEmail";
 import AccountSecurity from "./pages/AccountSecurity";
-import DashboardOverview from "./pages/dashboard/Overview";
-import ProfileEditor from "./pages/dashboard/ProfileEditor";
-import Enquiries from "./pages/dashboard/Enquiries";
-import Reviews from "./pages/dashboard/Reviews";
-import DashboardAppointments from "./pages/dashboard/Appointments";
-import DashboardAnalytics from "./pages/dashboard/Analytics";
-import DashboardMessages from "./pages/dashboard/Messages";
-import DashboardArticles from "./pages/dashboard/Articles";
-import Billing from "./pages/dashboard/Billing";
-import AdminOverview from "./pages/admin/AdminOverview";
-import Verifications from "./pages/admin/Verifications";
-import ReviewModeration from "./pages/admin/ReviewModeration";
-import AdminSpecialists from "./pages/admin/AdminSpecialists";
-import AdminMembers from "./pages/admin/AdminMembers";
-import AdminAudit from "./pages/admin/AdminAudit";
-import AdminMessages from "./pages/admin/AdminMessages";
-import AdminArticles from "./pages/admin/AdminArticles";
-import AdminOrganisations from "./pages/admin/AdminOrganisations";
 import ReplyThread from "./pages/ReplyThread";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
+
+/* The specialist workspace and the admin section are both behind a
+   sign-in, so only an authenticated specialist or administrator ever
+   requests this code. Loading it lazily keeps all of it out of the
+   bundle an anonymous visitor downloads to see the public site. */
+const DashboardOverview = lazy(() => import("./pages/dashboard/Overview"));
+const ProfileEditor = lazy(() => import("./pages/dashboard/ProfileEditor"));
+const Enquiries = lazy(() => import("./pages/dashboard/Enquiries"));
+const Reviews = lazy(() => import("./pages/dashboard/Reviews"));
+const DashboardAppointments = lazy(() => import("./pages/dashboard/Appointments"));
+const DashboardAnalytics = lazy(() => import("./pages/dashboard/Analytics"));
+const DashboardMessages = lazy(() => import("./pages/dashboard/Messages"));
+const DashboardArticles = lazy(() => import("./pages/dashboard/Articles"));
+const Billing = lazy(() => import("./pages/dashboard/Billing"));
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
+const Verifications = lazy(() => import("./pages/admin/Verifications"));
+const ReviewModeration = lazy(() => import("./pages/admin/ReviewModeration"));
+const AdminSpecialists = lazy(() => import("./pages/admin/AdminSpecialists"));
+const AdminMembers = lazy(() => import("./pages/admin/AdminMembers"));
+const AdminAudit = lazy(() => import("./pages/admin/AdminAudit"));
+const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
+const AdminArticles = lazy(() => import("./pages/admin/AdminArticles"));
+const AdminOrganisations = lazy(() => import("./pages/admin/AdminOrganisations"));
 
 /**
  * The public site is chrome-wrapped (header, footer, paper background).
@@ -71,12 +77,20 @@ function ArticleRedirect() {
   return <Navigate to={`/blog/${slug}`} replace />;
 }
 
+/* Same look as RequireAuth's own wait for the session check — a lazy
+   chunk for the workspace or admin section is on the same screen, so
+   it gets the same wait rather than a new loading design. */
+function RouteLoading() {
+  return <div className="grid min-h-screen place-items-center bg-navy-950 text-sm text-white/60">Loading…</div>;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       {/* The outer net catches the dashboard and auth screens, which
           bring their own shell and sit outside PublicLayout. */}
       <ErrorBoundary>
+      <Suspense fallback={<RouteLoading />}>
       <Routes>
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
@@ -175,6 +189,7 @@ export default function App() {
           <Route path="settings" element={<AccountSecurity variant="admin" />} />
         </Route>
       </Routes>
+      </Suspense>
       {/* Outside the routes on purpose: a borrowed session has to be
           visible on the public site too, not only in the workspace. */}
       <ImpersonationBanner />

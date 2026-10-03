@@ -99,6 +99,10 @@ const registerSchema = z.object({
   bookingUrl: z.string().max(300).optional().or(z.literal("")),
   linkedin: z.string().max(300).optional().or(z.literal("")),
   instagram: z.string().max(300).optional().or(z.literal("")),
+  // Bots fill hidden fields; people do not. A filled honeypot is
+  // accepted with a normal-looking response and then dropped -- same
+  // field, same behaviour as contact.controller.js.
+  company: z.string().max(200).optional().or(z.literal("")),
 });
 
 /**
@@ -116,8 +120,14 @@ export async function register(req, res) {
   }
   const {
     fullName, email, password, title, registrationNumber, primarySpecialtySlug, phone,
-    plan, planInterval, websiteUrl, bookingUrl, linkedin, instagram,
+    plan, planInterval, websiteUrl, bookingUrl, linkedin, instagram, company,
   } = parsed.data;
+
+  if (company) {
+    // Honeypot tripped. Look successful, create nothing -- a bot that
+    // filled this field learns nothing from the response.
+    return res.status(201).json({ ok: true });
+  }
 
   // Anything the chosen plan does not grant is discarded here rather
   // than trusted from the client — a hand-crafted request must not be

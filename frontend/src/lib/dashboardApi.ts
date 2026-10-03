@@ -499,6 +499,8 @@ export const authApi = {
     bookingUrl?: string;
     linkedin?: string;
     instagram?: string;
+    /** Honeypot — always empty when a person fills the form. */
+    company?: string;
   }) => post<{ token: string; user: Account }>("/auth/register", input),
   me: () =>
     get<{

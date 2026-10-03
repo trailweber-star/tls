@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Clock, Loader2, Share2 } from "lucide-react";
 import { HEADER_HEIGHT } from "../components/Header";
 import { Seo, ORGANISATION_JSON_LD } from "../components/Seo";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatArticleDate, getArticle } from "../lib/blogApi";
 import type { Article, ArticleCard } from "../lib/blogApi";
 
@@ -194,8 +195,10 @@ export default function BlogPost() {
         {article.heroImageUrl && (
           <>
             <img
-              src={article.heroImageUrl}
+              src={cloudinaryUrl(article.heroImageUrl)}
               alt={article.heroImageAlt ?? ""}
+              width={1200}
+              height={520}
               /* Biased above centre: a cover is usually a person, and a
                  centred crop of a portrait takes their head off. */
               className="absolute inset-0 h-full w-full object-cover object-[center_28%]"

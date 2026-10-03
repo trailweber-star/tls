@@ -155,7 +155,15 @@ async function loadMembers() {
     return mockSpecialistsWithRelations.map((s) => shapeMember(s, accountsById.get(String(s.id)) ?? null));
   }
 
-  const [specialists, accounts] = await Promise.all([specialistRepo.all(), userRepo.all()]);
+  // allLight() skips assembling the relations this list never reads
+  // (conditions, treatments, every clinic location, every approved
+  // review) — see its own comment in repos.js. The counts and facet
+  // dropdowns below still need every member, not a page of them: that
+  // is a deliberate trade this screen makes (see loadMembers' own
+  // comment), the same one the main public search endpoint makes for
+  // the same reason, so it stays as a JS filter/sort/slice rather than
+  // a SQL LIMIT/OFFSET.
+  const [specialists, accounts] = await Promise.all([specialistRepo.allLight(), userRepo.all()]);
   const accountsBySpecialist = new Map();
   for (const a of accounts) {
     if (a.specialistId) accountsBySpecialist.set(String(a.specialistId), a);
