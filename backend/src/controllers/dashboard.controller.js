@@ -536,9 +536,21 @@ export async function updateProfile(req, res) {
       ? await Promise.all(extraSlugs.map((slug) => taxonomyRepo.specialtyBySlug(slug)))
       : [];
 
-    const ids = new Set(extraNodes.filter(Boolean).map((n) => n.id));
-    if (primaryNode) ids.add(primaryNode.id);
-    specialtyIds = [...ids];
+    // Primary goes first, on purpose: it is the one tag a profile can
+    // never lose, so the cap below has to trim from the END of this
+    // list, never drop it.
+    const extraIds = extraNodes.filter(Boolean).map((n) => n.id);
+    specialtyIds = [...new Set(primaryNode ? [primaryNode.id, ...extraIds] : extraIds)];
+
+    /* Basic listings are capped at entitlementsFor().features.subSpecialtyLimit
+       sub-level category tags (see lib/plans.js — "Sub-Level Categories
+       Selection" on the pricing page). Trimmed silently rather than
+       rejected, the same pattern the gallery limit above this function
+       already uses: a save must not fail over content the dashboard
+       already marks Premium-only, it just keeps what the plan grants. */
+    if (ent.features.subSpecialtyLimit != null && specialtyIds.length > ent.features.subSpecialtyLimit) {
+      specialtyIds = specialtyIds.slice(0, ent.features.subSpecialtyLimit);
+    }
   }
 
   let treatmentIds;
