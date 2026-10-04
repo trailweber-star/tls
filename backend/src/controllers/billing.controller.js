@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
-import { organisationApplications as organisationApplicationRepo, specialists as specialistRepo } from "../db/repos.js";
+import { facilities as facilityRepo, organisationApplications as organisationApplicationRepo, specialists as specialistRepo } from "../db/repos.js";
 import {
   PLANS,
   PLAN_IDS,
@@ -83,6 +83,14 @@ async function loadSpecialist(id) {
   return specialistRepo.rawById(id);
 }
 
+/* Organisations only exist once a database is configured — the apply
+   endpoint itself refuses without one (organisations.controller.js) —
+   so there is no demo-mode facility to fall back to here. */
+async function loadFacility(id) {
+  if (!isDbConfigured() || !id) return null;
+  return facilityRepo.rawById(id);
+}
+
 /** Timestamp columns take Date objects; the callers here speak ISO. */
 const DATE_FIELDS = ["planSelectedAt", "planActivatedAt", "planRenewsAt", "nextAvailableAt"];
 function coerceDates(patch) {
@@ -96,6 +104,10 @@ function coerceDates(patch) {
 async function patchSpecialist(id, patch) {
   if (!isDbConfigured()) return updateDemoSpecialist(id, patch);
   return specialistRepo.update(id, coerceDates(patch));
+}
+
+async function patchFacility(id, patch) {
+  return facilityRepo.update(id, coerceDates(patch));
 }
 
 /* ------------------------------------------------------------------ *
@@ -287,8 +299,11 @@ export async function paymentWebhook(req, res) {
     return res.json({ received: true, applied });
   }
   if (event.kind === "payment_failed") {
-    const before = await loadSpecialist(order.specialistId);
-    await patchSpecialist(order.specialistId, { planStatus: "past_due" });
+    const isFacility = Boolean(order.facilityId);
+    const listingId = isFacility ? order.facilityId : order.specialistId;
+    const before = isFacility ? await loadFacility(listingId) : await loadSpecialist(listingId);
+    if (isFacility) await patchFacility(listingId, { planStatus: "past_due" });
+    else await patchSpecialist(listingId, { planStatus: "past_due" });
     /* dueAt is the renewal date that failed, read before the patch.
        ClinWell holds access for exactly 14 days from it and then
        suspends on its own clock (§6.3), so this one date decides
@@ -298,8 +313,11 @@ export async function paymentWebhook(req, res) {
     return res.json({ received: true, applied: true });
   }
   if (event.kind === "canceled") {
-    const before = await loadSpecialist(order.specialistId);
-    await patchSpecialist(order.specialistId, { planStatus: "canceled" });
+    const isFacility = Boolean(order.facilityId);
+    const listingId = isFacility ? order.facilityId : order.specialistId;
+    const before = isFacility ? await loadFacility(listingId) : await loadSpecialist(listingId);
+    if (isFacility) await patchFacility(listingId, { planStatus: "canceled" });
+    else await patchSpecialist(listingId, { planStatus: "canceled" });
     /* effectiveAt is the last day already paid for. ClinWell keeps
        access until the end of it and withdraws nothing early (§6.4). */
     if (before) await onCancelled(before, { effectiveAt: before.planRenewsAt });
@@ -319,11 +337,16 @@ async function activateSubscription(order, { providerRef } = {}) {
   if (!paid.ok) return false;
   if (paid.alreadyApplied) return true; // providers retry; do not extend twice
 
+  // Which listing this order is for — see drizzle/0021_orders_facility_id.sql:
+  // exactly one of the two is ever set.
+  const isFacility = Boolean(order.facilityId);
+  const listingId = isFacility ? order.facilityId : order.specialistId;
+
   /* Captured BEFORE the patch, because the patch erases the very
      distinction ClinWell cares about: once planStatus reads "active"
      there is no way to tell a first activation from a recovered
      payment from a practice un-cancelling. See lib/clinwellLifecycle.js. */
-  const before = await loadSpecialist(order.specialistId);
+  const before = isFacility ? await loadFacility(listingId) : await loadSpecialist(listingId);
 
   const renewsAt = addInterval(new Date(), order.interval).toISOString();
   const patch = {
@@ -341,7 +364,8 @@ async function activateSubscription(order, { providerRef } = {}) {
   // had paid with a subscription that never activated. Provisioning is
   // retried by the sweep instead, and until it succeeds the dashboard
   // shows "workspace being prepared" rather than a broken page.
-  await patchSpecialist(order.specialistId, patch);
+  if (isFacility) await patchFacility(listingId, patch);
+  else await patchSpecialist(listingId, patch);
 
   /* An order that came from an organisation's quote (see
      organisations.controller.js's createOrganisationPaymentLink) closes
@@ -365,7 +389,11 @@ async function activateSubscription(order, { providerRef } = {}) {
           // Not decidedByUserId -- this was the payment deciding it,
           // not an admin, and that column should say so by staying null.
         });
-        if (before) await provisionOrganisationLogin(won ?? application, before);
+        if (before) {
+          await provisionOrganisationLogin(won ?? application, before, {
+            repo: isFacility ? facilityRepo : specialistRepo,
+          });
+        }
       }
     } catch (err) {
       console.error(`[billing] could not settle the organisation application for order ${order.id}:`, err?.message ?? err);
@@ -383,13 +411,13 @@ async function activateSubscription(order, { providerRef } = {}) {
        prepared" rather than a broken page. When a payment recovers or a
        practice un-cancels, this sends payment.recovered or resumed
        instead, and never both. */
-    const queued = await onPaymentSucceeded(before ?? { id: order.specialistId }, {
+    const queued = await onPaymentSucceeded(before ?? { id: listingId }, {
       planId: order.planId,
       interval: order.interval,
       renewsAt,
     });
     if (queued?.skipped && queued.skipped !== "no-clinwell-event") {
-      console.warn(`[billing] ClinWell event not queued for ${order.specialistId}: ${queued.skipped}`);
+      console.warn(`[billing] ClinWell event not queued for ${listingId}: ${queued.skipped}`);
     }
     /* Nudge the outbox so a new subscription is not waiting on the next
        sweep tick. Deliberately not awaited: the practice's confirmation

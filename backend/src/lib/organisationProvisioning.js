@@ -98,12 +98,12 @@ async function sendSetPasswordLink(user, application) {
  * from the admin "resend welcome email" button — the account is
  * created at most once, and the email is sent every time.
  */
-export async function provisionOrganisationLogin(application, specialist, { req = null } = {}) {
-  const alreadyHadLogin = Boolean(specialist.userId);
+export async function provisionOrganisationLogin(application, listing, { req = null, repo = specialistRepo } = {}) {
+  const alreadyHadLogin = Boolean(listing.userId);
 
   let user;
   if (alreadyHadLogin) {
-    user = await userRepo.findById(specialist.userId);
+    user = await userRepo.findById(listing.userId);
   } else {
     user = await userRepo.create({
       email: application.contactEmail,
@@ -112,16 +112,21 @@ export async function provisionOrganisationLogin(application, specialist, { req 
          sendSetPasswordLink below is what lets them choose one. */
       passwordHash: UNUSABLE_PASSWORD,
       fullName: application.contactName || application.organisationName,
+      // There is no separate "facility owner" role yet -- a facility's
+      // account signs in and manages its listing exactly the way a
+      // specialist's does (same dashboard route, same entitlement
+      // code), so it is tagged the same way the rest of the codebase
+      // already tags that kind of account.
       role: "specialist",
     });
 
-    await specialistRepo.update(specialist.id, {
+    await repo.update(listing.id, {
       userId: user.id,
       // Only filled in where the listing does not already say something
       // more specific — an admin may have already set these by hand
       // while the application was being quoted.
-      ...(specialist.claimed ? {} : { claimed: true }),
-      ...(specialist.contactEmail ? {} : { contactEmail: application.contactEmail }),
+      ...(listing.claimed ? {} : { claimed: true }),
+      ...(listing.contactEmail ? {} : { contactEmail: application.contactEmail }),
     });
   }
 
@@ -137,9 +142,9 @@ export async function provisionOrganisationLogin(application, specialist, { req 
       subjectType: "organisation_application",
       subjectId: application.id,
       subjectLabel: `${application.organisationName} <${application.contactEmail}>`,
-      detail: { specialistId: specialist.id, alreadyHadLogin },
+      detail: { listingId: listing.id, alreadyHadLogin },
     });
   }
 
-  return { alreadyHadLogin, userId: user?.id ?? specialist.userId ?? null };
+  return { alreadyHadLogin, userId: user?.id ?? listing.userId ?? null };
 }

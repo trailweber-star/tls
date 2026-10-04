@@ -27,13 +27,21 @@
  * ------------------------------------------------------------------ */
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
-import { organisationApplications as repo, specialists as specialistRepo, users as userRepo } from "../db/repos.js";
+import {
+  facilities as facilityRepo,
+  organisationApplications as repo,
+  specialists as specialistRepo,
+  taxonomy,
+  users as userRepo,
+} from "../db/repos.js";
 import { NOTIFICATION_TYPES, notifyAdmins } from "../lib/notifications.js";
 import { sendMail } from "../lib/mailer.js";
 import { clientIp } from "../lib/requestIp.js";
 import { createCheckout, orderStore, quoteAmount } from "../lib/payments.js";
 import { getPlan } from "../lib/plans.js";
 import { provisionOrganisationLogin } from "../lib/organisationProvisioning.js";
+import { distanceKm } from "../lib/geo.js";
+import { resolveSuggestion } from "../lib/geocoders.js";
 
 import { siteUrl } from "../lib/urls.js";
 const SITE_URL = siteUrl();
@@ -200,18 +208,86 @@ export async function listOrganisationApplications(req, res) {
 /**
  * The order and listing an application's payment link produced, if any.
  *
- * `orders.specialistId` is the reliable link -- the application itself
- * never stores a specialist id directly (see the module comment on
- * createOrganisationPaymentLink), only the order that came out of
- * paying. Null at any step just means "not there yet", not an error.
+ * `orders.specialistId` / `orders.facilityId` is the reliable link --
+ * the application itself never stores a listing id directly (see the
+ * module comment on createOrganisationPaymentLink), only the order that
+ * came out of paying. Null at any step just means "not there yet", not
+ * an error. Most organisations become a `facilities` row, but the
+ * payment link can still be pointed at an existing `specialists` row
+ * (see createOrganisationPaymentLink), so both are checked.
  */
-async function resolveOrderSpecialist(application) {
+async function resolveOrderListing(application) {
   if (!application.orderId) return null;
   const order = await orderStore.find(application.orderId);
   if (!order) return null;
-  const specialist = await specialistRepo.rawById(order.specialistId);
-  if (!specialist) return null;
-  return { order, specialist };
+  if (order.facilityId) {
+    const facility = await facilityRepo.rawById(order.facilityId);
+    if (!facility) return null;
+    return { order, listing: facility, kind: "facility", repo: facilityRepo };
+  }
+  if (order.specialistId) {
+    const specialist = await specialistRepo.rawById(order.specialistId);
+    if (!specialist) return null;
+    return { order, listing: specialist, kind: "specialist", repo: specialistRepo };
+  }
+  return null;
+}
+
+/**
+ * Best-effort match of the application's free-text specialties against
+ * the real facility category tree, so a facility created from a won
+ * application starts with real, filterable categories instead of none.
+ * Exact name match first, then "the category name appears in what they
+ * typed" (catches "Cardiology" matching a typed "Cardiology clinic").
+ * Anything that matches nothing is simply dropped -- same tolerant
+ * stance as the rest of this file -- and an admin can correct it from
+ * the facility's profile afterwards.
+ */
+async function matchCategoryIds(freeTextSpecialties) {
+  const wanted = (freeTextSpecialties ?? []).map((s) => String(s).trim().toLowerCase()).filter(Boolean);
+  if (!wanted.length) return [];
+  const categories = await taxonomy.facilityCategories();
+  const ids = new Set();
+  for (const text of wanted) {
+    const exact = categories.find((c) => c.name.toLowerCase() === text);
+    if (exact) {
+      ids.add(exact.id);
+      continue;
+    }
+    const partial = categories.find((c) => text.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(text));
+    if (partial) ids.add(partial.id);
+  }
+  return [...ids];
+}
+
+/**
+ * Turn a postcode/town the admin types into a cityId -- the same
+ * nearest-known-city fallback geo.controller.js's reverseGeocode uses,
+ * because a facility needs a real row in `cities` (it is NOT NULL),
+ * not just coordinates.
+ */
+async function resolveCityId(postcode) {
+  const query = String(postcode ?? "").trim();
+  if (!query) return { cityId: null, address: null, postcode: null, lat: null, lng: null };
+  const hit = await resolveSuggestion({ postcode: query, label: query }).catch(() => null);
+  if (!hit) return { cityId: null, address: null, postcode: query, lat: null, lng: null };
+  const cities = await taxonomy.cities();
+  let nearest = null;
+  let best = Infinity;
+  for (const city of cities) {
+    const d = distanceKm({ lat: hit.lat, lng: hit.lng }, { lat: city.lat, lng: city.lng });
+    if (d != null && d < best) {
+      best = d;
+      nearest = city;
+    }
+  }
+  return {
+    cityId: nearest?.id ?? null,
+    address: hit.label ?? null,
+    postcode: hit.postcode ?? query,
+    lat: hit.lat ?? null,
+    lng: hit.lng ?? null,
+  };
 }
 
 // GET /api/admin/organisations/:id
@@ -223,14 +299,15 @@ export async function getOrganisationApplication(req, res) {
      from the same address is usually a follow-up, and quoting it as if
      it were new is how you quote the same hospital twice, differently. */
   const history = await repo.byEmail(application.contactEmail);
-  const resolved = await resolveOrderSpecialist(application);
+  const resolved = await resolveOrderListing(application);
   res.json({
     application,
     history: history.filter((h) => h.id !== application.id),
     // null: no paid order to hang a login off yet. Otherwise whether
     // that listing already has one -- what the admin screen uses to
     // show "Create login" or "Resend welcome email".
-    hasLogin: resolved ? Boolean(resolved.specialist.userId) : null,
+    hasLogin: resolved ? Boolean(resolved.listing.userId) : null,
+    listingKind: resolved?.kind ?? null,
   });
 }
 
@@ -345,9 +422,22 @@ export async function setOrganisationStatus(req, res) {
  * activation path — so everything downstream works without knowing the
  * price was negotiated.
  *
- * Requires a listing to attach the subscription to. An organisation
- * pays for a listing, so quoting one that does not exist yet would
- * produce an order with nothing to activate.
+ * Requires a listing to attach the subscription to, and three ways to
+ * supply one:
+ *
+ *   facilityId     an existing `facilities` row -- typically one this
+ *                   organisation already claimed or that was imported.
+ *   specialistId   kept for the rare case a "won" application really is
+ *                   for an individual clinician's own listing rather
+ *                   than a place.
+ *   neither         the common case for a hospital/clinic/pharmacy/care
+ *                   home that does not exist as a listing yet: a new
+ *                   `facilities` row is created right here from what
+ *                   the application told us, which is why `postcode`
+ *                   is required in that case -- `facilities.cityId` is
+ *                   not nullable, and the public application form does
+ *                   not collect a location today (see the module
+ *                   header), so the admin supplies one at this step.
  */
 export async function createOrganisationPaymentLink(req, res) {
   if (!isDbConfigured()) return res.status(503).json({ error: "This needs a database." });
@@ -360,13 +450,57 @@ export async function createOrganisationPaymentLink(req, res) {
   }
 
   const specialistId = String(req.body?.specialistId ?? "").trim();
-  if (!specialistId) {
-    return res.status(400).json({
-      error: "Say which listing this subscription is for — an organisation pays for a listing.",
-    });
+  const facilityId = String(req.body?.facilityId ?? "").trim();
+
+  let specialist = null;
+  let facility = null;
+
+  if (specialistId) {
+    specialist = await specialistRepo.rawById(specialistId).catch(() => null);
+    if (!specialist) return res.status(404).json({ error: "No such listing." });
+  } else if (facilityId) {
+    facility = await facilityRepo.rawById(facilityId).catch(() => null);
+    if (!facility) return res.status(404).json({ error: "No such listing." });
+  } else {
+    const postcode = String(req.body?.postcode ?? "").trim();
+    if (!postcode) {
+      return res.status(400).json({
+        error:
+          "Say which listing this subscription is for, or give a postcode/town so a new one can be created — an organisation pays for a listing, and a facility needs a location.",
+      });
+    }
+    const located = await resolveCityId(postcode);
+    if (!located.cityId) {
+      return res.status(400).json({ error: "Could not place that postcode/town — try a more specific one." });
+    }
+
+    const slugBase = application.organisationName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    let slug = slugBase || "organisation";
+    for (let i = 2; await facilityRepo.slugExists(slug); i += 1) slug = `${slugBase}-${i}`;
+
+    const categoryIds = await matchCategoryIds(application.specialties);
+
+    facility = await facilityRepo.create(
+      {
+        facilityType: application.organisationType,
+        slug,
+        name: application.organisationName,
+        description: application.notes || null,
+        websiteUrl: application.websiteUrl || null,
+        contactEmail: application.contactEmail,
+        contactPhone: application.contactPhone || null,
+        cityId: located.cityId,
+        address: located.address,
+        postcode: located.postcode,
+        lat: located.lat,
+        lng: located.lng,
+      },
+      { categoryIds }
+    );
   }
-  const specialist = await specialistRepo.rawById(specialistId).catch(() => null);
-  if (!specialist) return res.status(404).json({ error: "No such listing." });
 
   const pricing = quoteAmount({
     netMinor: application.quotedNetMinor,
@@ -375,7 +509,9 @@ export async function createOrganisationPaymentLink(req, res) {
   });
 
   const checkout = await createCheckout({
-    specialist: { ...specialist, contactEmail: specialist.contactEmail ?? application.contactEmail },
+    ...(specialist
+      ? { specialist: { ...specialist, contactEmail: specialist.contactEmail ?? application.contactEmail } }
+      : { facility: { ...facility, contactEmail: facility.contactEmail ?? application.contactEmail } }),
     planId: application.quotedPlan,
     interval: application.quotedInterval ?? "yearly",
     successUrl: `${SITE_URL}/dashboard/billing?paid=1`,
@@ -427,12 +563,15 @@ export async function createOrganisationLogin(req, res) {
   const application = await repo.findById(String(req.params.id ?? ""));
   if (!application) return res.status(404).json({ error: "No such application." });
 
-  const resolved = await resolveOrderSpecialist(application);
+  const resolved = await resolveOrderListing(application);
   if (!resolved) {
     return res.status(409).json({ error: "This application isn't linked to a paid order yet." });
   }
 
-  const { alreadyHadLogin } = await provisionOrganisationLogin(application, resolved.specialist, { req });
+  const { alreadyHadLogin } = await provisionOrganisationLogin(application, resolved.listing, {
+    repo: resolved.repo,
+    req,
+  });
 
   res.json({ ok: true, alreadyHadLogin });
 }

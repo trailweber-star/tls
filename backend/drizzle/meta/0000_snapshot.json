@@ -1,6 +1,6 @@
 {
-  "id": "9d6ca15f-30ed-48fc-854c-7a4e925275d8",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "c7f43fd0-c4d8-478f-af81-feccde4980b6",
+  "prevId": "9d6ca15f-30ed-48fc-854c-7a4e925275d8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1432,7 +1432,13 @@
           "name": "specialist_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "facility_id": {
+          "name": "facility_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "specialist_name": {
           "name": "specialist_name",
@@ -1595,6 +1601,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "orders_facility_idx": {
+          "name": "orders_facility_idx",
+          "columns": [
+            {
+              "expression": "facility_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1610,12 +1637,30 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "orders_facility_id_facilities_id_fk": {
+          "name": "orders_facility_id_facilities_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "facilities",
+          "columnsFrom": [
+            "facility_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "orders_specialist_xor_facility": {
+          "name": "orders_specialist_xor_facility",
+          "value": "(specialist_id is not null) <> (facility_id is not null)"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.push_subscriptions": {

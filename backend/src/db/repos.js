@@ -767,10 +767,64 @@ export const facilities = {
     const [full] = await assembleFacilities(rows);
     return full ?? null;
   },
+
+  /** The bare row, without relations — mirrors specialists.rawById. */
+  async rawById(id) {
+    const [row] = await db().select().from(t.facilities).where(eq(t.facilities.id, id)).limit(1);
+    return row ?? null;
+  },
+
   async byIds(ids) {
     if (!ids.length) return [];
     const rows = await db().select().from(t.facilities).where(inArray(t.facilities.id, ids));
     return assembleFacilities(rows);
+  },
+
+  async slugExists(slug) {
+    const [row] = await db().select({ id: t.facilities.id }).from(t.facilities).where(eq(t.facilities.slug, slug)).limit(1);
+    return Boolean(row);
+  },
+
+  /**
+   * Create a listing and its category links in one transaction — the
+   * same contract as specialists.create, and for the same reason: a
+   * facility with no categories is not searchable at all, so it is
+   * never left to a second call that might not happen.
+   */
+  async create(data, { categoryIds = [] } = {}) {
+    const id = data.id ?? newId("fac");
+    await db().transaction(async (tx) => {
+      await tx.insert(t.facilities).values({ ...data, id });
+      const unique = [...new Set((categoryIds ?? []).filter(Boolean))];
+      if (unique.length) {
+        await tx
+          .insert(t.facilityCategoryLinks)
+          .values(unique.map((categoryId) => ({ facilityId: id, categoryId })))
+          .onConflictDoNothing();
+      }
+    });
+    return facilities.findById(id);
+  },
+
+  /** Patch columns. Category links go through addCategory/removeCategory. */
+  async update(id, patch) {
+    if (Object.keys(patch).length === 0) return facilities.rawById(id);
+    const [row] = await db()
+      .update(t.facilities)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(t.facilities.id, id))
+      .returning();
+    return row ?? null;
+  },
+
+  async addCategory(facilityId, categoryId) {
+    await db().insert(t.facilityCategoryLinks).values({ facilityId, categoryId }).onConflictDoNothing();
+  },
+
+  async removeCategory(facilityId, categoryId) {
+    await db()
+      .delete(t.facilityCategoryLinks)
+      .where(and(eq(t.facilityCategoryLinks.facilityId, facilityId), eq(t.facilityCategoryLinks.categoryId, categoryId)));
   },
 
   /** Mirrors specialists.recomputeRating — one rounding rule, two tables. */

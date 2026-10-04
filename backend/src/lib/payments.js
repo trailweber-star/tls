@@ -138,6 +138,22 @@ export const orderStore = {
     return rows.map(normaliseOrder);
   },
 
+  /** Mirrors forSpecialist, for the same orders table — a facility's
+   *  billing history reads from here rather than a second store. */
+  async forFacility(facilityId) {
+    if (!isDbConfigured()) {
+      return demoOrders
+        .filter((o) => o.facilityId === facilityId)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+    const rows = await getDb()
+      .select()
+      .from(orders)
+      .where(eq(orders.facilityId, facilityId))
+      .orderBy(desc(orders.createdAt));
+    return rows.map(normaliseOrder);
+  },
+
   async update(id, patch) {
     if (!isDbConfigured()) {
       const order = demoOrders.find((o) => o.id === id);
@@ -240,17 +256,31 @@ export function quoteAmount({ netMinor, planId, interval = "yearly" }) {
  *                 charge instead of the catalogue price. Everything
  *                 else about the order is identical.
  */
-export async function createCheckout({ specialist, planId, interval, successUrl, cancelUrl, pricing = null }) {
+export async function createCheckout({ specialist, facility, planId, interval, successUrl, cancelUrl, pricing = null }) {
+  if (!specialist && !facility) {
+    throw new Error("createCheckout needs a specialist or a facility to bill.");
+  }
+  if (specialist && facility) {
+    throw new Error("createCheckout takes a specialist or a facility, not both.");
+  }
+
   if (!isPaidPlan(planId)) {
     return { status: "free", order: null };
   }
 
+  const listing = specialist ?? facility;
   const agreed = pricing ?? quote(planId, interval);
   const order = await orderStore.create({
     id: `ord_${crypto.randomBytes(9).toString("hex")}`,
-    specialistId: specialist.id,
-    specialistName: specialist.fullName,
-    email: specialist.contactEmail ?? null,
+    specialistId: specialist?.id ?? null,
+    facilityId: facility?.id ?? null,
+    // "specialistName" is a legacy column name that predates facilities
+    // existing at all — every reader of an order (admin screens, the
+    // confirmation email) just wants "who this was for", so a
+    // facility's name goes in the same column rather than adding a
+    // second, usually-null column everything has to remember to check.
+    specialistName: listing.fullName ?? listing.name,
+    email: listing.contactEmail ?? null,
     ...agreed,
     status: "awaiting_payment",
     provider: provider?.name ?? "none",

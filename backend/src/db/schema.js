@@ -1383,9 +1383,14 @@ export const orders = pgTable(
   {
     id: text("id").primaryKey(),
 
-    specialistId: text("specialist_id")
-      .notNull()
-      .references(() => specialists.id, { onDelete: "cascade" }),
+    /* Exactly one of specialistId/facilityId is set — which the order
+       is for decides which listing activateSubscription() patches when
+       it is paid. Both nullable rather than a discriminated union
+       because Postgres has no clean way to express "one of two FKs" as
+       a column type; the CHECK below (see the migration) is what
+       actually enforces it. */
+    specialistId: text("specialist_id").references(() => specialists.id, { onDelete: "cascade" }),
+    facilityId: text("facility_id").references(() => facilities.id, { onDelete: "cascade" }),
     specialistName: text("specialist_name").notNull(),
     email: text("email"),
 
@@ -1409,6 +1414,7 @@ export const orders = pgTable(
   },
   (t) => [
     index("orders_specialist_idx").on(t.specialistId, t.createdAt),
+    index("orders_facility_idx").on(t.facilityId, t.createdAt),
     index("orders_status_idx").on(t.status),
     index("orders_provider_ref_idx").on(t.providerRef),
   ]
@@ -1931,6 +1937,7 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
 
 export const ordersRelations = relations(orders, ({ one }) => ({
   specialist: one(specialists, { fields: [orders.specialistId], references: [specialists.id] }),
+  facility: one(facilities, { fields: [orders.facilityId], references: [facilities.id] }),
 }));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
