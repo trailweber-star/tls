@@ -359,6 +359,19 @@ function expertWitnessPracticeAreas(all: Specialty[]) {
   return all.filter((s) => s.parentId === medicolegal.id);
 }
 
+/** The "narrow it down" options under a single type of report -- e.g.
+ *  Clinical Negligence's seven (Surgical Error, Birth Injury &
+ *  Obstetric Negligence, ...). This is the same third taxonomy level
+ *  the homepage search's "Narrow it down" picker reads
+ *  (SearchBar.tsx's mlSubSubOptions) -- a specialist who tags the leaf
+ *  here still matches a search scoped to the type of report above it,
+ *  since branchSlugs() walks down from whichever slug was searched. */
+function expertWitnessReportSubOptions(all: Specialty[], parentSlug: string) {
+  const parent = all.find((s) => s.slug === parentSlug);
+  if (!parent) return [];
+  return all.filter((s) => s.parentId === parent.id);
+}
+
 /** The "medical specialty" options -- the clinical-discipline leaves
  *  under expert-witness-medical-specialty (Cardiology, Orthopaedics,
  *  and so on -- 0022_expert_witness_medical_specialty.sql). Sorted by
@@ -657,24 +670,64 @@ export default function ProfileEditor() {
               <>
                 <Labelled
                   label="Type of report"
-                  hint="Every kind of expert witness report you write. Solicitors searching Expert Witnesses filter by this, so an empty list means you won't turn up in a report-type search -- pick as many as apply."
+                  hint="Every kind of expert witness report you write. Solicitors searching Expert Witnesses filter by this, so an empty list means you won't turn up in a report-type search -- pick as many as apply, then narrow down each one you pick."
                 >
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="flex flex-col gap-3">
                     {expertWitnessPracticeAreas(specialties).map((opt) => {
                       const checked = draft.caseTypeSlugs.includes(opt.slug);
+                      const subOptions = expertWitnessReportSubOptions(specialties, opt.slug);
                       return (
-                        <label key={opt.slug} className={checkboxTileClass(checked)}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => set("caseTypeSlugs", toggleValue(draft.caseTypeSlugs, opt.slug))}
-                            className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
-                          />
-                          {opt.name}
-                        </label>
+                        <div key={opt.slug} className="flex flex-col gap-2">
+                          <label className={checkboxTileClass(checked)}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                // Unchecking the parent also drops its
+                                // sub-options -- otherwise they stay
+                                // active in caseTypeSlugs but vanish
+                                // from view, which nobody would expect.
+                                const next = checked
+                                  ? draft.caseTypeSlugs.filter(
+                                      (s) => s !== opt.slug && !subOptions.some((sub) => sub.slug === s)
+                                    )
+                                  : toggleValue(draft.caseTypeSlugs, opt.slug);
+                                set("caseTypeSlugs", next);
+                              }}
+                              className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                            />
+                            {opt.name}
+                          </label>
+
+                          {checked && subOptions.length > 0 && (
+                            <div className="ml-6 grid grid-cols-1 gap-2 border-l border-line pl-4 sm:grid-cols-2">
+                              {subOptions.map((sub) => {
+                                const subChecked = draft.caseTypeSlugs.includes(sub.slug);
+                                return (
+                                  <label key={sub.slug} className={checkboxTileClass(subChecked)}>
+                                    <input
+                                      type="checkbox"
+                                      checked={subChecked}
+                                      onChange={() =>
+                                        set("caseTypeSlugs", toggleValue(draft.caseTypeSlugs, sub.slug))
+                                      }
+                                      className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                                    />
+                                    {sub.name}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
+                  <p className="mt-2 text-[12.5px] text-ink-muted">
+                    Narrowing down is optional -- picking just "Clinical Negligence" still matches searches for any
+                    of its sub-types below it, but naming the specific one helps you turn up in a more targeted
+                    search too.
+                  </p>
                 </Labelled>
 
                 <Labelled

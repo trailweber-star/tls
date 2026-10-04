@@ -85,6 +85,16 @@ function expertWitnessPracticeAreas(all: Specialty[]) {
   return all.filter((s) => s.parentId === medicolegal.id);
 }
 
+/** The "narrow it down" options under a single type of report -- e.g.
+ *  Clinical Negligence's seven (Surgical Error, Birth Injury &
+ *  Obstetric Negligence, ...). Same third taxonomy level the homepage
+ *  search's "Narrow it down" picker reads. */
+function expertWitnessReportSubOptions(all: Specialty[], parentSlug: string) {
+  const parent = all.find((s) => s.slug === parentSlug);
+  if (!parent) return [];
+  return all.filter((s) => s.parentId === parent.id);
+}
+
 /** The "medical specialty" options -- the clinical-discipline leaves
  *  under expert-witness-medical-specialty. Sorted by name: there are
  *  close to ninety of these, in no useful order for a flat checkbox
@@ -451,26 +461,68 @@ export default function Register() {
               <>
                 <Field
                   label="Type of report"
-                  hint="Every kind of expert witness report you write — Personal Injury, Clinical Negligence and so on. Solicitors search by this, so an empty list means you won't turn up in a report-type search."
+                  hint="Every kind of expert witness report you write — Personal Injury, Clinical Negligence and so on. Solicitors search by this, so an empty list means you won't turn up in a report-type search. Pick as many as apply, then narrow down each one."
                 >
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="flex flex-col gap-3">
                     {expertWitnessPracticeAreas(allSpecialties).map((opt) => {
                       const checked = values.caseTypeSlugs.includes(opt.slug);
                       const disabled = !checked && atSubSpecialtyLimit;
+                      const subOptions = expertWitnessReportSubOptions(allSpecialties, opt.slug);
                       return (
-                        <label key={opt.slug} className={checkboxTileClass(checked, disabled)}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={disabled}
-                            onChange={() => toggleArrayValue("caseTypeSlugs", opt.slug)}
-                            className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
-                          />
-                          {opt.name}
-                        </label>
+                        <div key={opt.slug} className="flex flex-col gap-2">
+                          <label className={checkboxTileClass(checked, disabled)}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={disabled}
+                              onChange={() => {
+                                // Unchecking the parent also drops its
+                                // sub-options -- otherwise they stay
+                                // active but vanish from view.
+                                if (checked) {
+                                  setValues((v) => ({
+                                    ...v,
+                                    caseTypeSlugs: v.caseTypeSlugs.filter(
+                                      (s) => s !== opt.slug && !subOptions.some((sub) => sub.slug === s)
+                                    ),
+                                  }));
+                                } else {
+                                  toggleArrayValue("caseTypeSlugs", opt.slug);
+                                }
+                              }}
+                              className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                            />
+                            {opt.name}
+                          </label>
+
+                          {checked && subOptions.length > 0 && (
+                            <div className="ml-6 grid grid-cols-1 gap-2 border-l border-line pl-4 sm:grid-cols-2">
+                              {subOptions.map((sub) => {
+                                const subChecked = values.caseTypeSlugs.includes(sub.slug);
+                                const subDisabled = !subChecked && atSubSpecialtyLimit;
+                                return (
+                                  <label key={sub.slug} className={checkboxTileClass(subChecked, subDisabled)}>
+                                    <input
+                                      type="checkbox"
+                                      checked={subChecked}
+                                      disabled={subDisabled}
+                                      onChange={() => toggleArrayValue("caseTypeSlugs", sub.slug)}
+                                      className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                                    />
+                                    {sub.name}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
+                  <p className="mt-2 text-[12.5px] text-ink-muted">
+                    Narrowing down is optional — picking just "Clinical Negligence" still matches searches for its
+                    sub-types below it, but naming the specific one helps you turn up in a more targeted search too.
+                  </p>
                 </Field>
 
                 <Field
