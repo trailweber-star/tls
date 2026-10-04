@@ -88,6 +88,14 @@ const registerSchema = z.object({
   title: z.string().max(160).optional().or(z.literal("")),
   registrationNumber: z.string().max(60).optional().or(z.literal("")),
   primarySpecialtySlug: z.string().max(120).optional().or(z.literal("")),
+  /* Expert Witness only -- see dashboard.controller.js's updateProfile
+     and ProfileEditor.tsx's two guided second steps, which this mirrors
+     at signup so a new Expert Witness does not have to visit their
+     dashboard just to be tagged with the report types and clinical
+     disciplines solicitors actually search by. Harmless, empty arrays
+     for every other specialty. */
+  caseTypeSlugs: z.array(z.string().max(120)).max(40).optional().default([]),
+  clinicalSpecialtySlugs: z.array(z.string().max(120)).max(100).optional().default([]),
   phone: z.string().max(50).optional().or(z.literal("")),
   // Chosen on the pricing page and carried through signup. A paid plan
   // does not charge anyone here: it records the intent and waits for
@@ -120,6 +128,7 @@ export async function register(req, res) {
   }
   const {
     fullName, email, password, title, registrationNumber, primarySpecialtySlug, phone,
+    caseTypeSlugs, clinicalSpecialtySlugs,
     plan, planInterval, websiteUrl, bookingUrl, linkedin, instagram, company,
   } = parsed.data;
 
@@ -198,6 +207,25 @@ export async function register(req, res) {
     ? await taxonomyRepo.specialtyBySlug(primarySpecialtySlug)
     : null;
 
+  /* Same union-then-cap rule dashboard.controller.js's updateProfile
+     enforces on every later save (see the comment there): primary
+     specialty first so a cap never trims the one tag a profile can't
+     lose, Expert Witness's two multi-selects unioned in after it, and
+     the whole set capped to what this plan's subSpecialtyLimit grants
+     (lib/plans.js — "Sub-Level Categories Selection" on the pricing
+     page) — enforced at signup, not only on a later dashboard save. */
+  const extraSlugs = [...new Set([...(caseTypeSlugs ?? []), ...(clinicalSpecialtySlugs ?? [])])];
+  const extraSpecialtyNodes = extraSlugs.length
+    ? await Promise.all(extraSlugs.map((slug) => taxonomyRepo.specialtyBySlug(slug)))
+    : [];
+  const extraSpecialtyIds = extraSpecialtyNodes.filter(Boolean).map((n) => n.id);
+  let specialtyIds = [
+    ...new Set(primarySpecialty ? [primarySpecialty.id, ...extraSpecialtyIds] : extraSpecialtyIds),
+  ];
+  if (granted.subSpecialtyLimit != null && specialtyIds.length > granted.subSpecialtyLimit) {
+    specialtyIds = specialtyIds.slice(0, granted.subSpecialtyLimit);
+  }
+
   const now = new Date();
   /* Where this sign-up came from, kept on the account. It is the first
      thing an admin looks at when deciding whether a new listing is a
@@ -238,7 +266,7 @@ export async function register(req, res) {
       application: { submittedAt: now.toISOString(), notes: null, documents: [] },
       verificationHistory: [{ action: "submitted", byName: fullName, at: now.toISOString() }],
     },
-    { specialtyIds: primarySpecialty ? [primarySpecialty.id] : [] }
+    { specialtyIds }
   );
 
   user.specialistId = specialist.id;

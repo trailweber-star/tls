@@ -499,6 +499,11 @@ export const authApi = {
     bookingUrl?: string;
     linkedin?: string;
     instagram?: string;
+    /** Expert Witness only: "type of report" and clinical-discipline tags,
+        picked at signup so the member is searchable from the homepage
+        immediately rather than only after a later dashboard edit. */
+    caseTypeSlugs?: string[];
+    clinicalSpecialtySlugs?: string[];
     /** Honeypot — always empty when a person fills the form. */
     company?: string;
   }) => post<{ token: string; user: Account }>("/auth/register", input),

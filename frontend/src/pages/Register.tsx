@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/dashboardApi";
-import { getTopLevelSpecialties } from "../lib/api";
+import { getAllSpecialties, getTopLevelSpecialties } from "../lib/api";
 import { money, plansApi } from "../lib/plansApi";
 import type { BillingInterval, Plan, PlanCatalogue, PlanId } from "../lib/plansApi";
 import type { Specialty } from "../lib/types";
@@ -31,6 +31,10 @@ type Values = {
   confirm: string;
   registrationNumber: string;
   primarySpecialtySlug: string;
+  /* Expert Witness only -- see the conditional fields below and
+     ProfileEditor.tsx's two guided second steps, which these mirror. */
+  caseTypeSlugs: string[];
+  clinicalSpecialtySlugs: string[];
   phone: string;
   websiteUrl: string;
   linkedin: string;
@@ -48,6 +52,8 @@ const EMPTY: Values = {
   confirm: "",
   registrationNumber: "",
   primarySpecialtySlug: "",
+  caseTypeSlugs: [],
+  clinicalSpecialtySlugs: [],
   phone: "",
   websiteUrl: "",
   linkedin: "",
@@ -60,6 +66,51 @@ const inputClass =
   "w-full rounded-xl border border-line bg-white px-4 py-3 text-[14px] outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20";
 
 const isPlanId = (v: string | null): v is PlanId => v === "basic" || v === "premium" || v === "clinwell";
+
+/* ------------------------------------------------------------------ *
+ * Expert Witness -- the same two guided multi-selects
+ * ProfileEditor.tsx's dashboard editor offers (see its own comment on
+ * isExpertWitnessBranch), shown at signup instead of only after the
+ * fact. The dropdown above is top-level only ("Expert Witness" is
+ * itself a top-level specialty here), so there is no branch to walk up
+ * -- picking it IS picking the branch.
+ * ------------------------------------------------------------------ */
+const EXPERT_WITNESS_SLUG = "expert-witness";
+
+/** The "type of report" options -- direct children of the Medicolegal
+ *  branch (Personal Injury, Clinical Negligence, and so on). */
+function expertWitnessPracticeAreas(all: Specialty[]) {
+  const medicolegal = all.find((s) => s.slug === "expert-witness-medicolegal");
+  if (!medicolegal) return [];
+  return all.filter((s) => s.parentId === medicolegal.id);
+}
+
+/** The "medical specialty" options -- the clinical-discipline leaves
+ *  under expert-witness-medical-specialty. Sorted by name: there are
+ *  close to ninety of these, in no useful order for a flat checkbox
+ *  grid. */
+function expertWitnessMedicalSpecialties(all: Specialty[]) {
+  const branch = all.find((s) => s.slug === "expert-witness-medical-specialty");
+  if (!branch) return [];
+  return all.filter((s) => s.parentId === branch.id).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Add/remove a value from a small multi-select array. */
+const toggleValue = (values: string[], value: string) =>
+  values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
+
+/** The shared look for one tile in a checkbox grid -- teal when picked,
+ *  muted otherwise, dimmed once the plan's sub-specialty cap is reached
+ *  and this tile is not one of the ones already picked. */
+function checkboxTileClass(checked: boolean, disabled: boolean) {
+  return `flex items-center gap-2 rounded-lg border px-3 py-2 text-[13.5px] font-medium ${
+    checked
+      ? "border-teal-300 bg-teal-50 text-teal-800"
+      : disabled
+        ? "border-line text-ink-muted/50"
+        : "border-line text-ink-muted"
+  }`;
+}
 
 export default function Register() {
   const { signUp } = useAuth();
@@ -77,10 +128,15 @@ export default function Register() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  // The full taxonomy, fetched only to build the two Expert Witness
+  // checkbox grids below -- the dropdown above stays driven by
+  // getTopLevelSpecialties(), unchanged.
+  const [allSpecialties, setAllSpecialties] = useState<Specialty[]>([]);
 
   useEffect(() => {
     plansApi.catalogue().then(setCatalogue).catch(() => setCatalogue(null));
     getTopLevelSpecialties().then(setSpecialties).catch(() => setSpecialties([]));
+    getAllSpecialties().then(setAllSpecialties).catch(() => setAllSpecialties([]));
   }, []);
 
   const plan: Plan | null = catalogue?.plans.find((p) => p.id === planId) ?? null;
@@ -100,6 +156,14 @@ export default function Register() {
 
   const set = (key: keyof Values) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setValues((v) => ({ ...v, [key]: e.target.value }));
+
+  const toggleArrayValue = (key: "caseTypeSlugs" | "clinicalSpecialtySlugs", value: string) =>
+    setValues((v) => ({ ...v, [key]: toggleValue(v[key], value) }));
+
+  const isExpertWitness = values.primarySpecialtySlug === EXPERT_WITNESS_SLUG;
+  const subSpecialtyLimit = features?.subSpecialtyLimit ?? null;
+  const subSpecialtyCount = values.caseTypeSlugs.length + values.clinicalSpecialtySlugs.length;
+  const atSubSpecialtyLimit = subSpecialtyLimit != null && subSpecialtyCount >= subSpecialtyLimit;
 
   const errors = useMemo(() => {
     const e: Partial<Record<keyof Values, string>> = {};
@@ -158,6 +222,9 @@ export default function Register() {
             }
           : {}),
         ...(features?.bookingLink ? { bookingUrl: values.bookingUrl.trim() || undefined } : {}),
+        ...(isExpertWitness
+          ? { caseTypeSlugs: values.caseTypeSlugs, clinicalSpecialtySlugs: values.clinicalSpecialtySlugs }
+          : {}),
         company: values.company,
       });
       // A paid plan lands on billing, where the next step is explained;
@@ -379,6 +446,66 @@ export default function Register() {
                 ))}
               </select>
             </Field>
+
+            {isExpertWitness && (
+              <>
+                <Field
+                  label="Type of report"
+                  hint="Every kind of expert witness report you write — Personal Injury, Clinical Negligence and so on. Solicitors search by this, so an empty list means you won't turn up in a report-type search."
+                >
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {expertWitnessPracticeAreas(allSpecialties).map((opt) => {
+                      const checked = values.caseTypeSlugs.includes(opt.slug);
+                      const disabled = !checked && atSubSpecialtyLimit;
+                      return (
+                        <label key={opt.slug} className={checkboxTileClass(checked, disabled)}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={() => toggleArrayValue("caseTypeSlugs", opt.slug)}
+                            className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                          />
+                          {opt.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </Field>
+
+                <Field
+                  label="Medical specialty"
+                  optional
+                  hint="Every clinical discipline you're instructed on as an expert witness — filtered separately from the type of report above, so solicitors can search by either."
+                >
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {expertWitnessMedicalSpecialties(allSpecialties).map((opt) => {
+                      const checked = values.clinicalSpecialtySlugs.includes(opt.slug);
+                      const disabled = !checked && atSubSpecialtyLimit;
+                      return (
+                        <label key={opt.slug} className={checkboxTileClass(checked, disabled)}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={() => toggleArrayValue("clinicalSpecialtySlugs", opt.slug)}
+                            className="h-4 w-4 rounded border-line text-teal-600 focus:ring-teal-500"
+                          />
+                          {opt.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </Field>
+
+                {subSpecialtyLimit != null && (
+                  <p className="text-[12.5px] text-ink-muted">
+                    Your plan covers {subSpecialtyLimit} of these in total — the rest are available once you
+                    upgrade to Premium.
+                  </p>
+                )}
+              </>
+            )}
 
             <Field
               label="Registration number"
