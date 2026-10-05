@@ -158,10 +158,26 @@ export const orderStatusEnum = pgEnum("order_status", [
 
 export const notificationTypeEnum = pgEnum("notification_type", [
   "signup_pending",
+  // Sent to the specialist themselves the moment they apply -- not to be
+  // confused with signup_pending above, which is the admin's copy of the
+  // same event. Informational only, so left out of lib/notifications.js's
+  // ACTIONABLE set.
+  "application_received",
   "claim_pending",
   "approval_overdue",
   "payment_received",
+  // Sent to an admin, or to the support inbox's bell, when a patient's
+  // enquiry has nowhere else to go (the site's contact form; a
+  // facility with no contactEmail on file -- see leads.controller.js).
   "enquiry_received",
+  // Sent to the specialist themselves the moment a patient enquires on
+  // their profile, same "not the admin's copy" reasoning as
+  // application_received above. Informational, so also left out of
+  // ACTIONABLE.
+  "new_enquiry",
+  // Same as new_enquiry, for a patient's reply in an existing message
+  // thread (reply.controller.js) rather than the first message.
+  "new_message_reply",
   "application_decided",
   // A patient review is waiting to be published or rejected, and the
   // 24-hour chase when nobody has looked at it.
@@ -179,6 +195,10 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   // An organisation has asked to be quoted. Nobody else is going to
   // notice a row in a table.
   "org_application",
+  // Someone emailed the receiving domain -- see controllers/mail.controller.js.
+  "inbound_mail",
+  // A sent email bounced or was marked as spam -- same controller.
+  "mail_bounced",
 ]);
 
 export const claimStatusEnum = pgEnum("claim_status", ["pending", "approved", "rejected"]);

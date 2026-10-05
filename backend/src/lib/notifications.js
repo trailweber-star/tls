@@ -156,32 +156,50 @@ export const notificationStore = {
   },
 
   async unreadCount(userId) {
-    if (!isDbConfigured()) {
-      return notifications.filter((n) => n.userId === userId && !n.readAt).length;
+    try {
+      if (!isDbConfigured()) {
+        return notifications.filter((n) => n.userId === userId && !n.readAt).length;
+      }
+      const [row] = await getDb()
+        .select({ count: sql`count(*)::int` })
+        .from(notificationsTable)
+        .where(and(eq(notificationsTable.userId, userId), isNull(notificationsTable.readAt)));
+      return row?.count ?? 0;
+    } catch (err) {
+      // This feeds a badge that polls constantly — a bad value should
+      // never turn into a 500 on the dashboard. Same "never throws into
+      // the caller" reasoning as resolveSubject below.
+      console.error("[notifications] could not compute unreadCount for", userId, err?.message);
+      return 0;
     }
-    const [row] = await getDb()
-      .select({ count: sql`count(*)::int` })
-      .from(notificationsTable)
-      .where(and(eq(notificationsTable.userId, userId), isNull(notificationsTable.readAt)));
-    return row?.count ?? 0;
   },
 
   /** Unread items that represent outstanding work, not just news. */
   async actionableCount(userId) {
-    if (!isDbConfigured()) {
-      return notifications.filter((n) => n.userId === userId && !n.readAt && ACTIONABLE.has(n.type)).length;
+    try {
+      if (!isDbConfigured()) {
+        return notifications.filter((n) => n.userId === userId && !n.readAt && ACTIONABLE.has(n.type)).length;
+      }
+      const [row] = await getDb()
+        .select({ count: sql`count(*)::int` })
+        .from(notificationsTable)
+        .where(
+          and(
+            eq(notificationsTable.userId, userId),
+            isNull(notificationsTable.readAt),
+            inArray(notificationsTable.type, [...ACTIONABLE])
+          )
+        );
+      return row?.count ?? 0;
+    } catch (err) {
+      // Same reasoning as unreadCount above — this was the exact query
+      // (inArray against ACTIONABLE) that was 500-ing on /api/notifications/count
+      // before migration 0022. If a future notification type is ever added
+      // to ACTIONABLE without a matching migration again, this now degrades
+      // to a stale/zero badge instead of breaking the endpoint.
+      console.error("[notifications] could not compute actionableCount for", userId, err?.message);
+      return 0;
     }
-    const [row] = await getDb()
-      .select({ count: sql`count(*)::int` })
-      .from(notificationsTable)
-      .where(
-        and(
-          eq(notificationsTable.userId, userId),
-          isNull(notificationsTable.readAt),
-          inArray(notificationsTable.type, [...ACTIONABLE])
-        )
-      );
-    return row?.count ?? 0;
   },
 
   async markRead(userId, id) {
@@ -229,33 +247,46 @@ export const notificationStore = {
    * Clear the outstanding items tied to one subject once it has been
    * dealt with — approving an application should empty the badge, not
    * leave the admin to tidy up after themselves.
+   *
+   * Never throws into the caller, same reasoning as adminAudit.record:
+   * this runs straight after the real decision (approve/reject/etc. on
+   * a specialist, claim or review) has already been written, and tidying
+   * up a badge must not be able to turn an otherwise-successful decision
+   * into a 500. A gap here is visible as a notification that outlives
+   * its subject, which is recoverable; failing the decision itself is
+   * not.
    */
   async resolveSubject(subjectId) {
-    if (!isDbConfigured()) {
-      const now = new Date().toISOString();
-      let count = 0;
-      notifications.forEach((n) => {
-        if (n.subjectId === subjectId && ACTIONABLE.has(n.type) && !n.readAt) {
-          n.readAt = now;
-          n.resolvedAt = now;
-          count += 1;
-        }
-      });
-      return count;
-    }
-    const now = new Date();
-    const rows = await getDb()
-      .update(notificationsTable)
-      .set({ readAt: now, resolvedAt: now })
-      .where(
-        and(
-          eq(notificationsTable.subjectId, subjectId),
-          isNull(notificationsTable.readAt),
-          inArray(notificationsTable.type, [...ACTIONABLE])
+    try {
+      if (!isDbConfigured()) {
+        const now = new Date().toISOString();
+        let count = 0;
+        notifications.forEach((n) => {
+          if (n.subjectId === subjectId && ACTIONABLE.has(n.type) && !n.readAt) {
+            n.readAt = now;
+            n.resolvedAt = now;
+            count += 1;
+          }
+        });
+        return count;
+      }
+      const now = new Date();
+      const rows = await getDb()
+        .update(notificationsTable)
+        .set({ readAt: now, resolvedAt: now })
+        .where(
+          and(
+            eq(notificationsTable.subjectId, subjectId),
+            isNull(notificationsTable.readAt),
+            inArray(notificationsTable.type, [...ACTIONABLE])
+          )
         )
-      )
-      .returning({ id: notificationsTable.id });
-    return rows.length;
+        .returning({ id: notificationsTable.id });
+      return rows.length;
+    } catch (err) {
+      console.error("[notifications] could not resolve subject", subjectId, err?.message);
+      return 0;
+    }
   },
 
   async all() {

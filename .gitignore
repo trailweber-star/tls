@@ -13,3 +13,6 @@ Claude outputs/
 # Harvested copies of the live Brilliant Directories site. Real member
 # records — never committed.
 backend/data/harvest/
+
+# Local diagnostic scripts, not part of the app
+.claude-scratch/
