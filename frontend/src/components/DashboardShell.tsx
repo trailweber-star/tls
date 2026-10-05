@@ -54,6 +54,7 @@ const SPECIALIST_NAV: NavItem[] = [
   { to: "/dashboard/articles", label: "Write a guide", icon: BookOpen },
   { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/dashboard/messages", label: "Messages", icon: MessageSquare },
+  { to: "/dashboard/team", label: "Team", icon: Users },
   { to: "/dashboard/billing", label: "Plan & billing", icon: CreditCard },
   { to: "/dashboard/settings", label: "Account & security", icon: ShieldCheck },
 ];

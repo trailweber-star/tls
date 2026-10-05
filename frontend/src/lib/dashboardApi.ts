@@ -153,6 +153,11 @@ export interface Account {
   fullName: string;
   role: "specialist" | "admin";
   specialistId: string | null;
+  /** True for the account specialists.userId points at; false for a
+   *  Sub-Accounts team member administering the same listing. Decides
+   *  whether the Team page shows invite/remove controls and whether
+   *  Plan & billing appears in the sidebar at all. */
+  isSpecialistOwner: boolean;
   /** Set only for an organisation's provisioned login -- see
    *  lib/organisationProvisioning.js on the backend. There is no
    *  facility-shaped dashboard yet, so RequireAuth reads this to show
@@ -161,6 +166,16 @@ export interface Account {
   facilityId: string | null;
   facilitySlug: string | null;
   facilityName: string | null;
+}
+
+/** A Sub-Accounts team member (lib/teamInvites.js) -- one row per
+ *  invite, accepted or not. */
+export interface TeamMember {
+  userId: string;
+  email: string;
+  role: string | null;
+  invitedAt: string;
+  acceptedAt: string | null;
 }
 
 export interface LinkedSpecialist {
@@ -650,6 +665,14 @@ export const dashboardApi = {
       `/dashboard/messages/${leadId}`,
       { body }
     ),
+
+  // Team -- Sub-Accounts & Multi-Practice Profiles. Listing works for
+  // the owner and any team member; inviting and removing are owner-only
+  // (also enforced server-side, same as every other owner-only action).
+  team: () => get<{ results: TeamMember[]; isOwner: boolean }>("/dashboard/team"),
+  inviteTeamMember: (email: string, role?: string) =>
+    post<{ ok: boolean; member: TeamMember }>("/dashboard/team", { email, role: role || undefined }),
+  removeTeamMember: (userId: string) => del<{ ok: boolean }>(`/dashboard/team/${userId}`),
 
   // Appointments -- weekly availability rules, and the bookings made
   // against them.

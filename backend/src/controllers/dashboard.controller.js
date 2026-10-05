@@ -9,8 +9,10 @@ import {
   appointments as appointmentRepo,
   reviews as reviewRepo,
   specialists as specialistRepo,
+  specialistTeamMembers as teamRepo,
   taxonomy as taxonomyRepo,
 } from "../db/repos.js";
+import { inviteTeamMember, removeTeamMember } from "../lib/teamInvites.js";
 import {
   mockSpecialistsWithRelations,
   specialists as mockSpecialists,
@@ -942,6 +944,108 @@ export async function sendMessage(req, res) {
     delivery = await sendMail(buildMessageEmail({ specialist, lead, body: parsed.data.body, replyUrl }));
   }
   res.status(201).json({ ok: true, message, delivery });
+}
+
+/* ------------------------------------------------------------------ *
+ * Team (Sub-Accounts & Multi-Practice Profiles)
+ *
+ * The owner is the one account specialists.userId points at; everyone
+ * else in specialist_team_members administers the same listing without
+ * being able to touch its plan or its team. specialistIdOf(req.user)
+ * resolves to the same specialistId either way (see attachSpecialistId
+ * in db/repos.js), so every other dashboard endpoint already works for
+ * a team member unchanged -- only the three routes below need to know
+ * which kind of account is asking.
+ * ------------------------------------------------------------------ */
+
+// GET /api/dashboard/team
+export async function listTeam(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!isDbConfigured()) return res.json({ results: [], isOwner: Boolean(req.user.isSpecialistOwner) });
+
+  const rows = await teamRepo.forSpecialist(id);
+  res.json({
+    results: rows.map((r) => ({
+      userId: r.userId,
+      email: r.invitedEmail,
+      role: r.role,
+      invitedAt: r.invitedAt,
+      acceptedAt: r.acceptedAt ?? null,
+    })),
+    isOwner: Boolean(req.user.isSpecialistOwner),
+  });
+}
+
+const inviteTeamSchema = z.object({
+  email: z.string().email(),
+  role: z.string().max(80).optional().or(z.literal("")),
+});
+
+// POST /api/dashboard/team  { email, role? } -- owner only.
+export async function inviteTeam(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  // Checked here, not only by the route's own guard, because a stale
+  // frontend build calling this endpoint directly must not be able to
+  // invite someone onto a listing it does not own.
+  if (!req.user.isSpecialistOwner) {
+    return res.status(403).json({ error: "Only the listing's owner can invite team members" });
+  }
+
+  const parsed = inviteTeamSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: "Invalid invite", issues: parsed.error.issues });
+
+  if (!isDbConfigured()) {
+    return res.status(501).json({ error: "Team invites need a database" });
+  }
+
+  const source = await specialistRepo.rawById(id);
+  if (!source) return res.status(404).json({ error: "Profile not found" });
+
+  if (!entitlementsFor(source).features.subAccounts) {
+    return res.status(402).json({
+      error: "Sub-accounts are part of the Premium listing.",
+      upgrade: "/dashboard/billing",
+    });
+  }
+
+  const result = await inviteTeamMember({
+    specialist: source,
+    email: parsed.data.email,
+    role: parsed.data.role || null,
+    inviterName: req.user.fullName || source.fullName,
+  });
+
+  if (!result.ok && result.reason === "email_in_use") {
+    return res.status(409).json({
+      error: "That email already has an account on Top Local Specialists, so it can't be invited this way yet.",
+    });
+  }
+
+  res.status(201).json({
+    ok: true,
+    member: {
+      userId: result.member.userId,
+      email: result.member.email,
+      role: result.member.role,
+      invitedAt: result.member.invitedAt,
+      acceptedAt: result.member.acceptedAt,
+    },
+  });
+}
+
+// DELETE /api/dashboard/team/:userId -- owner only.
+export async function removeTeam(req, res) {
+  const id = specialistIdOf(req.user);
+  if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!req.user.isSpecialistOwner) {
+    return res.status(403).json({ error: "Only the listing's owner can remove team members" });
+  }
+  if (!isDbConfigured()) return res.status(501).json({ error: "Team invites need a database" });
+
+  await removeTeamMember(id, req.params.userId);
+  res.json({ ok: true });
 }
 
 /* ------------------------------------------------------------------ *

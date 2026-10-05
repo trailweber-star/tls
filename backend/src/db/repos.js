@@ -16,7 +16,7 @@
  * place to fix it is here, behind these function signatures.
  * ------------------------------------------------------------------ */
 
-import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./client.js";
 import * as t from "./schema.js";
 import { newId } from "./schema.js";
@@ -1015,6 +1015,59 @@ export const users = {
 };
 
 /**
+ * Sub-Accounts & Multi-Practice Profiles (lib/plans.js's subAccounts
+ * flag, lib/teamInvites.js for the invite flow). Modelled on the shape
+ * facilityTeam already defines in schema.js, with the methods that
+ * table never got.
+ */
+export const specialistTeamMembers = {
+  /** Every invite on this listing, accepted or not -- oldest first,
+   *  same order an owner invited them in. */
+  async forSpecialist(specialistId) {
+    return db()
+      .select()
+      .from(t.specialistTeamMembers)
+      .where(eq(t.specialistTeamMembers.specialistId, specialistId))
+      .orderBy(asc(t.specialistTeamMembers.invitedAt));
+  },
+
+  async find(specialistId, userId) {
+    const [row] = await db()
+      .select()
+      .from(t.specialistTeamMembers)
+      .where(
+        and(eq(t.specialistTeamMembers.specialistId, specialistId), eq(t.specialistTeamMembers.userId, userId))
+      )
+      .limit(1);
+    return row ?? null;
+  },
+
+  async create(data) {
+    const [row] = await db().insert(t.specialistTeamMembers).values(data).returning();
+    return row;
+  },
+
+  async markAccepted(specialistId, userId) {
+    const [row] = await db()
+      .update(t.specialistTeamMembers)
+      .set({ acceptedAt: new Date() })
+      .where(
+        and(eq(t.specialistTeamMembers.specialistId, specialistId), eq(t.specialistTeamMembers.userId, userId))
+      )
+      .returning();
+    return row ?? null;
+  },
+
+  async remove(specialistId, userId) {
+    await db()
+      .delete(t.specialistTeamMembers)
+      .where(
+        and(eq(t.specialistTeamMembers.specialistId, specialistId), eq(t.specialistTeamMembers.userId, userId))
+      );
+  },
+};
+
+/**
  * The specialist link lives on the specialist row (one nullable, unique
  * user_id) rather than on the user, but middleware/auth.js and every
  * dashboard endpoint read `user.specialistId`. Resolved lazily so the
@@ -1056,6 +1109,29 @@ export async function attachSpecialistId(user) {
     .where(eq(t.specialists.userId, user.id))
     .limit(1);
   user.specialistId = row?.id ?? null;
+  // True for the one account that owns the listing (and may manage
+  // its billing and its team); false for a sub-account that only
+  // administers it. Set explicitly in both branches below rather than
+  // left undefined, so a stale truthy check can never mistake "not
+  // resolved yet" for "is the owner".
+  user.isSpecialistOwner = Boolean(user.specialistId);
+
+  if (!user.specialistId) {
+    /* Sub-Accounts & Multi-Practice Profiles (lib/plans.js's
+       subAccounts flag) -- a second account invited onto an existing
+       listing (lib/teamInvites.js), rather than one that owns a
+       listing of its own. Only an ACCEPTED membership grants access:
+       an invite still waiting on its password-set link is not yet a
+       working login. */
+    const [teamRow] = await db()
+      .select({ specialistId: t.specialistTeamMembers.specialistId })
+      .from(t.specialistTeamMembers)
+      .where(
+        and(eq(t.specialistTeamMembers.userId, user.id), isNotNull(t.specialistTeamMembers.acceptedAt))
+      )
+      .limit(1);
+    user.specialistId = teamRow?.specialistId ?? null;
+  }
 
   if (!user.specialistId) {
     const [facilityRow] = await db()

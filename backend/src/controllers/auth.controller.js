@@ -78,6 +78,12 @@ function publicUser(user) {
     fullName: user.fullName,
     role: user.role,
     specialistId: user.specialistId ? String(user.specialistId) : user.specialist ? String(user.specialist) : null,
+    // True for the account specialists.userId points at; false for a
+    // Sub-Accounts team member administering the same listing (see
+    // attachSpecialistId in db/repos.js). Lets the dashboard show or
+    // hide the invite/remove controls on the Team page and the billing
+    // link, without a second round trip to find out.
+    isSpecialistOwner: Boolean(user.isSpecialistOwner),
     // Set only for an organisation's provisioned login (see
     // attachSpecialistId / lib/organisationProvisioning.js) -- lets the
     // dashboard shell route straight to the "not live yet" screen
@@ -277,6 +283,7 @@ export async function register(req, res) {
   );
 
   user.specialistId = specialist.id;
+  user.isSpecialistOwner = true;
 
   await announceApplication({
     specialist: { id: specialist.id, fullName: specialist.fullName },

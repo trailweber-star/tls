@@ -38,6 +38,7 @@ const Reviews = lazy(() => import("./pages/dashboard/Reviews"));
 const DashboardAppointments = lazy(() => import("./pages/dashboard/Appointments"));
 const DashboardAnalytics = lazy(() => import("./pages/dashboard/Analytics"));
 const DashboardMessages = lazy(() => import("./pages/dashboard/Messages"));
+const DashboardTeam = lazy(() => import("./pages/dashboard/Team"));
 const DashboardArticles = lazy(() => import("./pages/dashboard/Articles"));
 const Billing = lazy(() => import("./pages/dashboard/Billing"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
@@ -154,6 +155,7 @@ export default function App() {
           <Route path="appointments" element={<DashboardAppointments />} />
           <Route path="analytics" element={<DashboardAnalytics />} />
           <Route path="messages" element={<DashboardMessages />} />
+          <Route path="team" element={<DashboardTeam />} />
           {/* Was a "coming soon" placeholder whose first listed need was
               a password change. It now is one. */}
           <Route path="settings" element={<AccountSecurity />} />

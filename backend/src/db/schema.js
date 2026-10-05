@@ -523,6 +523,44 @@ export const facilityTeam = pgTable(
   ]
 );
 
+/**
+ * Sub-Accounts & Multi-Practice Profiles -- a Premium/Full Practice
+ * Suite feature (lib/plans.js's subAccounts flag). specialists.userId
+ * is the one owner who can administer billing and the team itself; a
+ * row here grants a second account dashboard access to the SAME
+ * listing (enquiries, messages, reviews, profile, analytics) without
+ * becoming a second owner. Modelled on facilityTeam just above --
+ * same shape, same reasoning -- rather than a new pattern.
+ *
+ * invitedEmail is kept alongside userId because the invited person may
+ * not have an account yet: see lib/teamInvites.js, which creates an
+ * unusable-password shell exactly like an organisation's provisioned
+ * login (lib/organisationProvisioning.js) when nobody with that email
+ * exists already.
+ */
+export const specialistTeamMembers = pgTable(
+  "specialist_team_members",
+  {
+    specialistId: text("specialist_id")
+      .notNull()
+      .references(() => specialists.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    invitedEmail: text("invited_email").notNull(),
+    /** "Practice Manager", "Receptionist" -- a label, not a permission. */
+    role: text("role"),
+    invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+    // Null until the invite's password-set link is used -- see
+    // provisionTeamMember / acceptTeamInvite in lib/teamInvites.js.
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.specialistId, t.userId] }),
+    index("specialist_team_members_user_idx").on(t.userId),
+  ]
+);
+
 /* ============================================================= people */
 
 export const users = pgTable(
@@ -1708,12 +1746,18 @@ export const specialistsRelations = relations(specialists, ({ one, many }) => ({
   clinicLocationLinks: many(specialistClinicLocations),
   ownedLocations: many(clinicLocations, { relationName: "ownedLocations" }),
   facilityLinks: many(facilityTeam),
+  teamMembers: many(specialistTeamMembers),
   leads: many(leads),
   orders: many(orders),
   claims: many(claims),
   profileViewEvents: many(profileViewEvents),
   availability: many(specialistAvailability),
   appointments: many(appointments),
+}));
+
+export const specialistTeamMembersRelations = relations(specialistTeamMembers, ({ one }) => ({
+  specialist: one(specialists, { fields: [specialistTeamMembers.specialistId], references: [specialists.id] }),
+  user: one(users, { fields: [specialistTeamMembers.userId], references: [users.id] }),
 }));
 
 export const specialistSpecialtiesRelations = relations(specialistSpecialties, ({ one }) => ({

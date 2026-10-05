@@ -79,6 +79,9 @@ import {
   listMessageThreads,
   getMessageThread,
   sendMessage,
+  listTeam,
+  inviteTeam,
+  removeTeam,
   getAvailability,
   setAvailability,
   listAppointments,
@@ -393,6 +396,10 @@ router.get("/dashboard/analytics", requireAuth, requireRole("specialist"), getAn
 router.get("/dashboard/messages", requireAuth, requireRole("specialist"), listMessageThreads);
 router.get("/dashboard/messages/:leadId", requireAuth, requireRole("specialist"), getMessageThread);
 router.post("/dashboard/messages/:leadId", requireAuth, requireRole("specialist"), sendMessage);
+
+router.get("/dashboard/team", requireAuth, requireRole("specialist"), listTeam);
+router.post("/dashboard/team", requireAuth, requireRole("specialist"), inviteTeam);
+router.delete("/dashboard/team/:userId", requireAuth, requireRole("specialist"), removeTeam);
 
 // Appointments -- weekly availability rules the specialist sets, and the
 // bookings patients make against them.
