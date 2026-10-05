@@ -50,6 +50,31 @@ export function ImpersonationBanner() {
     };
   }, [active]);
 
+  /* refresh() resolves once the recovery attempt is fully settled, but
+     it updates auth state through the context rather than returning an
+     outcome — so the result is read back here, from the next render,
+     rather than off the resolved promise. Both paths refresh() can end
+     on clear `impersonation`, so that transition is what wakes this up;
+     `account` is what tells the two paths apart.
+
+     This has to run every render, not just while the banner is showing
+     — it's declared before the early return below on purpose. Skipping
+     it on some renders (it used to sit after that return) made this
+     component call a different number of hooks from one render to the
+     next, which is exactly what React's Rules of Hooks forbid: the
+     moment `impersonation` resolved from empty to set, React would
+     throw "Rendered more hooks than during the previous render" and
+     take down the whole dashboard, not just this banner. */
+  useEffect(() => {
+    if (!recovering || impersonation) return;
+    setRecovering(false);
+    if (account) {
+      navigate("/admin/members", { replace: true });
+    } else {
+      setSessionExpired(true);
+    }
+  }, [recovering, impersonation, account, navigate]);
+
   /* The banner also has to stay up once impersonation itself has
      gone — that's exactly the moment refresh() finished recovering
      (or failing to) and there's a message to show for it. */
@@ -72,22 +97,6 @@ export function ImpersonationBanner() {
       await refresh();
     }
   }
-
-  /* refresh() resolves once the recovery attempt is fully settled, but
-     it updates auth state through the context rather than returning an
-     outcome — so the result is read back here, from the next render,
-     rather than off the resolved promise. Both paths refresh() can end
-     on clear `impersonation`, so that transition is what wakes this up;
-     `account` is what tells the two paths apart. */
-  useEffect(() => {
-    if (!recovering || impersonation) return;
-    setRecovering(false);
-    if (account) {
-      navigate("/admin/members", { replace: true });
-    } else {
-      setSessionExpired(true);
-    }
-  }, [recovering, impersonation, account, navigate]);
 
   // Nothing left to hand back to: the borrowed token was dead and so
   // was the parked one. The only way out is signing in again.
