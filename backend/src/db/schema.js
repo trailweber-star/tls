@@ -1365,7 +1365,13 @@ export const profileViewEvents = pgTable(
     specialistId: text("specialist_id")
       .notNull()
       .references(() => specialists.id, { onDelete: "cascade" }),
-    occurredAt: createdAt(),
+    // NOT createdAt() -- that helper hardcodes the column name to
+    // "created_at", but the migration that actually created this table
+    // (0014_appointments_messages_analytics.sql) named it "occurred_at".
+    // Using createdAt() here silently pointed every query in
+    // lib/analytics.js at a column that doesn't exist, 500ing the
+    // entire Analytics dashboard page for every specialist.
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
     referrer: text("referrer"),
     searchTerm: text("search_term"),
     path: text("path"),

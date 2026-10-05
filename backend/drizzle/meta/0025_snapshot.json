@@ -3683,13 +3683,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
         "referrer": {
           "name": "referrer",
           "type": "text",
@@ -3707,6 +3700,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
@@ -3720,7 +3720,7 @@
               "nulls": "last"
             },
             {
-              "expression": "created_at",
+              "expression": "occurred_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
