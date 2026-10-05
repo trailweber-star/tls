@@ -829,10 +829,36 @@ export async function getAnalytics(req, res) {
  * is reply.controller.js, behind the lead's own reply token instead.
  * ------------------------------------------------------------------ */
 
+/**
+ * Private Chat Messages (Send & Receive) is a Premium feature on the
+ * comparison table, but nothing checked it -- any Basic specialist
+ * could read and send on this thread exactly like Premium. Checked
+ * once here and reused by all three message endpoints below, same
+ * shape as respondToOwnReview's reviewReplies check.
+ */
+async function requirePrivateChat(id, res) {
+  const source = isDbConfigured()
+    ? await specialistRepo.rawById(id)
+    : mockSpecialistsWithRelations.find((s) => s.id === id);
+  if (!source) {
+    res.status(404).json({ error: "Profile not found" });
+    return null;
+  }
+  if (!entitlementsFor(source).features.privateChat) {
+    res.status(402).json({
+      error: "Private messaging is part of the Premium listing.",
+      upgrade: "/dashboard/billing",
+    });
+    return null;
+  }
+  return source;
+}
+
 // GET /api/dashboard/messages -- newest activity first.
 export async function listMessageThreads(req, res) {
   const id = specialistIdOf(req.user);
   if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!(await requirePrivateChat(id, res))) return;
   if (!isDbConfigured()) return res.json({ results: [] });
 
   const leads = await leadRepo.forSpecialist(id);
@@ -862,6 +888,7 @@ export async function listMessageThreads(req, res) {
 export async function getMessageThread(req, res) {
   const id = specialistIdOf(req.user);
   if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!(await requirePrivateChat(id, res))) return;
   if (!isDbConfigured()) return res.status(404).json({ error: "Thread not found" });
 
   const lead = await leadRepo.findById(req.params.leadId);
@@ -894,6 +921,7 @@ const sendMessageSchema = z.object({ body: z.string().min(1).max(4000) });
 export async function sendMessage(req, res) {
   const id = specialistIdOf(req.user);
   if (!id) return res.status(400).json({ error: "This account has no specialist profile" });
+  if (!(await requirePrivateChat(id, res))) return;
   if (!isDbConfigured()) return res.status(501).json({ error: "Messages need a database" });
 
   const parsed = sendMessageSchema.safeParse(req.body);

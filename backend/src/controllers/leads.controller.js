@@ -218,6 +218,13 @@ export async function createLead(req, res) {
     const specialist = await findSpecialist(parsed.data.specialistId);
     const held = await isOverCap(specialist);
 
+    /* Instant Enquiry Alerts is a Premium feature (lib/plans.js). A
+       held lead's alert is already deferred by the cap path above, so
+       this only matters when it isn't held: a Basic specialist still
+       gets the enquiry immediately, just not the alert -- that waits
+       for the next reminders.js sweep (releaseDeferredAlerts). */
+    const deferAlert = !held && Boolean(specialist) && !entitlementsFor(specialist).features.instantEnquiryAlerts;
+
     /* Whether this enquiry may EVER be forwarded to ClinWell is decided
        here, at creation, and written onto the row (§4.3).
 
@@ -240,19 +247,24 @@ export async function createLead(req, res) {
       facilityId: parsed.data.facilityId || null,
       source: "website_enquiry",
       held,
+      instantAlertDeferred: deferAlert,
       clinwellForwardableAt: forwardable,
     });
 
     // The lead is saved first: it is the record of record. Email is a
     // notification on top of it, so a delivery problem is reported but
     // never fails the request. A held enquiry is stored in full and the
-    // alert waits for the cap to reset. A facility-only lead (no
-    // specialistId) has no specialist to alert, so it goes to
-    // notifyFacility instead — see the comment there for why that's not
-    // just a silent "not found" the way it used to be.
+    // alert waits for the cap to reset; a deferred one waits for the
+    // next sweep instead, Basic's Instant Enquiry Alerts gate rather
+    // than its monthly cap. A facility-only lead (no specialistId) has
+    // no specialist to alert, so it goes to notifyFacility instead —
+    // see the comment there for why that's not just a silent
+    // "not found" the way it used to be.
     let delivery;
     if (held) {
       delivery = { sent: false, reason: "held-monthly-cap" };
+    } else if (deferAlert) {
+      delivery = { sent: false, reason: "deferred-non-instant" };
     } else if (specialist) {
       delivery = await notifySpecialist(specialist, parsed.data);
       await notifyNewEnquiryBell(specialist, lead);

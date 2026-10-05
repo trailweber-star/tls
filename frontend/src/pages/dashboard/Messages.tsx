@@ -1,10 +1,39 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Check, Loader2, MessageSquare, Send } from "lucide-react";
+import { ArrowRight, Check, Loader2, Lock, MessageSquare, Send } from "lucide-react";
 import { DashboardShell, Panel } from "../../components/DashboardShell";
 import { EmptyState, ErrorBlock, LoadingBlock, relativeTime } from "../../components/dashboard/ui";
-import { dashboardApi } from "../../lib/dashboardApi";
+import { ApiError, dashboardApi } from "../../lib/dashboardApi";
 import type { MessageThreadDetail, MessageThreadSummary } from "../../lib/dashboardApi";
+
+/** Private Chat Messages is a Premium feature (checked server-side by
+ *  every one of the three message endpoints), so a 402 here means the
+ *  whole page is locked rather than any one action -- same upgrade
+ *  prompt used elsewhere in the dashboard rather than a generic error. */
+function MessagesLocked() {
+  return (
+    <Panel>
+      <div className="flex flex-col items-start gap-3 py-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-paper-tint px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide text-ink-muted ring-1 ring-line">
+          <Lock className="h-3 w-3" strokeWidth={2.4} />
+          Premium
+        </span>
+        <h2 className="font-display text-[16px] font-bold text-ink">Private messaging is part of the Premium listing</h2>
+        <p className="max-w-[56ch] text-[13.5px] leading-relaxed text-ink-muted">
+          On Basic, a patient's enquiry still reaches you by email. Premium adds this ongoing message thread, so you
+          can keep the back and forth with a patient in your dashboard instead.
+        </p>
+        <a
+          href="/dashboard/billing"
+          className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-navy-950 px-4 py-2.5 text-[12.5px] font-bold text-white transition hover:bg-navy-900"
+        >
+          See the plans
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.4} />
+        </a>
+      </div>
+    </Panel>
+  );
+}
 
 export default function Messages() {
   const [params, setParams] = useSearchParams();
@@ -14,10 +43,12 @@ export default function Messages() {
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setLocked(false);
     try {
       const res = await dashboardApi.messageThreads();
       setThreads(res.results);
@@ -26,7 +57,8 @@ export default function Messages() {
         return res.results[0]?.leadId ?? null;
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load your messages");
+      if (err instanceof ApiError && err.status === 402) setLocked(true);
+      else setError(err instanceof Error ? err.message : "Could not load your messages");
     } finally {
       setLoading(false);
     }
@@ -58,9 +90,10 @@ export default function Messages() {
       subtitle="The rest of the conversation, past your first reply to an enquiry. Patients can keep replying with no account of their own."
     >
       {loading && <LoadingBlock label="Loading your messages…" />}
-      {error && !loading && <ErrorBlock message={error} onRetry={load} />}
+      {locked && !loading && <MessagesLocked />}
+      {error && !loading && !locked && <ErrorBlock message={error} onRetry={load} />}
 
-      {!loading && !error && threads.length === 0 && (
+      {!loading && !error && !locked && threads.length === 0 && (
         <Panel>
           <EmptyState
             icon={MessageSquare}
@@ -70,7 +103,7 @@ export default function Messages() {
         </Panel>
       )}
 
-      {!loading && !error && threads.length > 0 && (
+      {!loading && !error && !locked && threads.length > 0 && (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,340px)_1fr]">
           <Panel padded={false}>
             <ul className="max-h-[560px] divide-y divide-line-soft overflow-y-auto">

@@ -1225,6 +1225,16 @@ export const leads = pgTable(
     held: boolean("held").notNull().default(false),
     releasedAt: timestamp("released_at", { withTimezone: true }),
 
+    // Instant Enquiry Alerts is a Premium feature (lib/plans.js). A
+    // Basic specialist still gets every enquiry -- this only delays
+    // the alert (email + bell/push) to the next reminders.js sweep
+    // instead of sending it the moment the lead is created. Distinct
+    // from `held` above: that one is about the monthly cap and skips
+    // counting toward it; this one is about timing only; a lead held
+    // for the cap is never also marked here, since its alert is
+    // already deferred by that path.
+    instantAlertDeferred: boolean("instant_alert_deferred").notNull().default(false),
+
     // The specialist's reply, written from the dashboard's Enquiries
     // workspace and emailed to the patient at the same time.
     response: text("response"),
@@ -1269,6 +1279,7 @@ export const leads = pgTable(
     index("leads_specialist_idx").on(t.specialistId, t.createdAt),
     index("leads_status_idx").on(t.status),
     index("leads_held_idx").on(t.held),
+    index("leads_alert_deferred_idx").on(t.instantAlertDeferred),
     index("leads_clinwell_pending_idx").on(t.clinwellNextAttemptAt),
   ]
 );

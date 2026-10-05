@@ -245,6 +245,68 @@ export async function releaseHeldEnquiries() {
   return { held: held.length, released };
 }
 
+/* ------------------------------------------------------------------ *
+ * Deferred-alert release
+ *
+ * Instant Enquiry Alerts is a Premium feature (lib/plans.js) -- a
+ * Basic specialist's enquiry is saved and visible in their dashboard
+ * the moment it arrives, same as every plan, but the alert (email +
+ * bell/push) that tells them about it waits for this sweep instead of
+ * firing at creation. Deliberately the same shape as
+ * releaseHeldEnquiries just above: mark it done, then notify, so a
+ * crash mid-send repeats the notify rather than silently dropping it.
+ * ------------------------------------------------------------------ */
+export async function releaseDeferredAlerts() {
+  if (!isDbConfigured()) return { pending: 0, sent: 0 };
+
+  const pending = await leadRepo.pendingAlerts();
+  if (pending.length === 0) return { pending: 0, sent: 0 };
+
+  let sent = 0;
+  for (const lead of pending) {
+    // Same scope as releaseHeldEnquiries: facilities have no owner
+    // account or dashboard yet (see notifyFacility's own comment in
+    // leads.controller.js), so there is nobody to send a deferred
+    // alert to.
+    if (!lead.specialistId) continue;
+    const specialist = await specialistRepo.rawById(lead.specialistId);
+    if (!specialist) continue;
+
+    await leadRepo.markAlertSent(lead.id);
+    sent += 1;
+
+    if (specialist.contactEmail) {
+      await sendMail(
+        buildEnquiryEmail({
+          specialist,
+          lead,
+          profileUrl: `${SITE_URL}/specialists/${specialist.slug}`,
+        })
+      );
+    }
+
+    if (specialist.userId) {
+      await notify({
+        userId: String(specialist.userId),
+        type: NOTIFICATION_TYPES.NEW_ENQUIRY,
+        title: `New enquiry from ${lead.patientName}`,
+        body: lead.message
+          ? lead.message.length > 140
+            ? `${lead.message.slice(0, 140)}…`
+            : lead.message
+          : `${lead.patientName} sent you an enquiry.`,
+        url: "/dashboard/messages",
+        subjectId: lead.id,
+        key: `${NOTIFICATION_TYPES.NEW_ENQUIRY}:${lead.id}`,
+        channels: { inApp: true, email: false, push: true },
+      }).catch(() => {});
+    }
+  }
+
+  if (sent > 0) console.log(`[reminders] sent ${sent} deferred enquiry alert(s)`);
+  return { pending: pending.length, sent };
+}
+
 /**
  * Start the timer. `unref()` so a pending sweep never keeps the process
  * alive during a shutdown.
@@ -375,6 +437,7 @@ async function runSweep() {
   await sweepOverdueApprovals().catch((e) => console.error("[reminders] approval sweep failed:", e?.message ?? e));
   await sweepOverdueReviews().catch((e) => console.error("[reminders] review sweep failed:", e?.message ?? e));
   await releaseHeldEnquiries().catch((e) => console.error("[reminders] enquiry release failed:", e?.message ?? e));
+  await releaseDeferredAlerts().catch((e) => console.error("[reminders] deferred alert release failed:", e?.message ?? e));
   await sweepRenewalReminders().catch((e) => console.error("[reminders] renewal sweep failed:", e?.message ?? e));
   /* Appendix B: a badge nobody has confirmed for 72 hours comes down,
      so a ClinWell outage cannot leave "Runs on ClinWell" on the public

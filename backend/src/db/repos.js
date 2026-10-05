@@ -1329,6 +1329,25 @@ export const leads = {
     return row ?? null;
   },
 
+  /** Enquiries whose alert is waiting on a non-instant plan, oldest
+   *  first -- see leads.instantAlertDeferred on schema.js. */
+  async pendingAlerts() {
+    return db()
+      .select()
+      .from(t.leads)
+      .where(eq(t.leads.instantAlertDeferred, true))
+      .orderBy(asc(t.leads.createdAt));
+  },
+
+  async markAlertSent(id) {
+    const [row] = await db()
+      .update(t.leads)
+      .set({ instantAlertDeferred: false })
+      .where(eq(t.leads.id, id))
+      .returning();
+    return row ?? null;
+  },
+
   /**
    * How many enquiries a specialist has received this calendar month —
    * the Basic tier's cap is counted here rather than trusted from a

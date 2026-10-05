@@ -1,6 +1,6 @@
 {
-  "id": "c7f43fd0-c4d8-478f-af81-feccde4980b6",
-  "prevId": "9d6ca15f-30ed-48fc-854c-7a4e925275d8",
+  "id": "f4fe0dd4-0090-431e-a5c1-da40e5522a60",
+  "prevId": "c7f43fd0-c4d8-478f-af81-feccde4980b6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1163,6 +1163,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "instant_alert_deferred": {
+          "name": "instant_alert_deferred",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {
@@ -1207,6 +1214,21 @@
           "columns": [
             {
               "expression": "held",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "leads_alert_deferred_idx": {
+          "name": "leads_alert_deferred_idx",
+          "columns": [
+            {
+              "expression": "instant_alert_deferred",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

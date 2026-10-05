@@ -41,6 +41,7 @@ export function EnquiryForm({ specialistId, clinicId, facilityId, recipientName 
       });
       formEl.reset();
       // delivery.sent === false covers no-contact-email, held-monthly-cap,
+      // deferred-non-instant (Basic's alert waiting for the next sweep),
       // and any other reason the notification didn't go out — the lead is
       // still saved, so this is a distinct, non-alarming state, not an error.
       setStatus(response.delivery?.sent === false ? "saved" : "sent");
