@@ -169,6 +169,20 @@
       "when": 1790300400000,
       "tag": "0023_leads_instant_alert_deferred",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790300450000,
+      "tag": "0024_specialist_team_members",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791239859105,
+      "tag": "0025_schema_snapshot_resync",
+      "breakpoints": true
     }
   ]
 }
