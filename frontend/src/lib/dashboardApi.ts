@@ -153,6 +153,14 @@ export interface Account {
   fullName: string;
   role: "specialist" | "admin";
   specialistId: string | null;
+  /** Set only for an organisation's provisioned login -- see
+   *  lib/organisationProvisioning.js on the backend. There is no
+   *  facility-shaped dashboard yet, so RequireAuth reads this to show
+   *  an honest "not live yet" screen instead of every nested route
+   *  failing its own API call. */
+  facilityId: string | null;
+  facilitySlug: string | null;
+  facilityName: string | null;
 }
 
 export interface LinkedSpecialist {

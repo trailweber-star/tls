@@ -1033,7 +1033,21 @@ function withSpecialistId(user) {
   });
 }
 
-/** Attach the specialist id for accounts that administer a profile. */
+/**
+ * Attach the specialist id for accounts that administer a profile --
+ * and, when there isn't one, check whether this account administers a
+ * FACILITY instead (an organisation's provisioned login -- see
+ * lib/organisationProvisioning.js, which deliberately reuses the
+ * specialist role and dashboard route rather than inventing a third
+ * one). Without this second lookup, a paying organisation's account
+ * would authenticate fine (role is "specialist") and then hit a wall of
+ * "This account has no specialist profile" on every dashboard call --
+ * a paying customer with a login that does nothing.
+ *
+ * facilityId is attached alongside specialistId (never instead of it)
+ * so requireRole's organisation check below can tell "no profile at
+ * all" apart from "a facility's profile, not a specialist's".
+ */
 export async function attachSpecialistId(user) {
   if (!user || user.role === "admin") return user;
   const [row] = await db()
@@ -1042,6 +1056,18 @@ export async function attachSpecialistId(user) {
     .where(eq(t.specialists.userId, user.id))
     .limit(1);
   user.specialistId = row?.id ?? null;
+
+  if (!user.specialistId) {
+    const [facilityRow] = await db()
+      .select({ id: t.facilities.id, slug: t.facilities.slug, name: t.facilities.name })
+      .from(t.facilities)
+      .where(eq(t.facilities.userId, user.id))
+      .limit(1);
+    user.facilityId = facilityRow?.id ?? null;
+    user.facilitySlug = facilityRow?.slug ?? null;
+    user.facilityName = facilityRow?.name ?? null;
+  }
+
   return user;
 }
 

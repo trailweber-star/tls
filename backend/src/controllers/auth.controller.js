@@ -78,6 +78,13 @@ function publicUser(user) {
     fullName: user.fullName,
     role: user.role,
     specialistId: user.specialistId ? String(user.specialistId) : user.specialist ? String(user.specialist) : null,
+    // Set only for an organisation's provisioned login (see
+    // attachSpecialistId / lib/organisationProvisioning.js) -- lets the
+    // dashboard shell route straight to the "not live yet" screen
+    // instead of firing a doomed /dashboard/overview call first.
+    facilityId: user.facilityId ? String(user.facilityId) : null,
+    facilitySlug: user.facilitySlug ?? null,
+    facilityName: user.facilityName ?? null,
   };
 }
 

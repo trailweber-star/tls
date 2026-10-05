@@ -146,6 +146,26 @@ export function requireRole(...roles) {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: "You don't have access to that" });
     }
+
+    /* An organisation's provisioned login (lib/organisationProvisioning.js)
+       deliberately reuses the "specialist" role rather than inventing a
+       third one -- there is no facility-shaped dashboard behind these
+       routes yet. Without this check, a paying organisation's account
+       sails past this guard (role is "specialist") and then every
+       individual controller below fails its own `specialistIdOf` check
+       with "This account has no specialist profile" -- a confusing,
+       generic error for a login the customer was told would work.
+       Catching it here, once, for every specialist-only route, turns
+       that into one honest, specific answer instead of fifteen
+       accidental ones. */
+    if (roles.includes("specialist") && !req.user.specialistId && req.user.facilityId) {
+      return res.status(403).json({
+        error: "Organisation accounts don't have a self-service dashboard yet — contact us to update your listing.",
+        code: "organisation_account",
+        facilitySlug: req.user.facilitySlug ?? null,
+      });
+    }
+
     next();
   };
 }

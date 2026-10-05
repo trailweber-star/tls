@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import ComingSoon from "../pages/dashboard/ComingSoon";
 import {
   authApi,
   getAdminToken,
@@ -333,5 +334,28 @@ export function RequireAuth({ role, children }: { role?: "specialist" | "admin";
     // dead end.
     return <Navigate to={account.role === "admin" ? "/admin" : "/dashboard"} replace />;
   }
+
+  /* An organisation's provisioned login (lib/organisationProvisioning.js)
+     deliberately reuses the "specialist" role and this same dashboard
+     route rather than a dashboard built for a facility, which does not
+     exist yet. Without this check, every nested /dashboard/* route
+     would fire its API call, get the backend's organisation_account
+     refusal (middleware/auth.js's requireRole), and show whatever that
+     page's own error state happens to render -- fifteen slightly
+     different dead ends instead of one honest one. */
+  if (role === "specialist" && account.facilityId && !account.specialistId) {
+    return (
+      <ComingSoon
+        title="Your organisation dashboard"
+        description={`${account.facilityName ?? "Your listing"} is live and billed, but self-service editing for organisation accounts isn't switched on yet.`}
+        needs={[
+          "A profile editor for facility details, categories and opening hours",
+          "Enquiry and review management built for a team rather than one practitioner",
+        ]}
+        variant="specialist"
+      />
+    );
+  }
+
   return <>{children}</>;
 }
