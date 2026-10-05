@@ -17,7 +17,10 @@
 #               doesn't turn red over something like the dev-only
 #               drizzle-kit/esbuild chain that has no non-breaking fix
 #               yet).
-#   - frontend: the existing build script, which already runs
+#   - frontend: lint (oxlint — react-hooks/rules-of-hooks is "error",
+#               the rule that would have caught a hook-count crash
+#               like the one in ImpersonationBanner before it shipped),
+#               then the existing build script, which already runs
 #               `tsc -b` (type check) before `vite build` — so a type
 #               error or a build break is caught here before it would
 #               have reached Render.
@@ -71,6 +74,13 @@ jobs:
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
+
+      # react-hooks/rules-of-hooks is set to "error" in .oxlintrc.json --
+      # this is the step that would have caught the ImpersonationBanner
+      # hook-count crash before it ever reached production.
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
 
       - name: Type-check and build
         working-directory: frontend
