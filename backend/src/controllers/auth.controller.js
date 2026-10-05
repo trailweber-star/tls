@@ -196,6 +196,10 @@ export async function register(req, res) {
       lastLoginAt: new Date().toISOString(),
       specialistId: specialist.id,
     });
+    // The DB-configured branch below sets this explicitly after create()
+    // too -- demoAccounts.create() has no concept of it, so a brand new
+    // demo signup otherwise comes back owning nothing it just created.
+    user.isSpecialistOwner = true;
     await announceApplication({ specialist, plan, planInterval });
     await welcomeApplicant({ user, specialist, plan, email });
 
