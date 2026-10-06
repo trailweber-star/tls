@@ -27,6 +27,18 @@
  * they can re-upload through production -- Cloudinary-backed now, so
  * it will actually stick.
  *
+ * One fetch per photo is not enough to condemn it: the first real run
+ * of this script (2026-10-06) marked 20 Cloudinary URLs dead on one
+ * pass, then found all 20 fine on the very next one -- almost
+ * certainly Cloudinary rate-limiting, or a network blip, from hitting
+ * it with ~2000 fetches in a row, not actually dead photos. That run
+ * happened to land safely (the flaky pass was a --dry-run, the
+ * --write a moment later re-checked clean), but a single bad fetch
+ * during a --write could just as easily have wiped a real photo. Every
+ * check below now retries a failure a few times, with a pause between
+ * attempts, before it will call a photo dead -- a URL only gets
+ * cleared if it fails consistently, not once.
+ *
  *   node scripts/clear-dead-photos.mjs --dry-run
  *   DATABASE_URL="...?sslmode=require" \
  *     node scripts/clear-dead-photos.mjs --write
@@ -43,6 +55,8 @@ const WRITE = flag("write");
 
 const UA = "TopLocalSpecialists-maintenance/1.0 (dead photo check; contact site owner)";
 const FETCH_TIMEOUT_MS = 20_000;
+const CHECK_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 2_000;
 
 if (!isDbConfigured()) {
   console.error("DATABASE_URL is not set. Set it in backend/.env or on the command line.");
@@ -53,7 +67,9 @@ if (/[<>]/.test(process.env.DATABASE_URL ?? "")) {
   process.exit(1);
 }
 
-async function isAlive(url) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchOnce(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
@@ -72,6 +88,16 @@ async function isAlive(url) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/* Only a URL that fails every attempt counts as dead -- one bad fetch
+   (a rate limit, a dropped connection) is noise, not evidence. */
+async function isAlive(url) {
+  for (let attempt = 1; attempt <= CHECK_ATTEMPTS; attempt += 1) {
+    if (await fetchOnce(url)) return true;
+    if (attempt < CHECK_ATTEMPTS) await sleep(RETRY_DELAY_MS);
+  }
+  return false;
 }
 
 const db = getDb();
