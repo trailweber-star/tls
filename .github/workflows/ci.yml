@@ -193,6 +193,14 @@ jobs:
         with:
           node-version: "20"
           cache: npm
+          # This job installs both halves, and there's no root lockfile
+          # in this monorepo -- without an explicit path here, setup-node
+          # searches the repo root for one and fails immediately before
+          # anything else runs, which is what broke this job the first
+          # time around.
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       - name: Install backend deps
         working-directory: backend
