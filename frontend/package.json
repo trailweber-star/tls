@@ -17,7 +17,8 @@
     "check:members": "node scripts/members.mjs",
     "check:legal": "node scripts/legal.mjs",
     "check:preview": "node scripts/preview.mjs",
-    "predev": "node scripts/check-api.mjs"
+    "predev": "node scripts/check-api.mjs",
+    "e2e": "node scripts/e2e-impersonation.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.43.0",
@@ -35,6 +36,7 @@
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "playwright": "^1.63.0"
   }
 }

@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------ #
-# Minimal CI gate.
+# CI gate.
 #
 # This shows red or green on every commit and pull request against
 # main — it does NOT touch Render's own auto-deploy. Render builds and
@@ -7,23 +7,40 @@
 # what this workflow says; wiring this up as a required status check
 # (so a red run actually blocks the deploy) is a branch-protection
 # setting in the GitHub repo dashboard, not something this file can
-# do on its own.
+# do on its own. (As of 2026-10-06 this repo's main branch already has
+# a Ruleset requiring the backend and frontend jobs below.)
 #
-# Two independent jobs, one per half of the app, so a backend-only
-# change doesn't wait on a frontend install and vice versa:
-#   - backend:  a syntax check across every backend source file, plus
-#               an audit that only fails on high/critical findings
-#               (moderate findings are tracked, not blocking, so this
-#               doesn't turn red over something like the dev-only
-#               drizzle-kit/esbuild chain that has no non-breaking fix
-#               yet).
-#   - frontend: lint (oxlint — react-hooks/rules-of-hooks is "error",
-#               the rule that would have caught a hook-count crash
-#               like the one in ImpersonationBanner before it shipped),
-#               then the existing build script, which already runs
-#               `tsc -b` (type check) before `vite build` — so a type
-#               error or a build break is caught here before it would
-#               have reached Render.
+# Four jobs:
+#   - backend:    a syntax check across every backend source file, plus
+#                 an audit that only fails on high/critical findings
+#                 (moderate findings are tracked, not blocking, so this
+#                 doesn't turn red over something like the dev-only
+#                 drizzle-kit/esbuild chain that has no non-breaking fix
+#                 yet).
+#   - frontend:   lint (oxlint — react-hooks/rules-of-hooks is "error",
+#                 the rule that would have caught a hook-count crash
+#                 like the one in ImpersonationBanner before it shipped),
+#                 then the existing build script, which already runs
+#                 `tsc -b` (type check) before `vite build` — so a type
+#                 error or a build break is caught here before it would
+#                 have reached Render.
+#   - migrations: applies every migration to a brand-new Postgres (the
+#                 same thing scripts/prepare.mjs does on every real
+#                 deploy), checks schema.js hasn't drifted from the
+#                 committed migrations, seeds it, then runs the API
+#                 smoke suite against it. This is the job that would
+#                 have caught both the Analytics 500 (a column name the
+#                 ORM mapped wrong, invisible in demo mode) and the
+#                 spinal-cord-injury slug collision (a seed bug that
+#                 only showed up against a genuinely empty database).
+#   - e2e:        boots a real backend against a real, seeded Postgres,
+#                 builds and serves the real frontend, then drives it
+#                 in a real headless browser as an admin impersonating a
+#                 specialist across every dashboard page. This is the
+#                 job that would have caught the ImpersonationBanner
+#                 hooks crash itself — the API smoke suite only proves a
+#                 route returns 200; this proves the PAGE that calls it
+#                 actually renders.
 # ------------------------------------------------------------------ #
 
 name: CI
@@ -85,3 +102,149 @@ jobs:
       - name: Type-check and build
         working-directory: frontend
         run: npm run build
+
+  migrations:
+    name: Migrations apply cleanly + API smoke test (real Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tls
+          POSTGRES_PASSWORD: tls
+          POSTGRES_DB: tls_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tls"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tls:tls@localhost:5432/tls_ci
+      AUTH_SECRET: ci-test-secret-do-not-use-in-prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      # If schema.js was edited without generating+committing the
+      # matching migration, drizzle-kit writes a brand new file here --
+      # `git diff --exit-code` then fails the build instead of shipping
+      # a database that's quietly out of sync with the code querying it.
+      # (This does not need a live database -- generate only diffs
+      # schema.js against the committed migration journal.)
+      - name: Check for un-generated schema changes (drift)
+        working-directory: backend
+        run: |
+          npx drizzle-kit generate
+          git diff --exit-code --stat -- drizzle/ || {
+            echo "::error::schema.js changed without a matching migration committed. Run 'npm run db:generate' in backend/ and commit the result.";
+            exit 1;
+          }
+
+      - name: Apply migrations to a brand-new database
+        working-directory: backend
+        run: npm run db:migrate
+
+      - name: Seed baseline data + demo accounts
+        working-directory: backend
+        run: npm run seed
+
+      # smoke.mjs starts the server itself (inheriting DATABASE_URL from
+      # this job's env) and exercises nearly every route for crashes,
+      # data leaks, and auth-boundary violations.
+      - name: API smoke test
+        working-directory: backend
+        run: npm run smoke
+
+  e2e:
+    name: Browser E2E (impersonation / dashboard render)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tls
+          POSTGRES_PASSWORD: tls
+          POSTGRES_DB: tls_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tls"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tls:tls@localhost:5432/tls_ci
+      AUTH_SECRET: ci-test-secret-do-not-use-in-prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Apply migrations + seed
+        working-directory: backend
+        run: |
+          npm run db:migrate
+          npm run seed
+
+      - name: Start the API
+        working-directory: backend
+        run: |
+          nohup node src/server.js > /tmp/backend.log 2>&1 &
+          npx --yes wait-on http://localhost:4000/api/health -t 30000
+
+      - name: Build the frontend
+        working-directory: frontend
+        run: npm run build
+
+      # Served on 5173, not vite preview's default 4173: the backend's
+      # CORS allowlist (DEV_ORIGINS in backend/src/app.js) only admits
+      # localhost:5173 and localhost:4000. A different port here gets
+      # every request silently blocked by CORS, which looks exactly
+      # like a passing test (the page just never leaves the sign-in
+      # screen) -- that false pass is why this port is pinned.
+      - name: Serve the built frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://localhost:4000/api
+        run: |
+          nohup npm run preview -- --port 5173 --strictPort > /tmp/frontend.log 2>&1 &
+          npx --yes wait-on http://localhost:5173 -t 30000
+
+      - name: Install Playwright's browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the E2E smoke test
+        working-directory: frontend
+        env:
+          E2E_API_BASE: http://localhost:4000/api
+          E2E_APP_BASE: http://localhost:5173
+        run: npm run e2e
+
+      - name: Dump server logs on failure
+        if: failure()
+        run: |
+          echo "--- backend ---"; cat /tmp/backend.log || true
+          echo "--- frontend ---"; cat /tmp/frontend.log || true
