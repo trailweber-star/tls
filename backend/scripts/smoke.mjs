@@ -545,6 +545,16 @@ async function run() {
     "/dashboard/profile",
     "/dashboard/enquiries",
     "/dashboard/reviews",
+    // Added after a 2026-10-05 incident: an Analytics 500 and a
+    // frontend crash on Billing/Team during a support session went
+    // unnoticed because none of these three were ever requested here.
+    // Analytics and Team are never plan-gated at the backend (only the
+    // frontend hides Team behind a lock for Basic), so both must come
+    // back 200 for any signed-in specialist -- a non-200 here means a
+    // query is broken, the same way dbViewStats referencing the wrong
+    // profile_view_events column was.
+    "/dashboard/analytics",
+    "/dashboard/team",
     "/notifications",
     "/notifications/count",
     "/billing/subscription",
@@ -554,6 +564,18 @@ async function run() {
     const r = await noCrash(`GET ${p}`, "GET", API + p, { token: specToken });
     check(`${p} answers the specialist`, r.status === 200, `HTTP ${r.status}`);
   }
+
+  /* Messages is Premium-gated (requirePrivateChat) -- a Basic specialist
+     gets a clean 402, not data, so this only asserts "no crash", not a
+     fixed status. */
+  const messages = await noCrash("GET /dashboard/messages", "GET", `${API}/dashboard/messages`, {
+    token: specToken,
+  });
+  check(
+    "/dashboard/messages answers the specialist (200 or a clean 402)",
+    messages.status === 200 || messages.status === 402,
+    `HTTP ${messages.status}`
+  );
 
   /* Saving the profile is the operation that produced the white page,
      so it gets the most attention: it must not lose the clinic link,
