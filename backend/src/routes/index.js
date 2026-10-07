@@ -139,6 +139,7 @@ import {
   getClaim,
   listClaims,
   submitClaim,
+  submitClaimPhoto,
 } from "../controllers/claims.controller.js";
 import { listContactMessages, submitContactMessage } from "../controllers/contact.controller.js";
 import { authLimiter, passwordResetLimiter, publicFormLimiter } from "../middleware/rateLimit.js";
@@ -281,6 +282,12 @@ router.get("/admin/contact-messages", requireAuth, requireRole("admin"), listCon
    claim. Approving one is admin-only, below. */
 router.get("/claims/eligibility/:slug", claimEligibility);
 router.post("/claims", submitClaim);
+router.post(
+  "/claims/:id/photo",
+  requireAuth,
+  express.raw({ type: ["image/*", "application/octet-stream"], limit: MAX_UPLOAD_BYTES }),
+  submitClaimPhoto
+);
 
 /* --------------------------------------------------- notifications
    Every route reads the account from the session, so a bell can only

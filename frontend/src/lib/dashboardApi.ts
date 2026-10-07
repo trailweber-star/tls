@@ -1317,6 +1317,14 @@ export const claimsApi = {
     plan?: "basic" | "premium" | "clinwell";
     planInterval?: "monthly" | "yearly";
   }) => post<{ ok: boolean; claimId: string; token: string; user: Account }>("/claims", input),
+  // Raw image body, same contract as /uploads/image. Held on the claim
+  // until an admin approves it.
+  uploadPhoto: (claimId: string, file: File) =>
+    request<{ ok: boolean; url: string }>(`/claims/${claimId}/photo`, {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    }),
   adminList: (status = "pending") =>
     get<{ results: ClaimRow[]; counts: Record<string, number> }>(`/admin/claims?status=${status}`),
   adminGet: (id: string) =>

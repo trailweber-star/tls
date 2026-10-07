@@ -13,6 +13,7 @@ import { getPlan, isPaidPlan } from "../lib/plans.js";
 import { sendMail } from "../lib/mailer.js";
 import { NOTIFICATION_TYPES, notificationStore, notifyAdmins } from "../lib/notifications.js";
 import { clientIp } from "../lib/requestIp.js";
+import { publicOriginFrom, saveImage } from "../lib/storage.js";
 
 import { siteUrl } from "../lib/urls.js";
 const SITE_URL = siteUrl();
@@ -297,6 +298,32 @@ export async function submitClaim(req, res) {
   });
 }
 
+/**
+ * POST /api/claims/:id/photo   (body: the raw image, signed in)
+ *
+ * Lets the person who just submitted a claim attach a headshot. It is
+ * stored on the claim only; the listing does not change until an admin
+ * approves. Only the claim's own account may add it, and only while the
+ * claim is pending.
+ */
+export async function submitClaimPhoto(req, res) {
+  const claim = await claimStore.find(req.params.id);
+  if (!claim || String(claim.userId) !== String(req.user?.id)) {
+    return res.status(404).json({ error: "Claim not found" });
+  }
+  if (claim.status !== "pending") return res.status(409).json({ error: "This claim has already been decided" });
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    return res.status(400).json({ error: "No image received." });
+  }
+  try {
+    const saved = await saveImage({ buffer: req.body, kind: "profile-photo", origin: publicOriginFrom(req) });
+    await claimStore.update(claim.id, { photoUrl: saved.url });
+    res.status(201).json({ ok: true, url: saved.url });
+  } catch (err) {
+    res.status(err.status ?? 500).json({ error: err.message ?? "Could not store that image" });
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * Admin review
  * ------------------------------------------------------------------ */
@@ -382,6 +409,7 @@ export async function decideClaim(req, res) {
         planInterval: claim.planInterval,
         planStatus,
         planSelectedAt: claim.createdAt,
+        ...(claim.photoUrl && !specialist.photoUrl ? { photoUrl: claim.photoUrl } : {}),
       });
     } else {
       // The link lives on the specialist row alone (a nullable, unique
@@ -396,6 +424,7 @@ export async function decideClaim(req, res) {
         planInterval: claim.planInterval,
         planStatus,
         planSelectedAt: new Date(claim.createdAt),
+        ...(claim.photoUrl && !specialist.photoUrl ? { photoUrl: claim.photoUrl } : {}),
       });
     }
 

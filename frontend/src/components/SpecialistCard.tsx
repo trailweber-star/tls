@@ -1,16 +1,8 @@
 import { Link } from "react-router-dom";
 import { MapPin, Star } from "lucide-react";
+import { PhotoFallback } from "./PhotoFallback";
 import { cloudinaryUrl } from "../lib/cloudinary";
 import type { SpecialistWithRelations } from "../lib/types";
-
-function initialsOf(fullName: string) {
-  return fullName
-    .split(" ")
-    .filter((w) => w[0] === w[0]?.toUpperCase())
-    .slice(-2)
-    .map((w) => w[0])
-    .join("");
-}
 
 // Bordered white card with an inset framed portrait at the top, then
 // name, title, rating, location and specialty tags — matching the
@@ -41,9 +33,7 @@ export function SpecialistCard({ specialist }: { specialist: SpecialistWithRelat
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-paper-tint to-teal-50 font-display text-3xl font-bold text-teal-700">
-            {initialsOf(specialist.fullName)}
-          </div>
+          <PhotoFallback logoClassName="w-2/5" />
         )}
       </div>
 
