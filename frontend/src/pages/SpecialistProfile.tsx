@@ -362,6 +362,14 @@ export default function SpecialistProfile() {
                 <PhotoFallback dark logoClassName="w-2/5" />
               )}
             </div>
+            {!specialist.photoUrl && !specialist.claimed && (
+              <Link
+                to={`/claim/${specialist.slug}`}
+                className="mt-2 block rounded-full bg-white/10 px-3 py-2 text-center text-[12px] font-bold text-white transition hover:bg-white/20"
+              >
+                Is this you? Add your photo
+              </Link>
+            )}
           </div>
 
           <div className="min-w-0 flex-1">

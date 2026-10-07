@@ -1621,6 +1621,10 @@ export const claims = pgTable(
 
     message: text("message"),
 
+    // A headshot supplied with the claim. Only copied onto the listing
+    // when an admin approves, and only if the listing has none.
+    photoUrl: text("photo_url"),
+
     plan: planIdEnum("plan").notNull().default("basic"),
     planInterval: planIntervalEnum("plan_interval").notNull().default("yearly"),
 

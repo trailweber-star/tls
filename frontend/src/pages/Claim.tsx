@@ -56,6 +56,33 @@ export default function Claim() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!photo) {
+      setPhotoPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
+
+  function choosePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    if (file && !file.type.startsWith("image/")) {
+      setPhotoNote("Please choose an image file (JPG, PNG or WebP).");
+      return;
+    }
+    if (file && file.size > 8 * 1024 * 1024) {
+      setPhotoNote("That photo is over 8MB. Please choose a smaller one.");
+      return;
+    }
+    setPhotoNote(null);
+    setPhoto(file);
+  }
 
   useEffect(() => {
     claimsApi
@@ -117,6 +144,14 @@ export default function Claim() {
       });
       // Signed in immediately, but owning nothing until an admin agrees.
       setToken(res.token);
+      // The photo is a bonus, never a reason to fail the claim itself.
+      if (photo) {
+        try {
+          await claimsApi.uploadPhoto(res.claimId, photo);
+        } catch {
+          setPhotoNote("Your claim was sent, but the photo did not upload. You can add it from your dashboard.");
+        }
+      }
       await refresh();
       setDone(true);
     } catch (err) {
@@ -436,6 +471,31 @@ export default function Claim() {
                 autoComplete="new-password"
                 className={inputClass}
               />
+            </Field>
+
+            <Field
+              label="Profile photo"
+              htmlFor="photo"
+              optional
+              hint="A clear headshot. It goes live only after we approve your claim."
+            >
+              <div className="flex items-center gap-4">
+                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-paper-tint ring-1 ring-line">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Your chosen photo" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserCheck className="h-6 w-6 text-ink-faint" />
+                  )}
+                </div>
+                <input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={choosePhoto}
+                  className="block w-full text-[13px] text-ink-muted file:mr-3 file:rounded-full file:border-0 file:bg-teal-600 file:px-4 file:py-2 file:text-[12.5px] file:font-bold file:text-white hover:file:bg-teal-700"
+                />
+              </div>
+              {photoNote && <p className="mt-2 text-[12.5px] font-semibold text-danger">{photoNote}</p>}
             </Field>
 
             <Field label="Contact phone" htmlFor="phone" optional>
