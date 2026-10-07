@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getAllSpecialties, getSpecialistBySlug, getSpecialistReviews, searchSpecialists } from "../lib/api";
+import { PhotoFallback } from "../components/PhotoFallback";
 import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatAvailability, formatPrice, formatRating } from "../lib/format";
 import { EnquiryForm } from "../components/EnquiryForm";
@@ -178,15 +179,6 @@ const TAB_BAR_HEIGHT = 56;
 // Icons cycle across the hero's specialty chips — decoration only, so a
 // specialty without a bespoke icon still gets a sensible one.
 const CHIP_ICONS = [Activity, Stethoscope, Sparkles];
-
-function initialsOf(fullName: string) {
-  return fullName
-    .split(" ")
-    .filter((w) => w[0] === w[0]?.toUpperCase())
-    .slice(-2)
-    .map((w) => w[0])
-    .join("");
-}
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return null;
@@ -367,9 +359,7 @@ export default function SpecialistProfile() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="grid h-full w-full place-items-center font-display text-4xl font-bold text-white/80">
-                  {initialsOf(specialist.fullName)}
-                </div>
+                <PhotoFallback dark logoClassName="w-2/5" />
               )}
             </div>
           </div>

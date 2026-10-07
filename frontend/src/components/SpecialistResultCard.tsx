@@ -1,17 +1,9 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BadgeCheck, CalendarClock, MapPin, Sparkles, Star } from "lucide-react";
+import { PhotoFallback } from "./PhotoFallback";
 import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatAvailability, formatDistance, formatPrice, formatRating } from "../lib/format";
 import type { SpecialistWithRelations } from "../lib/types";
-
-function initialsOf(fullName: string) {
-  return fullName
-    .split(" ")
-    .filter((w) => w[0] === w[0]?.toUpperCase())
-    .slice(-2)
-    .map((w) => w[0])
-    .join("");
-}
 
 /**
  * A search result row. Every value on it comes from a real field on the
@@ -83,9 +75,7 @@ export function SpecialistResultCard({
                 loading="lazy"
               />
             ) : (
-              <div className="grid h-full w-full place-items-center bg-gradient-to-br from-paper-tint to-teal-50 font-display text-xl font-bold text-teal-700">
-                {initialsOf(specialist.fullName)}
-              </div>
+              <PhotoFallback logoClassName="w-3/5" />
             )}
           </div>
         </Link>
