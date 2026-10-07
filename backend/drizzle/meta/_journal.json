@@ -183,6 +183,13 @@
       "when": 1791239859105,
       "tag": "0025_schema_snapshot_resync",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791406926525,
+      "tag": "0026_claim_photo",
+      "breakpoints": true
     }
   ]
 }
