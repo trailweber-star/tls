@@ -102,10 +102,17 @@ const STATIC_PAGES = {
  * decides what a specialist/facility/article is called; this only asks
  * it the question earlier than the browser would.
  */
+const NOT_FOUND = Symbol("not-found");
+
 async function apiGet(pathname) {
   const port = process.env.PORT || 4000;
   const res = await fetch(`http://127.0.0.1:${port}/api${pathname}`);
-  if (!res.ok) return null;
+  /* A 404 from the API is an answer: this page does not exist. Any
+     other failure (a 500, a timeout) is not, and must not be turned
+     into a 404 for Google, so it throws and the caller falls through
+     to the ordinary response. */
+  if (res.status === 404) return NOT_FOUND;
+  if (!res.ok) throw new Error(`API ${res.status} for ${pathname}`);
   return res.json();
 }
 
@@ -142,6 +149,7 @@ async function resolveDynamic(reqPath, siteUrl, siteName) {
 
   if ((m = reqPath.match(/^\/specialists\/([^/]+)$/))) {
     const specialist = await apiGet(`/specialists/${m[1]}`);
+    if (specialist === NOT_FOUND) return NOT_FOUND;
     if (!specialist?.slug) return null;
     return {
       title: `${specialist.fullName}${specialist.title ? ` — ${specialist.title}` : ""}`,
@@ -153,6 +161,7 @@ async function resolveDynamic(reqPath, siteUrl, siteName) {
 
   if ((m = reqPath.match(/^\/facilities\/([^/]+)$/))) {
     const facility = await apiGet(`/facilities/${m[1]}`);
+    if (facility === NOT_FOUND) return NOT_FOUND;
     if (!facility?.slug) return null;
     const typeLabel = facility.facilityType ?? "Facility";
     return {
@@ -165,6 +174,7 @@ async function resolveDynamic(reqPath, siteUrl, siteName) {
 
   if ((m = reqPath.match(/^\/clinics\/([^/]+)$/))) {
     const clinic = await apiGet(`/clinics/${m[1]}`);
+    if (clinic === NOT_FOUND) return NOT_FOUND;
     if (!clinic?.name) return null;
     return {
       title: clinic.name,
@@ -176,6 +186,7 @@ async function resolveDynamic(reqPath, siteUrl, siteName) {
 
   if ((m = reqPath.match(/^\/blog\/([^/]+)$/))) {
     const data = await apiGet(`/articles/${m[1]}`);
+    if (data === NOT_FOUND) return NOT_FOUND;
     const article = data?.article;
     if (!article?.slug) return null;
     return {
@@ -216,13 +227,29 @@ export function botSeo({ clientDir, siteUrl, siteName }) {
       return next();
     }
 
-    const head = renderHead({ ...page, path: page.path ?? req.path, siteUrl, siteName });
+    /* A slug that does not exist gets a real 404 status. The single-page
+       app draws its "not found" screen with a 200, which Google reports
+       as a soft 404; the page body is the same app shell, so a visitor
+       who somehow lands here still sees the usual not found screen. */
+    const notFound = page === NOT_FOUND;
+    const head = renderHead(
+      notFound
+        ? {
+            title: "Page not found",
+            description: "The page you were looking for doesn't exist.",
+            noIndex: true,
+            siteUrl,
+            siteName,
+          }
+        : { ...page, path: page.path ?? req.path, siteUrl, siteName }
+    );
     html = html
       .replace(/<title>.*?<\/title>/is, "")
       .replace("</head>", `${head}</head>`);
 
+    res.status(notFound ? 404 : 200);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=300");
+    res.setHeader("Cache-Control", notFound ? "public, max-age=60" : "public, max-age=300");
     res.send(html);
   };
 }
