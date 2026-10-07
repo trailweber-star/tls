@@ -1,1 +1,0 @@
-ALTER TABLE "claims" ADD COLUMN IF NOT EXISTS "photo_url" text;
