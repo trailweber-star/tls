@@ -45,6 +45,8 @@ const account = {
   fullName: `Account Test ${stamp}`,
   email: `account-${stamp}@example.com`,
   password: PASSWORD,
+  locationAddress: "1 Test Street",
+  locationCityId: "london",
 };
 
 const registered = await call(null, "POST", "/auth/register", account);

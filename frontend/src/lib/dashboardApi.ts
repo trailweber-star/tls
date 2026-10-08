@@ -515,6 +515,9 @@ export const authApi = {
     title?: string;
     registrationNumber?: string;
     primarySpecialtySlug?: string;
+    locationAddress: string;
+    locationCityId: string;
+    locationPostcode?: string;
     phone?: string;
     plan?: "basic" | "premium" | "clinwell";
     planInterval?: "monthly" | "yearly";
