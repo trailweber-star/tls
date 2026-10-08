@@ -46,11 +46,11 @@ const COMPLETION_ITEMS = [
     section: "basic",
     weight: 2,
     has: (s) => Boolean(s.photoUrl),
-    // Gates whether an admin can approve this listing -- see
-    // requiredForVerification() below. A verified listing with no photo,
-    // specialty or location is a broken-looking page the moment it goes
-    // public, so these three are load-bearing rather than merely scored.
-    required: true,
+    // Still scored as a nudge, but no longer blocks approval: a listing
+    // with no photo now shows the site logo placeholder (see
+    // components/PhotoFallback.tsx), so it is not a broken-looking page.
+    // Specialty and location remain required -- see
+    // missingRequiredForVerification() below.
   },
   { key: "title", label: "Add your professional title", section: "basic", weight: 2, has: (s) => Boolean(s.title) },
   { key: "bio", label: "Write your biography", section: "basic", weight: 2, has: (s) => (s.bio ?? "").length > 80 },
