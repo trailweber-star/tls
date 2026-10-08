@@ -18,6 +18,8 @@ import { DashboardShell, Panel } from "../../components/DashboardShell";
 import { EmptyState, ErrorBlock, LoadingBlock, relativeTime, initials } from "../../components/dashboard/ui";
 import { Dialog } from "../../components/Dialog";
 import { adminApi } from "../../lib/dashboardApi";
+import { getCities } from "../../lib/api";
+import type { City } from "../../lib/types";
 import { ClaimsQueue } from "../../components/admin/ClaimsQueue";
 import type { VerificationDetail, VerificationRow } from "../../lib/dashboardApi";
 
@@ -324,6 +326,56 @@ function ApplicationDialog({
   const [submitting, setSubmitting] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
+  /* Adding a practice address on the applicant's behalf, for when
+     approval is blocked on "Add a clinic location". */
+  const [cities, setCities] = useState<City[]>([]);
+  const [showLocationForm, setShowLocationForm] = useState(false);
+  const [locAddress, setLocAddress] = useState("");
+  const [locPostcode, setLocPostcode] = useState("");
+  const [locPhone, setLocPhone] = useState("");
+  const [locCityId, setLocCityId] = useState("");
+  const [locSaving, setLocSaving] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
+
+  async function openLocationForm() {
+    setShowLocationForm(true);
+    if (cities.length === 0) {
+      try {
+        setCities(await getCities());
+      } catch {
+        setLocError("Could not load the list of cities.");
+      }
+    }
+  }
+
+  async function saveLocation() {
+    if (locAddress.trim().length < 3 || !locCityId) {
+      setLocError("Enter an address and choose a city.");
+      return;
+    }
+    setLocSaving(true);
+    setLocError(null);
+    try {
+      const res = await adminApi.addLocation(id, {
+        address: locAddress.trim(),
+        postcode: locPostcode.trim() || undefined,
+        phone: locPhone.trim() || undefined,
+        cityId: locCityId,
+      });
+      setApplication(res.application);
+      setShowLocationForm(false);
+      setLocAddress("");
+      setLocPostcode("");
+      setLocPhone("");
+      setLocCityId("");
+      setDecisionError(null);
+    } catch (err) {
+      setLocError(err instanceof Error ? err.message : "Could not add that location");
+    } finally {
+      setLocSaving(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -480,9 +532,9 @@ function ApplicationDialog({
           </div>
 
           {/* --------------------------------------- locations */}
-          {application.clinicLocations.length > 0 && (
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Practice locations</p>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Practice locations</p>
+            {application.clinicLocations.length > 0 ? (
               <ul className="mt-2 space-y-1">
                 {application.clinicLocations.map((l, i) => (
                   <li key={i} className="flex items-center gap-2 text-[12.5px] text-ink-muted">
@@ -491,8 +543,99 @@ function ApplicationDialog({
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            ) : (
+              <p className="mt-2 rounded-lg bg-amber/10 px-3 py-2.5 text-[12.5px] text-amber">
+                No practice location yet. Approval needs at least one.
+              </p>
+            )}
+
+            {!showLocationForm ? (
+              <button
+                type="button"
+                onClick={openLocationForm}
+                className="mt-2 rounded-full px-4 py-2 text-[12.5px] font-bold text-teal-700 ring-1 ring-line transition hover:bg-paper-tint"
+              >
+                Add a location
+              </button>
+            ) : (
+              <div className="mt-3 space-y-3 rounded-xl bg-paper-muted p-3.5">
+                <div>
+                  <label htmlFor="admin-loc-address" className="text-[12px] font-bold text-ink">
+                    Address
+                  </label>
+                  <input
+                    id="admin-loc-address"
+                    value={locAddress}
+                    onChange={(e) => setLocAddress(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[13px] outline-none focus:border-teal-500"
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="admin-loc-city" className="text-[12px] font-bold text-ink">
+                      City
+                    </label>
+                    <select
+                      id="admin-loc-city"
+                      value={locCityId}
+                      onChange={(e) => setLocCityId(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[13px] outline-none focus:border-teal-500"
+                    >
+                      <option value="">Choose a city</option>
+                      {cities.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="admin-loc-postcode" className="text-[12px] font-bold text-ink">
+                      Postcode <span className="font-semibold text-ink-faint">Optional</span>
+                    </label>
+                    <input
+                      id="admin-loc-postcode"
+                      value={locPostcode}
+                      onChange={(e) => setLocPostcode(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[13px] outline-none focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="admin-loc-phone" className="text-[12px] font-bold text-ink">
+                    Phone <span className="font-semibold text-ink-faint">Optional</span>
+                  </label>
+                  <input
+                    id="admin-loc-phone"
+                    value={locPhone}
+                    onChange={(e) => setLocPhone(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[13px] outline-none focus:border-teal-500"
+                  />
+                </div>
+                {locError && <p className="text-[12.5px] font-semibold text-danger">{locError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={saveLocation}
+                    disabled={locSaving}
+                    className="rounded-full bg-teal-600 px-5 py-2.5 text-[13px] font-bold text-white transition hover:bg-teal-700 disabled:opacity-60"
+                  >
+                    {locSaving ? "Saving..." : "Save location"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLocationForm(false);
+                      setLocError(null);
+                    }}
+                    className="rounded-full px-5 py-2.5 text-[13px] font-bold text-ink ring-1 ring-line transition hover:bg-paper-tint"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {application.bio && (
             <div>
