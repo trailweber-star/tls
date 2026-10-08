@@ -91,6 +91,7 @@ import { getAvailableSlots, createAppointment } from "../controllers/booking.con
 import { getReplyThread, postReply } from "../controllers/reply.controller.js";
 import {
   decideVerification,
+  addVerificationLocation,
   getAdminOverview,
   getVerification,
   listAdminSpecialists,
@@ -420,6 +421,7 @@ router.get("/admin/overview", requireAuth, requireRole("admin"), getAdminOvervie
 router.get("/admin/verifications", requireAuth, requireRole("admin"), listVerifications);
 router.get("/admin/verifications/:id", requireAuth, requireRole("admin"), getVerification);
 router.post("/admin/verifications/:id/decide", requireAuth, requireRole("admin"), decideVerification);
+router.post("/admin/verifications/:id/location", requireAuth, requireRole("admin"), addVerificationLocation);
 router.get("/admin/specialists", requireAuth, requireRole("admin"), listAdminSpecialists);
 
 /* --------------------------------------------------- members workspace

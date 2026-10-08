@@ -2,6 +2,8 @@ import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import {
   adminAudit,
+  clinicLocations as locationRepo,
+  taxonomy as taxonomyRepo,
   leads as leadRepo,
   specialists as specialistRepo,
   facilities as facilityRepo,
@@ -306,6 +308,66 @@ export async function getVerification(req, res) {
   const s = await specialistRepo.findById(id);
   if (!s) return res.status(404).json({ error: "Application not found" });
   res.json({ application: shapeDetail(s) });
+}
+
+const addLocationSchema = z.object({
+  address: z.string().trim().min(3).max(300),
+  postcode: z.string().trim().max(20).optional().or(z.literal("")),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  cityId: z.string().trim().min(1),
+});
+
+/**
+ * POST /api/admin/verifications/:id/location
+ *
+ * Lets an admin add a practice address to a listing under review, for
+ * the case where the applicant has not (or cannot) add one themselves
+ * and approval is blocked on "Add a clinic location". It creates an
+ * address the specialist owns, exactly like the one they would add from
+ * their dashboard, and keeps every location they already have.
+ */
+export async function addVerificationLocation(req, res) {
+  const parsed = addLocationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Enter an address and choose a city.", issues: parsed.error.issues });
+  }
+  if (!isDbConfigured()) {
+    return res.status(400).json({ error: "Adding a location needs the database." });
+  }
+
+  const { id } = req.params;
+  const current = await specialistRepo.findById(id);
+  if (!current) return res.status(404).json({ error: "Application not found" });
+
+  const cities = await taxonomyRepo.cities();
+  const city = cities.find((c) => c.id === parsed.data.cityId || c.slug === parsed.data.cityId);
+  if (!city) return res.status(400).json({ error: "Choose a city from the list." });
+
+  const [created] = await locationRepo.createOwned(id, [
+    {
+      cityId: city.id,
+      address: parsed.data.address,
+      postcode: parsed.data.postcode || null,
+      phone: parsed.data.phone || null,
+      // No geocoder pick here, so the pin sits at the city centre until
+      // the specialist refines the address from their own dashboard.
+      lat: city.lat,
+      lng: city.lng,
+    },
+  ]);
+  const existingIds = (current.clinicLocations ?? []).map((l) => l.id);
+  await specialistRepo.setLinks(id, { locationIds: [...existingIds, created.id] });
+
+  await audit(req, {
+    action: "specialist.location_added",
+    subjectType: "specialist",
+    subjectId: id,
+    subjectLabel: current.fullName,
+    detail: { address: parsed.data.address, city: city.name },
+  });
+
+  const updated = await specialistRepo.findById(id);
+  res.status(201).json({ ok: true, application: shapeDetail(updated) });
 }
 
 function shapeDetail(s) {

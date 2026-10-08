@@ -824,6 +824,8 @@ export const adminApi = {
       counts: Record<string, number>;
     }>(`/admin/verifications?status=${status}&page=${page}`),
   verification: (id: string) => get<{ application: VerificationDetail }>(`/admin/verifications/${id}`),
+  addLocation: (id: string, input: { address: string; postcode?: string; phone?: string; cityId: string }) =>
+    post<{ ok: boolean; application: VerificationDetail }>(`/admin/verifications/${id}/location`, input),
   decide: (id: string, action: string, note?: string) =>
     post<{ ok: boolean; verificationStatus: VerificationStatus; verificationHistory: HistoryEntry[] }>(
       `/admin/verifications/${id}/decide`,
