@@ -20,6 +20,7 @@ import { requestOrigin } from "../lib/requestIp.js";
 import { entitlementsFor, getPlan, isPaidPlan } from "../lib/plans.js";
 import { NOTIFICATION_TYPES, notify, notifyAdmins } from "../lib/notifications.js";
 import { attachSpecialistId } from "../db/repos.js";
+import { applicantWelcomeBody, regulatorFromNumber } from "../lib/applicantWelcome.js";
 
 /**
  * Tell every admin a new application is waiting.
@@ -54,15 +55,14 @@ async function announceApplication({ specialist, plan, planInterval }) {
  * (push only if they already have a device registered, which a brand
  * new account never does -- it simply no-ops there).
  */
-async function welcomeApplicant({ user, specialist, plan, email }) {
+async function welcomeApplicant({ user, specialist, plan, email, regulatorCode = null }) {
+  // Replies go to the support inbox (MAIL_REPLY_TO), where the team
+  // checks the certificate by hand before approving.
   await notify({
     userId: String(user.id ?? user._id),
     type: NOTIFICATION_TYPES.APPLICATION_RECEIVED,
     title: "We've received your application",
-    body:
-      `Thanks for applying to Top Local Specialists on the ${getPlan(plan).name} plan. ` +
-      `Your profile is being reviewed and stays hidden from patients until an admin approves it — ` +
-      `we'll email you the moment that happens.`,
+    body: applicantWelcomeBody({ specialist, plan, regulatorCode }),
     url: "/dashboard",
     subjectId: specialist.id,
     key: `${NOTIFICATION_TYPES.APPLICATION_RECEIVED}:${specialist.id}`,
@@ -208,7 +208,13 @@ export async function register(req, res) {
     // demo signup otherwise comes back owning nothing it just created.
     user.isSpecialistOwner = true;
     await announceApplication({ specialist, plan, planInterval });
-    await welcomeApplicant({ user, specialist, plan, email });
+    await welcomeApplicant({
+      user,
+      specialist,
+      plan,
+      email,
+      regulatorCode: regulatorFromNumber(registrationNumber),
+    });
 
     const demoSession = await issueSession(req, user);
     return res.status(201).json({ token: demoSession.token, user: publicUser(user) });
@@ -322,7 +328,7 @@ export async function register(req, res) {
     plan,
     planInterval,
   });
-  await welcomeApplicant({ user, specialist, plan, email });
+  await welcomeApplicant({ user, specialist: { ...specialist, clinicLocations: [practice] }, plan, email, regulatorCode });
 
   const opened = await issueSession(req, user);
   res.status(201).json({ token: opened.token, user: publicUser(user) });
