@@ -70,7 +70,7 @@ async function main() {
   /* -------------------------------------------------------- set the scene */
   const email = `e2e-${Date.now()}@example.com`;
   const registered = await api("POST", "/auth/register", {
-    body: { fullName: "E2E Pending Specialist", email, password: "password123", plan: "basic" },
+    body: { fullName: "E2E Pending Specialist", email, password: "password123", plan: "basic", locationAddress: "1 Test Street", locationCityId: "london" },
   });
   check("a new specialist can register", registered.status === 201, `HTTP ${registered.status} ${registered.text.slice(0, 160)}`);
   const specialistId = registered.json?.user?.specialistId;

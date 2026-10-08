@@ -45,6 +45,8 @@ const member = {
   fullName: `Reset Test ${stamp}`,
   email: `reset-${stamp}@example.com`,
   password: "first-password-9281",
+  locationAddress: "1 Test Street",
+  locationCityId: "london",
 };
 
 const registered = await call(null, "POST", "/auth/register", member);
@@ -282,6 +284,8 @@ const other = {
   fullName: `Other Account ${stamp}`,
   email: `other-${stamp}@example.com`,
   password: "another-password-6621",
+  locationAddress: "1 Test Street",
+  locationCityId: "london",
 };
 const otherReg = await call(null, "POST", "/auth/register", other);
 check("registered a second account", otherReg.status === 201, String(otherReg.status));

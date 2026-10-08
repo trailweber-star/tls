@@ -3,10 +3,10 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/dashboardApi";
-import { getAllSpecialties, getTopLevelSpecialties } from "../lib/api";
+import { getAllSpecialties, getCities, getTopLevelSpecialties } from "../lib/api";
 import { money, plansApi } from "../lib/plansApi";
 import type { BillingInterval, Plan, PlanCatalogue, PlanId } from "../lib/plansApi";
-import type { Specialty } from "../lib/types";
+import type { City, Specialty } from "../lib/types";
 import { AuthLayout, Field } from "../components/AuthLayout";
 
 /* ------------------------------------------------------------------ *
@@ -31,6 +31,10 @@ type Values = {
   confirm: string;
   registrationNumber: string;
   primarySpecialtySlug: string;
+  /** Where they practise. Required: approval needs a location. */
+  locationAddress: string;
+  locationCityId: string;
+  locationPostcode: string;
   /* Expert Witness only -- see the conditional fields below and
      ProfileEditor.tsx's two guided second steps, which these mirror. */
   caseTypeSlugs: string[];
@@ -52,6 +56,9 @@ const EMPTY: Values = {
   confirm: "",
   registrationNumber: "",
   primarySpecialtySlug: "",
+  locationAddress: "",
+  locationCityId: "",
+  locationPostcode: "",
   caseTypeSlugs: [],
   clinicalSpecialtySlugs: [],
   phone: "",
@@ -142,11 +149,13 @@ export default function Register() {
   // checkbox grids below -- the dropdown above stays driven by
   // getTopLevelSpecialties(), unchanged.
   const [allSpecialties, setAllSpecialties] = useState<Specialty[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
 
   useEffect(() => {
     plansApi.catalogue().then(setCatalogue).catch(() => setCatalogue(null));
     getTopLevelSpecialties().then(setSpecialties).catch(() => setSpecialties([]));
     getAllSpecialties().then(setAllSpecialties).catch(() => setAllSpecialties([]));
+    getCities().then(setCities).catch(() => setCities([]));
   }, []);
 
   const plan: Plan | null = catalogue?.plans.find((p) => p.id === planId) ?? null;
@@ -183,12 +192,14 @@ export default function Register() {
     if (values.confirm !== values.password) e.confirm = "Passwords do not match";
     if (!values.registrationNumber.trim()) e.registrationNumber = "We check this against the regulator";
     if (!values.primarySpecialtySlug) e.primarySpecialtySlug = "Choose the specialty you practise in";
+    if (values.locationAddress.trim().length < 3) e.locationAddress = "Enter the address where you practise";
+    if (!values.locationCityId) e.locationCityId = "Choose the city you practise in";
     return e;
   }, [values]);
 
   const STEP_FIELDS: Record<number, (keyof Values)[]> = {
     1: ["fullName", "email", "password", "confirm"],
-    2: ["registrationNumber", "primarySpecialtySlug"],
+    2: ["registrationNumber", "primarySpecialtySlug", "locationAddress", "locationCityId"],
     3: [],
   };
 
@@ -219,6 +230,9 @@ export default function Register() {
         title: values.title.trim() || undefined,
         registrationNumber: values.registrationNumber.trim() || undefined,
         primarySpecialtySlug: values.primarySpecialtySlug || undefined,
+        locationAddress: values.locationAddress.trim(),
+        locationCityId: values.locationCityId,
+        locationPostcode: values.locationPostcode.trim() || undefined,
         phone: values.phone.trim() || undefined,
         plan: planId,
         planInterval: interval,
@@ -456,6 +470,51 @@ export default function Register() {
                 ))}
               </select>
             </Field>
+
+            <Field
+              label="Practice address"
+              htmlFor="locationAddress"
+              error={errorFor("locationAddress")}
+              hint="Where patients see you. It appears on your profile and puts you in that city's search results."
+            >
+              <input
+                id="locationAddress"
+                value={values.locationAddress}
+                onChange={set("locationAddress")}
+                onBlur={markTouched("locationAddress")}
+                autoComplete="street-address"
+                placeholder="e.g. 12 Harley Street"
+                className={inputClass}
+              />
+            </Field>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="City" htmlFor="locationCityId" error={errorFor("locationCityId")}>
+                <select
+                  id="locationCityId"
+                  value={values.locationCityId}
+                  onChange={set("locationCityId")}
+                  onBlur={markTouched("locationCityId")}
+                  className={inputClass}
+                >
+                  <option value="">Select a city…</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Postcode" htmlFor="locationPostcode" optional>
+                <input
+                  id="locationPostcode"
+                  value={values.locationPostcode}
+                  onChange={set("locationPostcode")}
+                  autoComplete="postal-code"
+                  className={inputClass}
+                />
+              </Field>
+            </div>
 
             {isExpertWitness && (
               <>

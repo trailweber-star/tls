@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isDbConfigured } from "../config/db.js";
 import {
+  clinicLocations as locationRepo,
   specialists as specialistRepo,
   taxonomy as taxonomyRepo,
   users as userRepo,
@@ -110,6 +111,11 @@ const registerSchema = z.object({
   caseTypeSlugs: z.array(z.string().max(120)).max(40).optional().default([]),
   clinicalSpecialtySlugs: z.array(z.string().max(120)).max(100).optional().default([]),
   phone: z.string().max(50).optional().or(z.literal("")),
+  // Where they practise. Required: a listing with no address cannot be
+  // approved, so it is asked for here rather than chased afterwards.
+  locationAddress: z.string().trim().min(3, "Enter the practice address").max(300),
+  locationCityId: z.string().trim().min(1, "Choose the city"),
+  locationPostcode: z.string().trim().max(20).optional().or(z.literal("")),
   // Chosen on the pricing page and carried through signup. A paid plan
   // does not charge anyone here: it records the intent and waits for
   // verification (see billing.controller.js).
@@ -141,6 +147,7 @@ export async function register(req, res) {
   }
   const {
     fullName, email, password, title, registrationNumber, primarySpecialtySlug, phone,
+    locationAddress, locationCityId, locationPostcode,
     caseTypeSlugs, clinicalSpecialtySlugs,
     plan, planInterval, websiteUrl, bookingUrl, linkedin, instagram, company,
   } = parsed.data;
@@ -209,6 +216,12 @@ export async function register(req, res) {
 
   const existing = await userRepo.findByEmail(email);
   if (existing) return res.status(409).json({ error: "An account with that email already exists" });
+
+  // Checked before anything is created, so a bad city never leaves an
+  // account behind with no listing.
+  const allCities = await taxonomyRepo.cities();
+  const practiceCity = allCities.find((c) => c.id === locationCityId || c.slug === locationCityId);
+  if (!practiceCity) return res.status(400).json({ error: "Choose the city you practise in from the list." });
 
   const slugBase = fullName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   let slug = slugBase;
@@ -285,6 +298,21 @@ export async function register(req, res) {
     },
     { specialtyIds }
   );
+
+  // The practice address, owned by this specialist exactly like one
+  // added later from the dashboard. The pin sits at the city centre
+  // until they refine it there.
+  const [practice] = await locationRepo.createOwned(specialist.id, [
+    {
+      cityId: practiceCity.id,
+      address: locationAddress,
+      postcode: locationPostcode || null,
+      phone: phone || null,
+      lat: practiceCity.lat,
+      lng: practiceCity.lng,
+    },
+  ]);
+  await specialistRepo.setLinks(specialist.id, { locationIds: [practice.id] });
 
   user.specialistId = specialist.id;
   user.isSpecialistOwner = true;
