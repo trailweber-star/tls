@@ -3,6 +3,9 @@ import { specialists as specialistRepo, users as userRepo } from "../src/db/repo
 import { isDbConfigured } from "../src/config/db.js";
 import { NOTIFICATION_TYPES, notify } from "../src/lib/notifications.js";
 import { applicantWelcomeBody, regulatorFromNumber } from "../src/lib/applicantWelcome.js";
+import { registerMailer, hasMailer, mailProviderName } from "../src/lib/mailer.js";
+import { siteUrl } from "../src/lib/urls.js";
+import pg from "pg";
 
 /* ------------------------------------------------------------------ *
  * One-off: email every applicant still waiting for approval, asking
@@ -18,11 +21,37 @@ import { applicantWelcomeBody, regulatorFromNumber } from "../src/lib/applicantW
  * ------------------------------------------------------------------ */
 
 const send = process.argv.includes("--send");
+const reset = process.argv.includes("--reset");
 const only = (process.argv.find((a) => a.startsWith("--only=")) ?? "").slice(7).toLowerCase() || null;
 
 if (!isDbConfigured()) {
   console.error("No DATABASE_URL set, nothing to read.");
   process.exit(1);
+}
+
+// --reset removes reminder rows from an earlier run that never left the
+// building (for example one run where no mail provider was configured),
+// so the next --send is not skipped as "already reminded".
+if (reset) {
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
+  const out = await client.query("delete from notifications where key like 'applicant_reminder:%'");
+  console.log(`Removed ${out.rowCount} earlier reminder record(s).`);
+  await client.end();
+  process.exit(0);
+}
+
+if (send) {
+  await registerMailer();
+  if (!hasMailer()) {
+    console.error("Stopped: no mail provider is configured here, so nothing would be emailed. Run this where the mail settings exist (the Render shell).");
+    process.exit(1);
+  }
+  if (/localhost|127\.0\.0\.1/.test(siteUrl())) {
+    console.error(`Stopped: SITE_URL resolves to ${siteUrl()}, so links in the email would point at localhost. Run this in the Render shell.`);
+    process.exit(1);
+  }
+  console.log(`Sending via ${mailProviderName()}, links use ${siteUrl()}\n`);
 }
 
 const intro =
