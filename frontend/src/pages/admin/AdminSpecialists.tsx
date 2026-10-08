@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ExternalLink, Search as SearchIcon, Star, Users } from "lucide-react";
+import { Camera, ExternalLink, Search as SearchIcon, Star, Users } from "lucide-react";
 import { DashboardShell, Panel } from "../../components/DashboardShell";
 import { EmptyState, ErrorBlock, LoadingBlock } from "../../components/dashboard/ui";
 import { adminApi } from "../../lib/dashboardApi";
@@ -9,6 +9,7 @@ import type { AdminSpecialistRow, VerificationStatus } from "../../lib/dashboard
 const STATUS_FILTERS = [
   { key: "all", label: "All" },
   { key: "verified", label: "Verified" },
+  { key: "unverified", label: "Unclaimed" },
   { key: "pending", label: "Pending" },
   { key: "info_requested", label: "Info requested" },
   { key: "rejected", label: "Not approved" },
@@ -24,9 +25,66 @@ const STATUS_TONE: Record<VerificationStatus, string> = {
   unverified: "bg-paper-tint text-ink-faint",
 };
 
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+
+/* One row's photo cell: the current picture (or a plain placeholder) and
+   a button that sends the chosen file straight to the listing. */
+function PhotoCell({ row, onDone }: { row: AdminSpecialistRow; onDone: (id: string, url: string) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    setNote(null);
+    if (!file.type.startsWith("image/")) return setNote("Choose an image file.");
+    if (file.size > MAX_PHOTO_BYTES) return setNote("Keep it under 8 MB.");
+    setBusy(true);
+    try {
+      const res = await adminApi.setSpecialistPhoto(row.id, file);
+      onDone(row.id, res.url);
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Could not save the photo.");
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      {row.photoUrl ? (
+        <img src={row.photoUrl} alt="" className="h-10 w-10 rounded-full object-cover ring-1 ring-line" />
+      ) : (
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-paper-tint text-ink-faint ring-1 ring-line">
+          <Camera className="h-4 w-4" strokeWidth={2} aria-hidden />
+        </span>
+      )}
+      <div className="min-w-0">
+        <input
+          ref={input}
+          id={`photo-${row.id}`}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => pick(e.target.files?.[0])}
+        />
+        <label
+          htmlFor={`photo-${row.id}`}
+          className={`inline-block cursor-pointer rounded-full bg-paper-tint px-3 py-1.5 text-[11.5px] font-bold text-ink-muted transition hover:bg-line-soft ${busy ? "pointer-events-none opacity-50" : ""}`}
+        >
+          {busy ? "Saving…" : row.photoUrl ? "Replace" : "Add photo"}
+        </label>
+        {note && <span className="block text-[11px] text-danger">{note}</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminSpecialists() {
   const [params, setParams] = useSearchParams();
   const status = params.get("status") ?? "all";
+  const noPhoto = params.get("photo") === "missing";
   const q = params.get("q") ?? "";
   const page = Number(params.get("page") ?? 1);
 
@@ -43,7 +101,7 @@ export default function AdminSpecialists() {
     setLoading(true);
     setError(null);
     try {
-      const res = await adminApi.specialists({ q: q || undefined, status, page });
+      const res = await adminApi.specialists({ q: q || undefined, status, page, photo: noPhoto ? "missing" : undefined });
       setRows(res.results);
       setTotal(res.total);
       setTotalPages(res.totalPages);
@@ -52,7 +110,7 @@ export default function AdminSpecialists() {
     } finally {
       setLoading(false);
     }
-  }, [q, status, page]);
+  }, [q, status, page, noPhoto]);
 
   useEffect(() => {
     load();
@@ -94,6 +152,16 @@ export default function AdminSpecialists() {
         </form>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => navigate({ photo: noPhoto ? null : "missing", page: null })}
+            aria-pressed={noPhoto}
+            className={`rounded-full px-3.5 py-2 text-[12.5px] font-bold transition ${
+              noPhoto ? "bg-teal-600 text-white" : "bg-white text-ink-muted ring-1 ring-line hover:text-ink"
+            }`}
+          >
+            No photo
+          </button>
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.key}
@@ -127,11 +195,14 @@ export default function AdminSpecialists() {
         <>
           <Panel padded={false}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] border-collapse text-left">
+              <table className="w-full min-w-[780px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-line-soft text-[11px] uppercase tracking-wide text-ink-faint">
                     <th scope="col" className="px-5 py-3 font-bold">
                       Name
+                    </th>
+                    <th scope="col" className="px-5 py-3 font-bold">
+                      Photo
                     </th>
                     <th scope="col" className="px-5 py-3 font-bold">
                       Specialty
@@ -155,6 +226,14 @@ export default function AdminSpecialists() {
                         {row.contactEmail && (
                           <span className="block text-[12px] text-ink-faint">{row.contactEmail}</span>
                         )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <PhotoCell
+                          row={row}
+                          onDone={(id, url) =>
+                            setRows((prev) => prev.map((r) => (r.id === id ? { ...r, photoUrl: url } : r)))
+                          }
+                        />
                       </td>
                       <td className="px-5 py-3.5 text-[13px] text-ink-muted">{row.specialty ?? "—"}</td>
                       <td className="px-5 py-3.5">

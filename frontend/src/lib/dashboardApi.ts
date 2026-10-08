@@ -794,6 +794,7 @@ export interface AdminSpecialistRow {
   ratingAvg: number;
   ratingCount: number;
   contactEmail: string | null;
+  photoUrl: string | null;
 }
 
 export type ModerationStatus = "pending" | "approved" | "rejected";
@@ -845,8 +846,9 @@ export const adminApi = {
       note,
     }),
 
-  specialists: (params: { q?: string; status?: string; page?: number } = {}) => {
+  specialists: (params: { q?: string; status?: string; page?: number; photo?: string } = {}) => {
     const qs = new URLSearchParams();
+    if (params.photo) qs.set("photo", params.photo);
     if (params.q) qs.set("q", params.q);
     if (params.status) qs.set("status", params.status);
     if (params.page) qs.set("page", String(params.page));
@@ -854,6 +856,13 @@ export const adminApi = {
       `/admin/specialists?${qs.toString()}`
     );
   },
+  // Raw image body, same contract as /uploads/image.
+  setSpecialistPhoto: (id: string, file: File) =>
+    request<{ ok: boolean; url: string }>(`/admin/specialists/${id}/photo`, {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    }),
 };
 
 /* ------------------------------------------------------------ members

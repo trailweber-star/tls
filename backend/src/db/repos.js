@@ -372,8 +372,11 @@ export const specialists = {
    * specialist in the database on every request just to filter, sort
    * and slice the result down to one page in JavaScript.
    */
-  async searchPaged({ q = "", status = null, page = 1, pageSize = 25 }) {
+  async searchPaged({ q = "", status = null, page = 1, pageSize = 25, photo = null }) {
     const clauses = [];
+    if (photo === "missing") {
+      clauses.push(or(isNull(t.specialists.photoUrl), eq(t.specialists.photoUrl, "")));
+    }
     if (status && status !== "all") clauses.push(eq(t.specialists.verificationStatus, status));
     if (q) clauses.push(or(ilike(t.specialists.fullName, `%${q}%`), ilike(t.specialists.slug, `%${q}%`)));
     const where = clauses.length ? and(...clauses) : undefined;
