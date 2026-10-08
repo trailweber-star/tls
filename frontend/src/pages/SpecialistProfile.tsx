@@ -363,12 +363,17 @@ export default function SpecialistProfile() {
               )}
             </div>
             {!specialist.photoUrl && !specialist.claimed && (
-              <Link
-                to={`/claim/${specialist.slug}`}
-                className="mt-2 block rounded-full bg-white/10 px-3 py-2 text-center text-[12px] font-bold text-white transition hover:bg-white/20"
-              >
-                Is this you? Add your photo
-              </Link>
+              <div className="mt-2 rounded-2xl bg-white/10 p-3 text-center">
+                <p className="text-[11.5px] leading-snug text-white/80">
+                  This profile has no photo yet. If this is you, add one so patients can recognise you.
+                </p>
+                <Link
+                  to={`/claim/${specialist.slug}`}
+                  className="mt-2 block rounded-full bg-white px-3 py-2 text-[12.5px] font-bold text-navy-950 transition hover:bg-white/90"
+                >
+                  Is this you? Add your photo
+                </Link>
+              </div>
             )}
           </div>
 

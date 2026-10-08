@@ -95,6 +95,7 @@ import {
   getAdminOverview,
   getVerification,
   listAdminSpecialists,
+  setSpecialistPhoto,
   listVerifications,
 } from "../controllers/admin.controller.js";
 import {
@@ -423,6 +424,13 @@ router.get("/admin/verifications/:id", requireAuth, requireRole("admin"), getVer
 router.post("/admin/verifications/:id/decide", requireAuth, requireRole("admin"), decideVerification);
 router.post("/admin/verifications/:id/location", requireAuth, requireRole("admin"), addVerificationLocation);
 router.get("/admin/specialists", requireAuth, requireRole("admin"), listAdminSpecialists);
+router.post(
+  "/admin/specialists/:id/photo",
+  requireAuth,
+  requireRole("admin"),
+  express.raw({ type: ["image/*", "application/octet-stream"], limit: MAX_UPLOAD_BYTES }),
+  setSpecialistPhoto
+);
 
 /* --------------------------------------------------- members workspace
    One filtered list of everybody on the site, and the actions that can

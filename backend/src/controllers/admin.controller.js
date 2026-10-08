@@ -24,7 +24,7 @@ import { notificationStore } from "../lib/notifications.js";
 import { hasMailer, sendMail } from "../lib/mailer.js";
 import { missingRequiredForVerification } from "./dashboard.controller.js";
 import { hasPaymentProvider, paymentProviderName } from "../lib/payments.js";
-import { storageProviderName } from "../lib/storage.js";
+import { publicOriginFrom, saveImage, storageProviderName } from "../lib/storage.js";
 import { hasPushProvider, pushProviderName } from "../lib/push.js";
 import { mapProvider } from "../lib/maps.js";
 import { clientIp } from "../lib/requestIp.js";
@@ -370,6 +370,37 @@ export async function addVerificationLocation(req, res) {
   res.status(201).json({ ok: true, application: shapeDetail(updated) });
 }
 
+/**
+ * POST /api/admin/specialists/:id/photo   (body: the raw image)
+ *
+ * An admin sets a listing's photo from a file the owner sent. Goes
+ * through the same saveImage() as every other upload, so the image is
+ * re-hosted and size and type checked. Audited, because it changes
+ * what a patient sees on someone's profile.
+ */
+export async function setSpecialistPhoto(req, res) {
+  if (!isDbConfigured()) return res.status(400).json({ error: "Setting a photo needs the database." });
+  const current = await specialistRepo.findById(req.params.id);
+  if (!current) return res.status(404).json({ error: "Specialist not found" });
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    return res.status(400).json({ error: "No image received." });
+  }
+  try {
+    const saved = await saveImage({ buffer: req.body, kind: "profile-photo", origin: publicOriginFrom(req) });
+    await specialistRepo.update(req.params.id, { photoUrl: saved.url });
+    await audit(req, {
+      action: "specialist.photo_set",
+      subjectType: "specialist",
+      subjectId: req.params.id,
+      subjectLabel: current.fullName,
+      detail: { replaced: Boolean(current.photoUrl) },
+    });
+    res.status(201).json({ ok: true, url: saved.url });
+  } catch (err) {
+    res.status(err.status ?? 500).json({ error: err.message ?? "Could not store that image" });
+  }
+}
+
 function shapeDetail(s) {
   return {
     id: s.id,
@@ -626,6 +657,7 @@ export async function listAdminSpecialists(req, res) {
     ratingAvg: s.ratingAvg ?? 0,
     ratingCount: s.ratingCount ?? 0,
     contactEmail: s.contactEmail ?? null,
+    photoUrl: s.photoUrl ?? null,
   });
 
   if (!isDbConfigured()) {
@@ -643,7 +675,8 @@ export async function listAdminSpecialists(req, res) {
 
   // Filtered, sorted and sliced in SQL — searchPaged() assembles
   // relations only for the one page requested, not the whole table.
-  const { rows, total } = await specialistRepo.searchPaged({ q, status, page, pageSize });
+  const photo = req.query.photo === "missing" ? "missing" : null;
+  const { rows, total } = await specialistRepo.searchPaged({ q, status, page, pageSize, photo });
 
   res.json({
     results: rows.map(shape),
