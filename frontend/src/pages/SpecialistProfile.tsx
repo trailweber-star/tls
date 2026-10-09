@@ -32,7 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getAllSpecialties, getSpecialistBySlug, getSpecialistReviews, searchSpecialists } from "../lib/api";
-import { PhotoFallback } from "../components/PhotoFallback";
+import { PortraitImage } from "../components/PhotoFallback";
 import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatAvailability, formatPrice, formatRating } from "../lib/format";
 import { EnquiryForm } from "../components/EnquiryForm";
@@ -350,17 +350,15 @@ export default function SpecialistProfile() {
         <div className="mx-auto flex max-w-7xl flex-col gap-7 sm:flex-row sm:items-start sm:gap-9">
           <div className="glass-frame w-40 shrink-0 rounded-[1.5rem] p-2 sm:w-52">
             <div className="aspect-[4/5] w-full overflow-hidden rounded-[1.1rem] bg-navy-800">
-              {specialist.photoUrl ? (
-                <img
-                  src={cloudinaryUrl(specialist.photoUrl)}
-                  alt={specialist.fullName}
-                  width={208}
-                  height={260}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <PhotoFallback dark logoClassName="w-2/5" />
-              )}
+              <PortraitImage
+                src={specialist.photoUrl ? cloudinaryUrl(specialist.photoUrl) : null}
+                alt={specialist.fullName}
+                width={208}
+                height={260}
+                loading="eager"
+                dark
+                fallbackLogoClassName="w-2/5"
+              />
             </div>
             {!specialist.photoUrl && !specialist.claimed && (
               <div className="mt-2 rounded-2xl bg-white/10 p-3 text-center">

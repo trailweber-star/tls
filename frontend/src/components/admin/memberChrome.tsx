@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { VerificationStatus } from "../../lib/dashboardApi";
-import { initials } from "../dashboard/ui";
+import logoImg from "../../assets/images/logo.webp";
 
 /* ------------------------------------------------------------------ *
  * The vocabulary of a member's state
@@ -61,9 +61,14 @@ export function MemberAvatar({
     return (
       <span
         style={box}
-        className={`grid shrink-0 place-items-center rounded-full bg-paper-tint font-bold text-ink-muted ${className}`}
+        className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-paper-tint ring-1 ring-line-soft ${className}`}
       >
-        <span style={{ fontSize: Math.max(10, Math.round(size / 3)) }}>{initials(fullName)}</span>
+        <img
+          src={logoImg}
+          alt=""
+          style={{ width: "62%", height: "62%" }}
+          className="object-contain opacity-80"
+        />
       </span>
     );
   }

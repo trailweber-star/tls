@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { MapPin, Star } from "lucide-react";
-import { PhotoFallback } from "./PhotoFallback";
+import { PortraitImage } from "./PhotoFallback";
 import { cloudinaryUrl } from "../lib/cloudinary";
 import type { SpecialistWithRelations } from "../lib/types";
 
@@ -23,18 +23,14 @@ export function SpecialistCard({ specialist }: { specialist: SpecialistWithRelat
       className="group flex flex-col overflow-hidden rounded-[1.375rem] border border-line bg-white p-2.5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-teal-100 hover:shadow-lg"
     >
       <div className="aspect-[4/5] w-full overflow-hidden rounded-[1rem] bg-paper-muted">
-        {specialist.photoUrl ? (
-          <img
-            src={cloudinaryUrl(specialist.photoUrl)}
-            alt={specialist.fullName}
-            width={400}
-            height={500}
-            loading="lazy"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <PhotoFallback logoClassName="w-2/5" />
-        )}
+        <PortraitImage
+          src={specialist.photoUrl ? cloudinaryUrl(specialist.photoUrl) : null}
+          alt={specialist.fullName}
+          width={400}
+          height={500}
+          imgClassName="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          fallbackLogoClassName="w-2/5"
+        />
       </div>
 
       <div className="flex flex-1 flex-col px-2.5 pb-2 pt-4">

@@ -33,6 +33,8 @@ import {
 import express from "express";
 import { deleteImage, uploadConfig, uploadImage, uploadVideo } from "../controllers/uploads.controller.js";
 import { MAX_UPLOAD_BYTES, MAX_VIDEO_BYTES } from "../lib/storage.js";
+import { MAX_DOC_BYTES } from "../lib/applicationDocuments.js";
+import { deleteMyDocument, getDocument, listMyDocuments, uploadMyDocument } from "../controllers/documents.controller.js";
 import { createLead } from "../controllers/leads.controller.js";
 import {
   applyAsOrganisation,
@@ -91,6 +93,7 @@ import { getAvailableSlots, createAppointment } from "../controllers/booking.con
 import { getReplyThread, postReply } from "../controllers/reply.controller.js";
 import {
   decideVerification,
+  remindApplicant,
   addVerificationLocation,
   getAdminOverview,
   getVerification,
@@ -246,6 +249,19 @@ router.post(
   uploadVideo
 );
 router.delete("/uploads/image", requireAuth, deleteImage);
+
+/* ------------------------------------------------ registration documents
+   Private. Uploaded by the listing's owner, readable only by them and by
+   admins; see controllers/documents.controller.js. */
+router.post(
+  "/me/documents",
+  requireAuth,
+  express.raw({ type: ["application/pdf", "image/*", "application/octet-stream"], limit: MAX_DOC_BYTES }),
+  uploadMyDocument
+);
+router.get("/me/documents", requireAuth, listMyDocuments);
+router.get("/documents/:id", requireAuth, getDocument);
+router.delete("/me/documents/:id", requireAuth, deleteMyDocument);
 
 router.get("/clinics/:slug", getClinicBySlug);
 
@@ -422,6 +438,7 @@ router.get("/admin/overview", requireAuth, requireRole("admin"), getAdminOvervie
 router.get("/admin/verifications", requireAuth, requireRole("admin"), listVerifications);
 router.get("/admin/verifications/:id", requireAuth, requireRole("admin"), getVerification);
 router.post("/admin/verifications/:id/decide", requireAuth, requireRole("admin"), decideVerification);
+router.post("/admin/verifications/:id/remind", requireAuth, requireRole("admin"), remindApplicant);
 router.post("/admin/verifications/:id/location", requireAuth, requireRole("admin"), addVerificationLocation);
 router.get("/admin/specialists", requireAuth, requireRole("admin"), listAdminSpecialists);
 router.post(

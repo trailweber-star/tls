@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BadgeCheck, CalendarClock, MapPin, Sparkles, Star } from "lucide-react";
-import { PhotoFallback } from "./PhotoFallback";
+import { PortraitImage } from "./PhotoFallback";
 import { cloudinaryUrl } from "../lib/cloudinary";
 import { formatAvailability, formatDistance, formatPrice, formatRating } from "../lib/format";
 import type { SpecialistWithRelations } from "../lib/types";
@@ -65,18 +65,13 @@ export function SpecialistResultCard({
           aria-label={`View ${specialist.fullName}'s profile`}
         >
           <div className="h-24 w-20 overflow-hidden rounded-[0.875rem] bg-paper-muted sm:h-28 sm:w-24">
-            {specialist.photoUrl ? (
-              <img
-                src={cloudinaryUrl(specialist.photoUrl)}
-                alt={specialist.fullName}
-                width={96}
-                height={112}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <PhotoFallback logoClassName="w-3/5" />
-            )}
+            <PortraitImage
+              src={specialist.photoUrl ? cloudinaryUrl(specialist.photoUrl) : null}
+              alt={specialist.fullName}
+              width={96}
+              height={112}
+              fallbackLogoClassName="w-3/5"
+            />
           </div>
         </Link>
 
