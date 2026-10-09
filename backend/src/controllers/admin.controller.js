@@ -19,7 +19,8 @@ import {
 import { demoLeads } from "../data/leads-store.js";
 import { demoAccounts } from "../data/accounts.js";
 import { isPaidPlan } from "../lib/plans.js";
-import { notificationStore } from "../lib/notifications.js";
+import { NOTIFICATION_TYPES, notificationStore, notify } from "../lib/notifications.js";
+import { applicantWelcomeBody, regulatorFromNumber } from "../lib/applicantWelcome.js";
 
 import { hasMailer, sendMail } from "../lib/mailer.js";
 import { missingRequiredForVerification } from "./dashboard.controller.js";
@@ -568,6 +569,80 @@ export async function decideVerification(req, res) {
     verificationHistory: specialist.verificationHistory,
     delivery,
   });
+}
+
+/**
+ * POST /api/admin/verifications/:id/remind
+ *
+ * Sends this applicant the personalised "update your profile" email
+ * again: their own name, and only the profile items still missing on
+ * THEIR profile. Safe to use as often as needed, with a short pause
+ * between sends so a double click cannot email somebody twice.
+ */
+const REMINDER_PAUSE_MS = 10 * 60 * 1000;
+
+export async function remindApplicant(req, res) {
+  if (!isDbConfigured()) return res.status(400).json({ error: "Sending a reminder needs the database." });
+
+  const specialist = await specialistRepo.findById(req.params.id);
+  if (!specialist) return res.status(404).json({ error: "Application not found" });
+  if (!["pending", "info_requested"].includes(specialist.verificationStatus)) {
+    return res.status(409).json({ error: "Reminders are for applications still waiting for review." });
+  }
+
+  const user = specialist.userId ? await userRepo.findById(specialist.userId) : null;
+  const email = user?.email ?? specialist.contactEmail ?? null;
+  if (!user || !email) return res.status(409).json({ error: "This applicant has no email address on file." });
+
+  const application = specialist.application && typeof specialist.application === "object" ? specialist.application : {};
+  const last = application.lastReminderAt ? new Date(application.lastReminderAt).getTime() : 0;
+  if (last && Date.now() - last < REMINDER_PAUSE_MS) {
+    return res.status(429).json({
+      error: "A reminder was sent a few minutes ago. Give it a little while before sending another.",
+      lastReminderAt: application.lastReminderAt,
+    });
+  }
+
+  const intro =
+    "We're still checking your application to Top Local Specialists. Your profile stays hidden from patients until our team has approved it, and updating your profile now will speed that up and help patients find your most up to date practice information.\n\n";
+  const body = applicantWelcomeBody({
+    specialist,
+    plan: specialist.plan ?? "basic",
+    regulatorCode: regulatorFromNumber(specialist.registrationNumber),
+    intro,
+  });
+
+  const now = new Date();
+  const result = await notify({
+    userId: String(user.id),
+    type: NOTIFICATION_TYPES.APPLICATION_RECEIVED,
+    title: "Please send your certificate and update your profile",
+    body,
+    url: "/dashboard",
+    subjectId: specialist.id,
+    // A fresh key every time, so each press is a real send and not a
+    // duplicate the de-duplication would swallow.
+    key: `applicant_reminder:${specialist.id}:${now.getTime()}`,
+    email,
+  });
+
+  await specialistRepo.update(specialist.id, {
+    application: {
+      ...application,
+      lastReminderAt: now.toISOString(),
+      reminderCount: (application.reminderCount ?? 0) + 1,
+    },
+  });
+
+  await audit(req, {
+    action: "specialist.verification.remind",
+    subjectType: "specialist",
+    subjectId: specialist.id,
+    subjectLabel: specialist.fullName ?? specialist.slug ?? specialist.id,
+    detail: { to: email, delivered: result?.created !== false },
+  });
+
+  res.json({ ok: true, sentTo: email, lastReminderAt: now.toISOString(), reminderCount: (application.reminderCount ?? 0) + 1 });
 }
 
 /* ------------------------------------------------------------- audit */

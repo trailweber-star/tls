@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { ApiError } from "../lib/dashboardApi";
+import { ApiError, documentsApi } from "../lib/dashboardApi";
 import { getAllSpecialties, getCities, getTopLevelSpecialties } from "../lib/api";
 import { money, plansApi } from "../lib/plansApi";
 import type { BillingInterval, Plan, PlanCatalogue, PlanId } from "../lib/plansApi";
@@ -143,6 +143,8 @@ export default function Register() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [certError, setCertError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   // The full taxonomy, fetched only to build the two Expert Witness
@@ -251,6 +253,10 @@ export default function Register() {
           : {}),
         company: values.company,
       });
+      // The certificate is optional and goes up once the account exists.
+      // A failure here must never undo a successful sign up; they can
+      // attach it again from their dashboard.
+      if (certFile) await documentsApi.upload(certFile).catch(() => {});
       // A paid plan lands on billing, where the next step is explained;
       // a free one goes straight to the dashboard.
       navigate(planId === "basic" ? "/dashboard?welcome=1" : "/dashboard/billing?welcome=1", { replace: true });
@@ -631,6 +637,32 @@ export default function Register() {
                 onBlur={markTouched("registrationNumber")}
                 placeholder="GMC 1234567"
                 className={inputClass}
+              />
+            </Field>
+
+            <Field
+              label="Registration certificate"
+              htmlFor="certFile"
+              optional
+              error={certError}
+              hint="Your GDC, GMC or HCPC certificate. We need it before we can approve your profile, and you can also add it later from your dashboard. PDF, JPG, PNG or WebP, up to 8MB."
+            >
+              <input
+                id="certFile"
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  if (f && f.size > 8 * 1024 * 1024) {
+                    setCertFile(null);
+                    setCertError("That file is over 8MB. Please send a smaller scan or photo.");
+                    e.target.value = "";
+                    return;
+                  }
+                  setCertError(null);
+                  setCertFile(f);
+                }}
+                className="block w-full text-[13px] text-ink-muted file:mr-3 file:rounded-full file:border-0 file:bg-paper-tint file:px-4 file:py-2 file:text-[12.5px] file:font-bold file:text-teal-700"
               />
             </Field>
 

@@ -21,6 +21,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  customType,
   doublePrecision,
   foreignKey,
   index,
@@ -43,6 +44,13 @@ export function newId(prefix = "") {
   const raw = randomBytes(12).toString("base64url");
   return prefix ? `${prefix}_${raw}` : raw;
 }
+
+/** Raw bytes, for the small private files held in application_documents. */
+const bytea = customType({
+  dataType() {
+    return "bytea";
+  },
+});
 
 const id = () => text("id").primaryKey().$defaultFn(() => newId());
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -2037,3 +2045,24 @@ export const claimsRelations = relations(claims, ({ one }) => ({
   specialist: one(specialists, { fields: [claims.specialistId], references: [specialists.id] }),
   user: one(users, { fields: [claims.userId], references: [users.id] }),
 }));
+
+/* A registration certificate or similar an applicant sends in. The
+   bytes live here so they survive a deploy and are never publicly
+   addressable; see lib/applicationDocuments.js. */
+export const applicationDocuments = pgTable(
+  "application_documents",
+  {
+    id: text("id").primaryKey().$defaultFn(() => newId("doc")),
+    specialistId: text("specialist_id")
+      .notNull()
+      .references(() => specialists.id, { onDelete: "cascade" }),
+    uploadedBy: text("uploaded_by"),
+    kind: text("kind").notNull().default("registration-certificate"),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("application_documents_specialist_idx").on(t.specialistId)]
+);

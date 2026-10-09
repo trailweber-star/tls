@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import logoImg from "../assets/images/logo.webp";
 
 // Shown in place of a portrait when a specialist has no photoUrl yet.
@@ -25,5 +26,47 @@ export function PhotoFallback({
         loading="lazy"
       />
     </div>
+  );
+}
+
+/**
+ * A portrait that falls back to the site logo when the photo is missing
+ * OR fails to load. Imported listings carry photo links on somebody
+ * else's server, and those sometimes 404 or refuse hot linking; without
+ * this the visitor sees a broken image icon instead of the logo.
+ */
+export function PortraitImage({
+  src,
+  alt,
+  width,
+  height,
+  imgClassName = "h-full w-full object-cover",
+  fallbackLogoClassName = "w-1/2",
+  dark = false,
+  loading = "lazy",
+}: {
+  src: string | null | undefined;
+  alt: string;
+  width?: number;
+  height?: number;
+  imgClassName?: string;
+  fallbackLogoClassName?: string;
+  dark?: boolean;
+  loading?: "lazy" | "eager";
+}) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [src]);
+
+  if (!src || broken) return <PhotoFallback dark={dark} logoClassName={fallbackLogoClassName} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      loading={loading}
+      onError={() => setBroken(true)}
+      className={imgClassName}
+    />
   );
 }

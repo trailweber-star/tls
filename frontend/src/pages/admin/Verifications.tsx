@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   BadgeCheck,
   CircleAlert,
@@ -8,6 +8,7 @@ import {
   FileText,
   Inbox,
   Loader2,
+  LogIn,
   Mail,
   MapPin,
   Phone,
@@ -15,9 +16,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { DashboardShell, Panel } from "../../components/DashboardShell";
-import { EmptyState, ErrorBlock, LoadingBlock, relativeTime, initials } from "../../components/dashboard/ui";
+import { EmptyState, ErrorBlock, LoadingBlock, relativeTime } from "../../components/dashboard/ui";
+import { MemberAvatar } from "../../components/admin/memberChrome";
 import { Dialog } from "../../components/Dialog";
-import { adminApi } from "../../lib/dashboardApi";
+import { adminApi, documentsApi } from "../../lib/dashboardApi";
+import { useAuth } from "../../lib/auth";
 import { getCities } from "../../lib/api";
 import type { City } from "../../lib/types";
 import { ClaimsQueue } from "../../components/admin/ClaimsQueue";
@@ -226,13 +229,7 @@ export default function Verifications() {
                     onClick={() => navigate({ open: row.id })}
                     className="flex w-full items-center gap-4 px-4 py-4 text-left transition hover:bg-paper-muted sm:px-5"
                   >
-                    <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-paper-tint text-[13px] font-bold text-ink-muted">
-                      {row.photoUrl ? (
-                        <img src={row.photoUrl} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        initials(row.fullName)
-                      )}
-                    </span>
+                    <MemberAvatar photoUrl={row.photoUrl} fullName={row.fullName} size={44} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14px] font-bold text-ink">{row.fullName}</span>
                       <span className="block truncate text-[12.5px] text-ink-muted">
@@ -326,6 +323,26 @@ function ApplicationDialog({
   const [submitting, setSubmitting] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
+  /* Signing in as the applicant, to see and fix their profile the way
+     they would. Same recorded, time limited support session the Members
+     page starts. */
+  const { startImpersonation } = useAuth();
+  const navigateTo = useNavigate();
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+
+  async function signInAsApplicant() {
+    setSigningIn(true);
+    setSignInError(null);
+    try {
+      await startImpersonation(id, "Reviewing an application");
+      navigateTo("/dashboard", { replace: true });
+    } catch (err) {
+      setSignInError(err instanceof Error ? err.message : "Could not start the support session");
+      setSigningIn(false);
+    }
+  }
+
   /* Adding a practice address on the applicant's behalf, for when
      approval is blocked on "Add a clinic location". */
   const [cities, setCities] = useState<City[]>([]);
@@ -395,6 +412,10 @@ function ApplicationDialog({
     };
   }, [id]);
 
+  const [docError, setDocError] = useState<string | null>(null);
+  const [remindBusy, setRemindBusy] = useState(false);
+  const [remindNote, setRemindNote] = useState<{ ok: boolean; text: string } | null>(null);
+
   const config = decision ? DECISIONS[decision] : null;
   const DecisionIcon = config?.icon ?? ShieldCheck;
 
@@ -418,6 +439,40 @@ function ApplicationDialog({
 
   const available = application ? (ACTIONS_FOR[application.verificationStatus] ?? []) : [];
 
+  async function openDocument(docId: string) {
+    setDocError(null);
+    try {
+      await documentsApi.open(docId);
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : "Could not open the document.");
+    }
+  }
+
+  async function sendReminder() {
+    setRemindBusy(true);
+    setRemindNote(null);
+    try {
+      const out = await adminApi.remindApplicant(id);
+      setRemindNote({ ok: true, text: `Reminder sent to ${out.sentTo}.` });
+      setApplication((prev) =>
+        prev
+          ? {
+              ...prev,
+              application: {
+                ...(prev.application ?? {}),
+                lastReminderAt: out.lastReminderAt,
+                reminderCount: out.reminderCount,
+              },
+            }
+          : prev
+      );
+    } catch (err) {
+      setRemindNote({ ok: false, text: err instanceof Error ? err.message : "Could not send the reminder." });
+    } finally {
+      setRemindBusy(false);
+    }
+  }
+
   return (
     <Dialog open onClose={onClose} title={application?.fullName ?? "Application"} size="lg">
       {loading && (
@@ -436,13 +491,7 @@ function ApplicationDialog({
         <div className="space-y-5">
           {/* ---------------------------------------- identity */}
           <div className="flex items-start gap-4">
-            <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-paper-tint text-[18px] font-bold text-ink-muted">
-              {application.photoUrl ? (
-                <img src={application.photoUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                initials(application.fullName)
-              )}
-            </span>
+            <MemberAvatar photoUrl={application.photoUrl} fullName={application.fullName} size={64} />
             <div className="min-w-0 flex-1">
               <p className="text-[12.5px] font-semibold text-ink-muted">{application.title ?? "No title given"}</p>
               <p className="mt-0.5 text-[12.5px] text-ink-muted">
@@ -500,7 +549,19 @@ function ApplicationDialog({
                         without a URL. That becomes a listed but
                         unopenable document rather than a dead link an
                         admin clicks and gets nothing from. */}
-                    {doc?.url ? (
+                    {doc?.id ? (
+                      <button
+                        type="button"
+                        onClick={() => openDocument(doc.id as string)}
+                        className="flex w-full items-center gap-2.5 rounded-lg bg-paper-muted px-3 py-2.5 text-left text-[12.5px] font-semibold text-ink transition hover:bg-line-soft"
+                      >
+                        <FileText className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={2} />
+                        <span className="min-w-0 flex-1 truncate">{doc.name ?? "Untitled document"}</span>
+                        {doc.type && (
+                          <span className="shrink-0 text-[11px] uppercase text-ink-faint">{doc.type.replace(/-/g, " ")}</span>
+                        )}
+                      </button>
+                    ) : doc?.url ? (
                       <a
                         href={doc.url}
                         target="_blank"
@@ -527,6 +588,32 @@ function ApplicationDialog({
             ) : (
               <p className="mt-2 rounded-lg bg-amber/10 px-3 py-2.5 text-[12.5px] text-amber">
                 No documents uploaded. You may want to request evidence before approving.
+              </p>
+            )}
+            {docError && <p className="mt-2 text-[12.5px] font-semibold text-danger">{docError}</p>}
+
+            {(application.verificationStatus === "pending" || application.verificationStatus === "info_requested") && (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={sendReminder}
+                  disabled={remindBusy}
+                  className="rounded-full px-4 py-2 text-[12.5px] font-bold text-teal-700 ring-1 ring-line transition hover:bg-paper-tint disabled:opacity-60"
+                >
+                  {remindBusy ? "Sending..." : "Send a reminder"}
+                </button>
+                <span className="text-[12px] text-ink-muted">
+                  {application.application?.lastReminderAt
+                    ? `Last sent ${relativeTime(application.application.lastReminderAt)}${
+                        application.application.reminderCount ? ` (${application.application.reminderCount} in total)` : ""
+                      }`
+                    : "Emails them the certificate request and what is left on their profile."}
+                </span>
+              </div>
+            )}
+            {remindNote && (
+              <p className={`mt-2 text-[12.5px] font-semibold ${remindNote.ok ? "text-teal-700" : "text-danger"}`}>
+                {remindNote.text}
               </p>
             )}
           </div>
@@ -665,6 +752,23 @@ function ApplicationDialog({
               </ul>
             </div>
           )}
+
+          {/* ------------------------------- sign in as applicant */}
+          <div>
+            <button
+              type="button"
+              onClick={signInAsApplicant}
+              disabled={signingIn}
+              className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[12.5px] font-bold text-white transition hover:bg-ink/90 disabled:opacity-40"
+            >
+              <LogIn className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+              {signingIn ? "Starting…" : "Sign in as this applicant"}
+            </button>
+            <p className="mt-1.5 text-[11.5px] text-ink-faint">
+              You see their dashboard as they do. The session is recorded against your name and ends after 30 minutes.
+            </p>
+            {signInError && <p className="mt-1.5 text-[12.5px] font-semibold text-danger">{signInError}</p>}
+          </div>
 
           {/* ---------------------------------------- decision */}
           <div className="border-t border-line-soft pt-4">

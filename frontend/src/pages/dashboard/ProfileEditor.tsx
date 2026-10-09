@@ -35,6 +35,7 @@ import type { DashboardProfile, Overview, ProfilePatch } from "../../lib/dashboa
 import { getCities, getAllSpecialties } from "../../lib/api";
 import type { City, Specialty } from "../../lib/types";
 import { useAuth } from "../../lib/auth";
+import { RegistrationDocuments } from "../../components/dashboard/RegistrationDocuments";
 
 /* ------------------------------------------------------------------ *
  * The profile form
@@ -548,6 +549,8 @@ export default function ProfileEditor() {
               )}
             </div>
           )}
+
+          {specialistAccount && specialistAccount.verificationStatus !== "verified" && <RegistrationDocuments />}
 
           {/* --------------------------------------------- basics */}
           <Section id="basic" icon={UserRound} title="About you" hint="Your name, photo and the summary patients read first.">

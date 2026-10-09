@@ -476,8 +476,17 @@ export interface VerificationDetail extends VerificationRow {
    */
   application: {
     submittedAt?: string | null;
-    documents?: { type?: string | null; name?: string | null; url?: string | null }[] | null;
+    documents?: {
+      id?: string | null;
+      type?: string | null;
+      name?: string | null;
+      url?: string | null;
+      sizeBytes?: number | null;
+      uploadedAt?: string | null;
+    }[] | null;
     notes?: string | null;
+    lastReminderAt?: string | null;
+    reminderCount?: number | null;
   } | null;
   verificationHistory: HistoryEntry[];
   clinicLocations: { address: string; city: string | null }[];
@@ -856,6 +865,11 @@ export const adminApi = {
       `/admin/specialists?${qs.toString()}`
     );
   },
+  /** Email this applicant their personalised "update your profile" reminder again. */
+  remindApplicant: (id: string) =>
+    post<{ ok: boolean; sentTo: string; lastReminderAt: string; reminderCount: number }>(
+      `/admin/verifications/${id}/remind`
+    ),
   // Raw image body, same contract as /uploads/image.
   setSpecialistPhoto: (id: string, file: File) =>
     request<{ ok: boolean; url: string }>(`/admin/specialists/${id}/photo`, {
@@ -863,6 +877,56 @@ export const adminApi = {
       headers: { "Content-Type": file.type || "application/octet-stream" },
       body: file,
     }),
+};
+
+/* ------------------------------------------------- registration documents
+ *
+ * Private files: an applicant uploads a certificate, and only they and
+ * an admin can read it back, through an endpoint that needs the bearer
+ * token. A plain link would not carry the token, so the file is fetched
+ * and shown from a temporary in-browser URL.
+ * ------------------------------------------------------------------ */
+
+export interface StoredDocument {
+  id: string;
+  type: string;
+  name: string;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+export const documentsApi = {
+  upload: (file: File, type: "registration-certificate" | "id" | "other" = "registration-certificate") =>
+    request<{ ok: boolean; document: StoredDocument }>(
+      `/me/documents?type=${type}&name=${encodeURIComponent(file.name)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      }
+    ),
+  list: () => get<{ documents: StoredDocument[] }>(`/me/documents`),
+  remove: (id: string) => del<{ ok: boolean }>(`/me/documents/${id}`),
+  /** Fetch with the bearer token and open the result in a new tab. */
+  async open(id: string) {
+    // Opened first, inside the click, so a pop-up blocker lets it through.
+    const tab = window.open("", "_blank");
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/documents/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(res.status === 404 ? "That document could not be found." : "Could not open the document.");
+      const url = URL.createObjectURL(await res.blob());
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+      // Released after the tab has had time to read it.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      tab?.close();
+      throw err;
+    }
+  },
 };
 
 /* ------------------------------------------------------------ members
