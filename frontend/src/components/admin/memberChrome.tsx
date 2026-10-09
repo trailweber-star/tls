@@ -42,7 +42,7 @@ const TONE: Record<VerificationStatus, string> = {
  */
 export function MemberAvatar({
   photoUrl,
-  fullName,
+  fullName: _fullName,
   size = 36,
   className = "",
 }: {
