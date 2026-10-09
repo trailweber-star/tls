@@ -1056,8 +1056,18 @@ export const membersApi = {
       expiresInSeconds: number;
       member: { id: string; slug: string; fullName: string; email: string | null };
     }>(`/admin/members/${id}/impersonate`, { reason }),
-  stopImpersonating: () =>
-    post<{ ok: boolean; token: string; account: Account }>("/admin/members/stop-impersonating"),
+  /** Ends the borrowed session on the server. `token` lets a caller
+   *  name the borrowed token explicitly, for when the browser has
+   *  already swapped the administrator's own token back in. */
+  stopImpersonating: (token?: string) =>
+    request<{ ok: boolean; token: string; account: Account }>(
+      "/admin/members/stop-impersonating",
+      {
+        method: "POST",
+        body: "{}",
+        ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      },
+    ),
   audit: (limit = 100) => get<{ results: AuditEntry[]; note?: string }>(`/admin/audit?limit=${limit}`),
 
   /**
