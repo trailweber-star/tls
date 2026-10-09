@@ -266,7 +266,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
        tells the server which administrator to hand the session back to.
        The freshly-signed admin token comes back in the response, so an
        expired parked token is not a trap. */
-    const res = await membersApi.stopImpersonating();
+    /* Give the server fifteen seconds. A request that never answers used
+       to leave the banner on "Returning..." forever; timing out throws,
+       which sends the banner down its recovery path using the
+       administrator's own parked token. */
+    const res = await Promise.race([
+      membersApi.stopImpersonating(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Ending the support session timed out.")), 15000),
+      ),
+    ]);
     setToken(res.token);
     setAdminToken(null);
     setImpersonation(null);
