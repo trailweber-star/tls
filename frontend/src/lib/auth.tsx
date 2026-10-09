@@ -262,14 +262,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const stopImpersonation = useCallback(async () => {
-    /* Sent with the borrowed token: the actor claim inside it is what
-       tells the server which administrator to hand the session back to.
-       The freshly-signed admin token comes back in the response, so an
-       expired parked token is not a trap. */
-    /* Give the server fifteen seconds. A request that never answers used
-       to leave the banner on "Returning..." forever; timing out throws,
-       which sends the banner down its recovery path using the
-       administrator's own parked token. */
+    /* Hand the administrator back to themselves straight away, using the
+       token the browser parked when the support session began, and ask
+       the server to close the borrowed session in the background. The
+       button no longer waits on a network round trip, so a slow or
+       silent server cannot leave it stuck on "Returning...". */
+    const borrowed = getToken();
+    const parked = getAdminToken();
+    if (parked) {
+      setToken(parked);
+      try {
+        const me = await authApi.me();
+        setAdminToken(null);
+        setImpersonation(null);
+        setAccount(me.user);
+        setSpecialist(me.specialist);
+        if (borrowed) void membersApi.stopImpersonating(borrowed).catch(() => {});
+        return me.user;
+      } catch {
+        // Their own token no longer works; fall through and let the
+        // server hand a fresh one back via the borrowed session.
+        if (borrowed) setToken(borrowed);
+      }
+    }
+
+    /* No parked token, or it was dead: the server hands back a fresh
+       administrator session. Give it fifteen seconds, then fail so the
+       banner's recovery path takes over. */
     const res = await Promise.race([
       membersApi.stopImpersonating(),
       new Promise<never>((_, reject) =>
