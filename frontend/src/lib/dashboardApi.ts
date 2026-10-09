@@ -1065,6 +1065,9 @@ export const membersApi = {
       {
         method: "POST",
         body: "{}",
+        // Lets the request finish even if the page is reloaded straight
+        // after it is sent.
+        keepalive: Boolean(token),
         ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       },
     ),
