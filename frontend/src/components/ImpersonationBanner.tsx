@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { EyeOff, LogOut, ShieldAlert } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { getAdminToken, getToken, membersApi, setAdminToken, setToken } from "../lib/dashboardApi";
 
 /* ------------------------------------------------------------------ *
  * "You are signed in as somebody else"
@@ -82,6 +83,21 @@ export function ImpersonationBanner() {
 
   async function handleReturn() {
     setLeaving(true);
+
+    /* Put the administrator's own login back and reload the admin page.
+       No waiting on the server and no in-memory state to untangle: a
+       full page load is the one path that has always come back clean.
+       The borrowed session is closed on the server in the background. */
+    const borrowed = getToken();
+    const parked = getAdminToken();
+    if (parked) {
+      setToken(parked);
+      setAdminToken(null);
+      if (borrowed) void membersApi.stopImpersonating(borrowed).catch(() => {});
+      window.location.assign("/admin/members");
+      return;
+    }
+
     try {
       await stopImpersonation();
       navigate("/admin/members", { replace: true });
